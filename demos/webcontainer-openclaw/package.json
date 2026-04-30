@@ -6,14 +6,25 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
+    "@internationalized/date": "^3.12.1",
     "@webcontainer/api": "^1.6.1",
     "@xterm/addon-fit": "^0.11.0",
-    "@xterm/xterm": "^6.0.0"
+    "@xterm/xterm": "^6.0.0",
+    "bits-ui": "^2.18.0",
+    "clsx": "^2.1.1",
+    "svelte": "^5.55.5",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@tailwindcss/vite": "^4.2.4",
+    "@tsconfig/svelte": "^5.0.8",
+    "svelte-check": "^4.4.6",
+    "tailwindcss": "^4.2.4",
     "typescript": "~5.9.2",
     "vite": "^7.1.7"
   }

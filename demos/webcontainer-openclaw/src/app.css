@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+:root {
+  --shell-bg: #0c0f14;
+  --surface-elevated: #12161d;
+  --surface-muted: #1a1f28;
+  --border-subtle: #2a3140;
+  --text-primary: #e8eaed;
+  --text-muted: #9aa3b2;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --banner-ok-bg: rgba(34, 197, 94, 0.12);
+  --banner-ok-fg: #4ade80;
+  --banner-ok-border: rgba(34, 197, 94, 0.35);
+  --banner-warn-bg: rgba(234, 179, 8, 0.12);
+  --banner-warn-fg: #facc15;
+  --banner-warn-border: rgba(234, 179, 8, 0.35);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    @apply m-0 h-full min-h-dvh;
+  }
+
+  body {
+    background: var(--shell-bg);
+    color: var(--text-primary);
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #app {
+    @apply m-0 h-full max-w-none min-h-dvh p-0;
+  }
+}
+
+@layer components {
+  .preview-status code {
+    @apply break-all text-[0.78rem];
+  }
+
+  .preview-status .preview-muted {
+    color: var(--text-muted);
+  }
+
+  .preview-status .preview-warn {
+    color: var(--banner-warn-fg);
+  }
+}
