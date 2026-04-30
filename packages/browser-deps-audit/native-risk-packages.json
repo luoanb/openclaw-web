@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "S3 P0-D1：WebContainers 证据驱动阻断（blockedEntries）。已移除纯 JS 误列：bcryptjs、protobufjs、@grpc/grpc-js。",
+  "schemaVersion": 2,
+  "scriptDangerPatterns": [
+    {
+      "id": "node-gyp",
+      "level": "error",
+      "regex": "\\bnode-gyp\\b"
+    },
+    {
+      "id": "node-pre-gyp",
+      "level": "error",
+      "regex": "\\bnode-pre-gyp\\b"
+    },
+    {
+      "id": "prebuild-install",
+      "level": "error",
+      "regex": "\\bprebuild-install\\b"
+    },
+    {
+      "id": "curl-or-wget-url",
+      "level": "warn",
+      "regex": "\\b(curl|wget)\\b[^\\n]{0,200}https?://"
+    }
+  ],
+  "blockedEntries": [
+    {
+      "id": "better-sqlite3",
+      "package": "better-sqlite3",
+      "evidenceLevel": "wc-runtime",
+      "evidenceRef": "fixtures/wc-evidence/better-sqlite3/README.md",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30",
+      "verifiedRuntimeNote": "在 WebContainers 或等效 --no-addons 环境复测；日志贴在 README"
+    },
+    {
+      "id": "sharp",
+      "package": "sharp",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "canvas",
+      "package": "canvas",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "bcrypt",
+      "package": "bcrypt",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "argon2",
+      "package": "argon2",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "sqlite3",
+      "package": "sqlite3",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "cpu-features",
+      "package": "cpu-features",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "fsevents",
+      "package": "fsevents",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "bufferutil",
+      "package": "bufferutil",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "utf-8-validate",
+      "package": "utf-8-validate",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "kerberos",
+      "package": "kerberos",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "snappy",
+      "package": "snappy",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "lz4",
+      "package": "lz4",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "xxhash",
+      "package": "xxhash",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "grpc",
+      "package": "grpc",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "node-sass",
+      "package": "node-sass",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "sass-embedded",
+      "package": "sass-embedded",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "esbuild",
+      "package": "esbuild",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "lightningcss",
+      "package": "lightningcss",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "@parcel/watcher",
+      "package": "@parcel/watcher",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "swc",
+      "package": "swc",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "@swc/core",
+      "package": "@swc/core",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "prisma",
+      "package": "prisma",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "@prisma/client",
+      "package": "@prisma/client",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "duckdb",
+      "package": "duckdb",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "oracledb",
+      "package": "oracledb",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "unix-dgram",
+      "package": "unix-dgram",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "usb",
+      "package": "usb",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "serialport",
+      "package": "serialport",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "nodejieba",
+      "package": "nodejieba",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    },
+    {
+      "id": "hnswlib-node",
+      "package": "hnswlib-node",
+      "evidenceLevel": "wc-doc",
+      "evidenceRef": "https://webcontainers.io/guides/troubleshooting#cannot-load-native-addon — 该包以 Node native addon / node-gyp 或平台预编译二进制为主路径；与 WebContainers「不可加载 native addon」一致。",
+      "failureMode": "native_addon",
+      "verifiedAt": "2026-04-30"
+    }
+  ]
+}

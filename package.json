@@ -2,6 +2,7 @@
   "name": "frontend-monorepo",
   "private": true,
   "scripts": {
+    "research:browser-deps-audit": "browser-deps-audit",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
@@ -9,6 +10,7 @@
     "check-types": "turbo run check-types"
   },
   "devDependencies": {
+    "@repo/browser-deps-audit": "workspace:*",
     "prettier": "^3.7.4",
     "turbo": "^2.9.6",
     "typescript": "5.9.2"

@@ -1,0 +1,4 @@
+{
+  "$comment": "仅作用于 audit.mjs 的 --lockfile-only：锁文件中出现下列包名时不视为 error（例如 Next 可选依赖 sharp）。resolve 模式不受影响。",
+  "allowLockfilePackages": ["sharp"]
+}

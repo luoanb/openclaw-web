@@ -147,6 +147,10 @@ npm exec turbo link
 npm exec turbo link
 ```
 
+## Repository documentation
+
+Technical notes, research, and task specs live under [`docs/`](docs/README.md) (not the same as a Next.js app named `docs` under `apps/`).
+
 ## Useful Links
 
 Learn more about the power of Turborepo:

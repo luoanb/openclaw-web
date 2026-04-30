@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://repo.local/browser-deps-audit/blocked-entries",
+  "title": "native-risk-packages blockedEntries item",
+  "type": "object",
+  "required": ["package", "evidenceLevel", "evidenceRef", "failureMode"],
+  "additionalProperties": true,
+  "properties": {
+    "id": { "type": "string" },
+    "package": { "type": "string", "minLength": 1 },
+    "evidenceLevel": { "enum": ["wc-runtime", "wc-doc"] },
+    "evidenceRef": { "type": "string", "minLength": 1 },
+    "failureMode": {
+      "type": "string",
+      "description": "e.g. native_addon, prebuild_binary, dlopen"
+    },
+    "verifiedAt": { "type": "string" },
+    "verifiedRuntimeNote": { "type": "string" }
+  }
+}
