@@ -185,7 +185,7 @@ SDD-RIPER ONE Skill（标准控盘协议）。
 
 ```bash
 python3 scripts/archive_builder.py \
-  --targets mydocs/specs mydocs/codemap \
+  --targets docs/specs docs/codemap \
   --kind mixed \
   --audience both \
   --mode thematic \
@@ -193,8 +193,8 @@ python3 scripts/archive_builder.py \
 ```
 
 - 产出：
-  - `mydocs/archive/YYYY-MM-DD_hh-mm_<topic>_human.md`
-  - `mydocs/archive/YYYY-MM-DD_hh-mm_<topic>_llm.md`
+  - `docs/archive/YYYY-MM-DD_hh-mm_<topic>_human.md`
+  - `docs/archive/YYYY-MM-DD_hh-mm_<topic>_llm.md`
 - 默认不会归档活跃 spec；如确需强制，追加 `--allow-active-spec`。
 
 ## sdd_bootstrap 输入与提问策略
@@ -218,10 +218,10 @@ python3 scripts/archive_builder.py \
 
 三类产物统一使用 `YYYY-MM-DD_hh-mm_` 前缀：
 
-- `create_codemap(feature)`：`mydocs/codemap/YYYY-MM-DD_hh-mm_<feature>功能.md`
-- `create_codemap(project)`：`mydocs/codemap/YYYY-MM-DD_hh-mm_<project>项目总图.md`
-- `build_context_bundle`：`mydocs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
-- `sdd_bootstrap`（spec）：`mydocs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
+- `create_codemap(feature)`：`docs/codemap/YYYY-MM-DD_hh-mm_<feature>功能.md`
+- `create_codemap(project)`：`docs/codemap/YYYY-MM-DD_hh-mm_<project>项目总图.md`
+- `build_context_bundle`：`docs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
+- `sdd_bootstrap`（spec）：`docs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
 
 未经用户明确允许，不得省略时间前缀，不得擅自改写业务名。
 

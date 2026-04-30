@@ -15,7 +15,7 @@
 ## 自动 Codemap
 
 - 发现项目后，自动为每个子项目检查/生成 `create_codemap(project)`
-- 产物路径：`mydocs/codemap/YYYY-MM-DD_hh-mm_<project_id>项目总图.md`
+- 产物路径：`docs/codemap/YYYY-MM-DD_hh-mm_<project_id>项目总图.md`
 
 ## 作用域隔离规则（必须）
 

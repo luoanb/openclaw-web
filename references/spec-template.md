@@ -25,7 +25,7 @@
 
 ## 1.5 Codemap Used (Feature/Project Index)
 - Codemap Mode: `feature` / `project`
-- Codemap File: `mydocs/codemap/YYYY-MM-DD_hh-mm_<name>.md`
+- Codemap File: `docs/codemap/YYYY-MM-DD_hh-mm_<name>.md`
 - Key Index:
   - Entry Points / Architecture Layers: ...
   - Core Logic / Cross-Module Flows: ...
@@ -33,7 +33,7 @@
 
 ## 1.6 Context Bundle Snapshot (Lite/Standard)
 - Bundle Level: `Lite` / `Standard`
-- Bundle File: `mydocs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
+- Bundle File: `docs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
 - Key Facts: ...
 - Open Questions: ...
 
@@ -121,16 +121,16 @@
 
 ## 1.5 Codemap Used (Per-Project Index)
 ### web-console
-- Codemap File: `mydocs/codemap/YYYY-MM-DD_hh-mm_web-console项目总图.md`
+- Codemap File: `docs/codemap/YYYY-MM-DD_hh-mm_web-console项目总图.md`
 - Key Index: ...
 
 ### api-service
-- Codemap File: `mydocs/codemap/YYYY-MM-DD_hh-mm_api-service项目总图.md`
+- Codemap File: `docs/codemap/YYYY-MM-DD_hh-mm_api-service项目总图.md`
 - Key Index: ...
 
 ## 1.6 Context Bundle Snapshot (Lite/Standard)
 - Bundle Level: `Lite` / `Standard`
-- Bundle File: `mydocs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
+- Bundle File: `docs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
 - Key Facts: ...
 - Open Questions: ...
 

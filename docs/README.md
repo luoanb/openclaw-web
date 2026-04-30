@@ -10,6 +10,8 @@
 | [`specs/`](./specs/) | 任务/功能级最小 Spec（目标、边界、验收、验证方式）；与代码变更强绑定时可落盘于此。 |
 | [`micro_specs/`](./micro_specs/) | 小范围改动的 micro-spec，短生命周期。 |
 | [`codemap/`](./codemap/) | 跨模块索引（入口、边界、数据流），非源码拷贝；按需维护。 |
+| [`context/`](./context/) | SDD `build_context_bundle` 等产出的需求上下文包（按需创建）。 |
+| [`archive/`](./archive/) | SDD `archive` 命令产出的 human/llm 归档摘要（按需创建）。 |
 
 ## 分流规则
 

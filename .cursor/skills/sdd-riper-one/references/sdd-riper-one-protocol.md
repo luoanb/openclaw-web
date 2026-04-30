@@ -64,7 +64,7 @@ Use concise phase/state output so users can track progress, but do not force rig
 
   * `ACTIVE`: You may generate code (Only in EXECUTE mode).
 
-* **DOC path**: default Spec path is `mydocs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`.
+* **DOC path**: default Spec path is `docs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`.
 
 ---
 
@@ -101,7 +101,7 @@ Guideline:
     2. **LOAD OR GENERATE CODEMAP INDEX**:
         * Use existing codemap if available.
         * If missing, generate codemap in `feature` or `project` mode as needed.
-        * Save codemap as a standalone index file under `mydocs/codemap/`.
+        * Save codemap as a standalone index file under `docs/codemap/`.
     3. **LOAD OR BUILD CONTEXT BUNDLE**:
         * If context is scattered, build bundle from available files (text/docs/images).
         * Use `Lite` output when requirement is small/vague; use `Standard` for medium/large tasks.
@@ -320,8 +320,8 @@ Convert intermediate artifacts (especially Specs/CodeMaps) into reusable knowled
 4. **Attach Traceability**:
    * Each key conclusion MUST include `Trace to Sources` mapping (conclusion -> source file/section).
 5. **Persist Files**:
-   * `mydocs/archive/YYYY-MM-DD_hh-mm_<topic>_human.md`
-   * `mydocs/archive/YYYY-MM-DD_hh-mm_<topic>_llm.md`
+   * `docs/archive/YYYY-MM-DD_hh-mm_<topic>_human.md`
+   * `docs/archive/YYYY-MM-DD_hh-mm_<topic>_llm.md`
    * If `audience=human` or `llm`, generate only the requested output.
 
 ### Constraints
@@ -359,7 +359,7 @@ Convert intermediate artifacts (especially Specs/CodeMaps) into reusable knowled
    * `feature` mode: entry points, core logic, data models, dependencies for one feature/interface/class.
    * `project` mode: architecture layers, core modules, cross-module flows, external dependencies, hotspots.
 3. **Persist Codemap File**:
-   * Save standalone codemap index in `mydocs/codemap/YYYY-MM-DD_hh-mm_<name>.md`.
+   * Save standalone codemap index in `docs/codemap/YYYY-MM-DD_hh-mm_<name>.md`.
    * `project` mode should include diagram views (prefer 2 Mermaid diagrams: architecture + key flow; at least 1, or structured text fallback when diagram rendering is constrained).
 4. **Optional Spec Sync**:
    * Update `## 1.5 Code Map` in Spec with brief references to codemap file(s), not full duplication.
@@ -381,7 +381,7 @@ Convert intermediate artifacts (especially Specs/CodeMaps) into reusable knowled
 3. Choose output level by complexity:
    * `Lite`: `Source Index + Requirement Snapshot + Open Questions + Next Actions`
    * `Standard`: full requirement facts, business rules, constraints, conflicts, open questions.
-4. Persist bundle file under `mydocs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`.
+4. Persist bundle file under `docs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`.
 5. If information is ambiguous/incomplete, mark explicitly and continue iteratively.
 
 ---
@@ -415,9 +415,9 @@ If user explicitly provides a `projects=[...]` list, skip auto-discovery and use
 
 After project registry is confirmed:
 
-1. For each discovered project, check if a codemap already exists under `mydocs/codemap/`.
+1. For each discovered project, check if a codemap already exists under `docs/codemap/`.
 2. If missing, generate `create_codemap(project)` for each sub-project automatically.
-3. Codemap files follow standard naming: `mydocs/codemap/YYYY-MM-DD_hh-mm_<project_id>项目总图.md`.
+3. Codemap files follow standard naming: `docs/codemap/YYYY-MM-DD_hh-mm_<project_id>项目总图.md`.
 4. Record all codemap references in Spec under `## 1.5 Codemap Used`.
 
 ### 2. Scoped Execution Rules (MANDATORY)

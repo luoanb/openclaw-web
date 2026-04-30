@@ -27,12 +27,12 @@
 
 ## 产物命名规则（统一时间前缀）
 
-- `create_codemap(feature)`：`mydocs/codemap/YYYY-MM-DD_hh-mm_<feature>功能.md`
-- `create_codemap(project)`：`mydocs/codemap/YYYY-MM-DD_hh-mm_<project>项目总图.md`
-- `build_context_bundle`：`mydocs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
-- `sdd_bootstrap`：`mydocs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
-- `archive(human)`：`mydocs/archive/YYYY-MM-DD_hh-mm_<topic>_human.md`
-- `archive(llm)`：`mydocs/archive/YYYY-MM-DD_hh-mm_<topic>_llm.md`
+- `create_codemap(feature)`：`docs/codemap/YYYY-MM-DD_hh-mm_<feature>功能.md`
+- `create_codemap(project)`：`docs/codemap/YYYY-MM-DD_hh-mm_<project>项目总图.md`
+- `build_context_bundle`：`docs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
+- `sdd_bootstrap`：`docs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
+- `archive(human)`：`docs/archive/YYYY-MM-DD_hh-mm_<topic>_human.md`
+- `archive(llm)`：`docs/archive/YYYY-MM-DD_hh-mm_<topic>_llm.md`
 - 规则：时间前缀不可省略，业务名不可擅改。
 
 ## 阶段完成标准（DoD）

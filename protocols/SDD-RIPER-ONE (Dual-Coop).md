@@ -58,7 +58,7 @@ The `The Spec File` is the "Sun", and your actions are the "Planets".
 [ROLE: <EXTERNAL | INTERNAL>]
 [MODE: <CURRENT_MODE>]
 [STATUS: <SCOUTING/LOCKED/ACTIVE>]
-[DOC: mydocs/specs/YYYY-MM-DD_<TaskName>.md]
+[DOC: docs/specs/YYYY-MM-DD_<TaskName>.md]
 
 ```
 

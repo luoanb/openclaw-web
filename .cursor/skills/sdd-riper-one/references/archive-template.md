@@ -17,8 +17,8 @@
 ## 2. Scope & Sources
 - Archive Mode: `snapshot` / `thematic`
 - Source Targets:
-  - `mydocs/specs/...`
-  - `mydocs/codemap/...`
+  - `docs/specs/...`
+  - `docs/codemap/...`
 - Time Window: ...
 
 ## 3. Key Decisions
@@ -37,8 +37,8 @@
 ## 6. Trace to Sources
 | Conclusion | Source File | Section / Evidence |
 |---|---|---|
-| ... | `mydocs/specs/...` | `§4 Plan` |
-| ... | `mydocs/codemap/...` | `核心链路` |
+| ... | `docs/specs/...` | `§4 Plan` |
+| ... | `docs/codemap/...` | `核心链路` |
 ```
 
 ---
@@ -82,6 +82,6 @@
 ## 7. Trace to Sources
 | Statement | Source File | Section / Evidence |
 |---|---|---|
-| ... | `mydocs/specs/...` | `§6 Review Verdict` |
-| ... | `mydocs/codemap/...` | `架构图` |
+| ... | `docs/specs/...` | `§6 Review Verdict` |
+| ... | `docs/codemap/...` | `架构图` |
 ```

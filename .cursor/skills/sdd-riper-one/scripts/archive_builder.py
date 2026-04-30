@@ -68,7 +68,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output-dir",
-        default="mydocs/archive",
+        default="docs/archive",
         help="Output directory for generated archive docs.",
     )
     parser.add_argument(

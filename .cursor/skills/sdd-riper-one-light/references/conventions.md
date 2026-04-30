@@ -9,15 +9,15 @@
 
 ## 目录约定
 
-- `micro-spec`：`mydocs/micro_specs/`
-- `standard spec`：`mydocs/specs/`
-- `codemap`：`mydocs/codemap/`
+- `micro-spec`：`docs/micro_specs/`
+- `standard spec`：`docs/specs/`
+- `codemap`：`docs/codemap/`
 
 ## 文件命名
 
-- `micro-spec`：`mydocs/micro_specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
-- `standard spec`：`mydocs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
-- `codemap`：`mydocs/codemap/YYYY-MM-DD_hh-mm_<ProjectOrFeature>.md`
+- `micro-spec`：`docs/micro_specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
+- `standard spec`：`docs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
+- `codemap`：`docs/codemap/YYYY-MM-DD_hh-mm_<ProjectOrFeature>.md`
 
 ## 何时优先用 `micro-spec`
 

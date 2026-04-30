@@ -8,8 +8,8 @@
 - 本质：CodeMap 是代码上下文索引，用于后续按需加载，而不是每轮全仓扫描。
 - 输入：`scope`（建议明确）；`mode` 可选；`goal` 可选
 - 输出：
-  - `feature`：`mydocs/codemap/YYYY-MM-DD_hh-mm_<feature>功能.md`
-  - `project`：`mydocs/codemap/YYYY-MM-DD_hh-mm_<project>项目总图.md`
+  - `feature`：`docs/codemap/YYYY-MM-DD_hh-mm_<feature>功能.md`
+  - `project`：`docs/codemap/YYYY-MM-DD_hh-mm_<project>项目总图.md`
 - 要点：
   - `feature` 关注入口、核心链路、依赖、风险
   - `project` 关注架构层、核心模块、跨模块流程、外部依赖；图示建议优先 Mermaid（受限可降级为结构化文字图）
@@ -19,7 +19,7 @@
 - 用途：整理需求上下文，替用户读资料并提炼细节
 - 输入：目录路径
 - 解析策略：best effort，支持文本/文档/图片；不可解析文件进入 `Unparsed Sources`，不阻塞产出
-- 输出：`mydocs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
+- 输出：`docs/context/YYYY-MM-DD_hh-mm_<task>_context_bundle.md`
 - 输出级别：
   - `Lite`：`Source Index`、`Requirement Snapshot`、`Open Questions`、`Next Actions`
   - `Standard`：`Requirement Facts`、`Business Rules`、`Acceptance Criteria`、`Constraints`、`Conflicts & Ambiguities` 等
@@ -32,7 +32,7 @@
   - 汇总用户输入 + 代码事实 + 历史资产（codemap/context/spec）
   - 冲突处理：先落首版 spec 标记冲突，再给 `Option A/B` 和推荐决策
   - 形成首版研究结论与下一步动作
-- 输出：`mydocs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
+- 输出：`docs/specs/YYYY-MM-DD_hh-mm_<TaskName>.md`
 - 首版最小内容：`Context Sources`、`Codemap Used`、`Research Findings`、`Open Questions`、`Next Actions`
 
 ## 4) `review_spec`
@@ -85,12 +85,12 @@
   - `mode`：`snapshot`（单任务归档，默认）/ `thematic`（跨任务主题归档）
   - `topic`：归档主题名（可选，默认从 targets 推断）
 - 输出：
-  - `human`：`mydocs/archive/YYYY-MM-DD_hh-mm_<topic>_human.md`（汇报视角）
-  - `llm`：`mydocs/archive/YYYY-MM-DD_hh-mm_<topic>_llm.md`（后续开发参考视角）
+  - `human`：`docs/archive/YYYY-MM-DD_hh-mm_<topic>_human.md`（汇报视角）
+  - `llm`：`docs/archive/YYYY-MM-DD_hh-mm_<topic>_llm.md`（后续开发参考视角）
   - 每个归档文档必须包含 `Trace to Sources`（结论 -> 来源文件）避免失真
 - 门禁：
   - 有活跃执行中的 spec（未完成 Review）时，禁止归档该 spec
   - 默认只归档不删除原文件；删除/移动需用户显式授权
 - 自动化脚本（推荐）：
-  - `python3 scripts/archive_builder.py --targets mydocs/specs mydocs/codemap --kind mixed --audience both --mode thematic --topic <主题>`
+  - `python3 scripts/archive_builder.py --targets docs/specs docs/codemap --kind mixed --audience both --mode thematic --topic <主题>`
   - 如需强制归档活跃 spec：追加 `--allow-active-spec`（仅在用户明确确认后使用）
