@@ -19,7 +19,9 @@
     type ProcessRef,
     type StdinForwardRef,
   } from "$lib/features/terminal/terminal";
-  import { cn } from "$lib/ui/utils/cn";
+  import Button from "$lib/ui/components/Button.svelte";
+  import PanelFrame from "$lib/ui/components/PanelFrame.svelte";
+  import { toast } from "$lib/ui/toast/toast.svelte";
 
   type Props = {
     isolated: boolean;
@@ -38,11 +40,9 @@
   const processRef: ProcessRef = createProcessRef();
   const stdinForwardRef: StdinForwardRef = createStdinForwardRef();
   const outputReaderRef = createOutputReaderRef();
-  /** 与 xterm onData 共享的可变行缓冲（避免 $state 闭包陈旧） */
   const lineBuf = { buf: "" };
 
   let busy = $state(false);
-  /** 供 xterm onData 闭包读取，与 busy 同步 */
   const busyGate = { current: false };
   $effect(() => {
     busyGate.current = busy;
@@ -63,12 +63,12 @@
       cursorBlink: true,
       cursorStyle: "bar",
       disableStdin: false,
-      fontSize: 13,
+      fontSize: 14,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
       theme: {
-        background: "#1e1e1e",
-        foreground: "#d4d4d4",
-        cursor: "#ffffff",
+        background: "var(--xterm-bg)",
+        foreground: "var(--xterm-fg)",
+        cursor: "var(--xterm-cursor)",
       },
     });
     const fa = new FitAddon();
@@ -95,12 +95,7 @@
         return;
       }
       if (busyGate.current) {
-        writeCapped(
-          t,
-          ring,
-          "\r\n[提示] 已有命令运行中，请先「中止」后再输入新命令。\r\n",
-          cfg,
-        );
+        toast("已有命令运行中，请先「中止」后再输入新命令。", { variant: "warning" });
         return;
       }
       for (let i = 0; i < data.length; i++) {
@@ -125,13 +120,6 @@
       }
     });
 
-    writeCapped(
-      t,
-      ring,
-      "在此输入命令，Enter 以 sh -c 执行；运行中按键送往子进程 stdin。非真 PTY，部分 CLI 可能异常。详见仓库 terminal.config.json。\r\n",
-      cfg,
-    );
-
     return () => {
       ro?.disconnect();
       ro = undefined;
@@ -148,7 +136,9 @@
     if (!t) return;
     if (busy || !isolated) {
       if (!isolated) {
-        writeCapped(t, ring, "\r\n[中止] 需要 crossOriginIsolated。\r\n", cfg);
+        toast("需要 crossOriginIsolated 环境才能执行命令。请通过本 demo 的 Vite dev/preview 访问并硬刷新。", {
+          variant: "warning",
+        });
       }
       return;
     }
@@ -171,12 +161,9 @@
         outputReaderRef,
       );
     } catch (e) {
-      writeCapped(
-        t,
-        ring,
-        `\r\n[错误] ${e instanceof Error ? e.message : String(e)}\r\n`,
-        cfg,
-      );
+      const msg = e instanceof Error ? e.message : String(e);
+      toast(`执行失败：${msg}`, { variant: "error" });
+      writeCapped(t, ring, `\r\n[错误] ${msg}\r\n`, cfg);
     } finally {
       busy = false;
       syncProcessState();
@@ -197,7 +184,9 @@
     if (!t) return;
     if (busy || !isolated) {
       if (!isolated) {
-        writeCapped(t, ring, "\r\n[中止] 需要 crossOriginIsolated。\r\n", cfg);
+        toast("需要 crossOriginIsolated 环境才能运行一键 PoC。请通过本 demo 的 Vite dev/preview 访问并硬刷新。", {
+          variant: "warning",
+        });
       }
       return;
     }
@@ -224,12 +213,8 @@
         outputReaderRef,
       );
       if (installCode !== 0) {
-        writeCapped(
-          t,
-          ring,
-          `\r\n[npm install 失败] 见 ${FEASIBILITY_PATH}\r\n`,
-          cfg,
-        );
+        toast(`npm install 失败，详见 ${FEASIBILITY_PATH}`, { variant: "error" });
+        writeCapped(t, ring, `\r\n[npm install 失败] 见 ${FEASIBILITY_PATH}\r\n`, cfg);
         return;
       }
       await runSpawn(
@@ -252,12 +237,9 @@
         cfg,
       );
     } catch (e) {
-      writeCapped(
-        t,
-        ring,
-        `\r\n[错误] ${e instanceof Error ? e.message : String(e)}\r\n`,
-        cfg,
-      );
+      const msg = e instanceof Error ? e.message : String(e);
+      toast(`PoC 失败：${msg}`, { variant: "error" });
+      writeCapped(t, ring, `\r\n[错误] ${msg}\r\n`, cfg);
     } finally {
       busy = false;
       syncProcessState();
@@ -269,47 +251,28 @@
     term?.focus();
     term?.paste(text);
   }
-
-  const btnSecondary = cn(
-    "rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]",
-    "hover:bg-[var(--surface-elevated)] disabled:cursor-not-allowed disabled:opacity-50",
-  );
-  const btnDanger = cn(
-    "rounded-lg border border-transparent bg-[var(--danger)] px-3 py-2 text-xs font-medium text-white",
-    "hover:bg-[var(--danger-hover)] disabled:cursor-not-allowed disabled:opacity-50",
-  );
-  const btnGhost = cn(
-    "rounded-md border border-transparent bg-transparent px-2.5 py-1.5 text-xs font-medium text-[var(--text-muted)]",
-    "hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]",
-  );
 </script>
 
-<div class="mb-2 flex shrink-0 flex-wrap items-center gap-2">
-  <button type="button" class={btnDanger} disabled={!canAbort} title="中止当前子进程" onclick={onAbort}>
+<div class="mb-3 flex shrink-0 flex-wrap items-center gap-2">
+  <Button variant="danger" disabled={!canAbort} title="中止当前子进程" onclick={onAbort}>
     中止
-  </button>
-  <button type="button" class={btnSecondary} disabled={!canRunPoc} onclick={() => void onPoc()}>
-    一键 PoC
-  </button>
+  </Button>
+  <Button variant="secondary" disabled={!canRunPoc} onclick={() => void onPoc()}>一键 PoC</Button>
   <div class="flex flex-wrap gap-1.5" aria-label="预设命令">
-    <button type="button" class={btnGhost} onclick={() => presetPaste("npx openclaw --help")}>
-      openclaw --help
-    </button>
-    <button type="button" class={btnGhost} onclick={() => presetPaste("npm run dev")}>
-      npm run dev
-    </button>
-    <button type="button" class={btnGhost} onclick={() => presetPaste("npx serve -l 3000")}>
-      serve :3000
-    </button>
+    <Button variant="ghost" onclick={() => presetPaste("npx openclaw --help")}>openclaw --help</Button>
+    <Button variant="ghost" onclick={() => presetPaste("npm run dev")}>npm run dev</Button>
+    <Button variant="ghost" onclick={() => presetPaste("npx serve -l 3000")}>serve :3000</Button>
   </div>
 </div>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex: xterm 宿主需可聚焦以承接键盘输入 -->
-<div
-  bind:this={hostEl}
-  class="min-h-48 flex-1 overflow-hidden rounded-lg border border-[var(--border-subtle)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-  role="log"
-  aria-live="polite"
-  aria-label="终端"
-  tabindex="0"
-></div>
+<PanelFrame class="min-h-48 flex-1 overflow-hidden p-0">
+  <div
+    bind:this={hostEl}
+    class="h-full min-h-[12rem] outline-none tab-panel-focus"
+    role="log"
+    aria-live="polite"
+    aria-label="终端"
+    tabindex="0"
+  ></div>
+</PanelFrame>

@@ -4,97 +4,84 @@
   import { attachPreview } from "$lib/features/preview/preview";
   import TerminalPanel from "$lib/features/terminal/components/TerminalPanel.svelte";
   import PreviewPanel from "$lib/features/preview/components/PreviewPanel.svelte";
+  import ShellTabs from "$lib/ui/components/ShellTabs.svelte";
+  import StatusBanner from "$lib/ui/components/StatusBanner.svelte";
+  import IconCircleLink from "$lib/ui/components/IconCircleLink.svelte";
+  import { toast } from "$lib/ui/toast/toast.svelte";
+  import { escapeHtml } from "$lib/ui/utils/html";
   import { cn } from "$lib/ui/utils/cn";
 
   const isolated = globalThis.crossOriginIsolated;
 
   let tabValue = $state("terminal");
   let previewIframe = $state<HTMLIFrameElement | null>(null);
-  let detachPreview = $state<(() => void) | null>(null);
+  let previewWc = $state<WebContainer | null>(null);
+  /** `server-ready` 回调里的权威 URL，避免仅靠 iframe.src（未挂载/时序问题时为空）导致按钮无操作 */
+  let previewUrl = $state<string | null>(null);
   let previewStatusHtml = $state(
     '<span class="preview-muted">启动 HTTP 服务后由 server-ready 填充。</span>',
   );
 
-  function escapeHtml(s: string): string {
-    return s
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function wirePreview(wc: WebContainer): void {
+  $effect(() => {
     const iframe = previewIframe;
-    if (!iframe || detachPreview != null) return;
-    detachPreview = attachPreview(wc, iframe, (ev) => {
+    const wc = previewWc;
+    if (!iframe || !wc) return;
+
+    const unsub = attachPreview(wc, iframe, (ev) => {
       if (ev.status === "waiting") {
         previewStatusHtml =
           "已订阅 <code>server-ready</code>；终端执行如 <code>npx serve -l 3000</code> …";
+        previewUrl = null;
         return;
       }
       if (ev.status === "ready" && ev.url) {
         previewStatusHtml = `端口 <strong>${String(ev.port ?? "?")}</strong> → <code>${escapeHtml(ev.url)}</code>`;
+        previewUrl = ev.url;
       }
     });
+
+    return () => {
+      unsub();
+    };
+  });
+
+  function wirePreview(wc: WebContainer): void {
+    if (previewWc !== wc) previewWc = wc;
   }
 
   function onIframeError(): void {
     previewStatusHtml =
       '<span class="preview-warn">iframe 加载异常（COEP/混合内容）。可用「新标签」。</span>';
+    toast("iframe 加载异常（COEP/混合内容）。可尝试「新标签」打开预览。", { variant: "warning" });
   }
 
-  const triggerClass = cn(
-    "rounded-md px-3 py-1.5 text-sm font-medium text-[var(--text-muted)] outline-none transition-colors",
-    "hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--shell-bg)]",
-    "data-[state=active]:bg-[var(--surface-muted)] data-[state=active]:text-[var(--text-primary)] data-[state=active]:shadow-sm",
+  const tabPanelClass = cn(
+    "flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-4 pt-2 tab-panel-focus",
   );
 </script>
 
-<Tabs.Root bind:value={tabValue} class="flex min-h-dvh flex-col bg-[var(--shell-bg)]">
-  <div
-    class="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-2 py-1.5"
-  >
-    <Tabs.List class="flex flex-wrap items-center gap-1">
-      <Tabs.Trigger value="terminal" class={triggerClass}>终端</Tabs.Trigger>
-      <Tabs.Trigger value="preview" class={triggerClass}>预览</Tabs.Trigger>
-    </Tabs.List>
-    <a
-      class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--border-subtle)] text-sm font-semibold text-[var(--text-muted)] no-underline hover:border-[var(--accent)] hover:text-[var(--text-primary)]"
-      href="https://webcontainers.io/"
-      title="WebContainers"
-      target="_blank"
-      rel="noreferrer"
-    >
-      ?
-    </a>
-  </div>
-
-  <div
-    class={cn(
-      "shrink-0 border-b px-3 py-1.5 text-[0.78rem] leading-snug",
-      isolated
-        ? "border-[var(--banner-ok-border)] bg-[var(--banner-ok-bg)] text-[var(--banner-ok-fg)]"
-        : "border-[var(--banner-warn-border)] bg-[var(--banner-warn-bg)] text-[var(--banner-warn-fg)]",
-    )}
-    role="status"
-  >
-    {isolated
-      ? "crossOriginIsolated 已就绪。"
-      : "未处于 crossOriginIsolated：请通过本 demo 的 Vite dev/preview 访问并硬刷新。"}
-  </div>
-
-  <div class="relative flex min-h-0 flex-1 flex-col">
-    <Tabs.Content
-      value="terminal"
-      class="flex min-h-0 flex-1 flex-col overflow-hidden p-2 pb-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
-    >
-      <TerminalPanel {isolated} {wirePreview} />
-    </Tabs.Content>
-    <Tabs.Content
-      value="preview"
-      class="flex min-h-0 flex-1 flex-col overflow-hidden p-2 pb-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]"
-    >
-      <PreviewPanel bind:iframeRef={previewIframe} statusHtml={previewStatusHtml} {onIframeError} />
-    </Tabs.Content>
-  </div>
-</Tabs.Root>
+<ShellTabs bind:value={tabValue}>
+  {#snippet actions()}
+    <IconCircleLink href="https://webcontainers.io/" title="WebContainers">?</IconCircleLink>
+  {/snippet}
+  {#snippet children()}
+    {#if !isolated}
+      <StatusBanner variant="warning">
+        未处于 crossOriginIsolated：请通过本 demo 的 Vite dev/preview 访问并硬刷新。
+      </StatusBanner>
+    {/if}
+    <div class="relative flex min-h-0 flex-1 flex-col">
+      <Tabs.Content value="terminal" class={tabPanelClass}>
+        <TerminalPanel {isolated} {wirePreview} />
+      </Tabs.Content>
+      <Tabs.Content value="preview" class={tabPanelClass}>
+        <PreviewPanel
+          bind:iframeRef={previewIframe}
+          previewUrl={previewUrl}
+          statusHtml={previewStatusHtml}
+          {onIframeError}
+        />
+      </Tabs.Content>
+    </div>
+  {/snippet}
+</ShellTabs>
