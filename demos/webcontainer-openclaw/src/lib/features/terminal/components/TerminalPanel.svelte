@@ -3,7 +3,7 @@
   import type { WebContainer } from "@webcontainer/api";
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
-  import { bootWebContainer, ensureWorkspace, FEASIBILITY_PATH } from "$lib/webcontainer/boot";
+  import { bootWebContainer, ensureWorkspace, FEASIBILITY_PATH } from "$lib/core/webcontainer/boot";
   import {
     abortCurrentShell,
     clearTerminal,
@@ -18,8 +18,8 @@
     type LogRing,
     type ProcessRef,
     type StdinForwardRef,
-  } from "../../terminal";
-  import { cn } from "$lib/utils/cn";
+  } from "$lib/features/terminal/terminal";
+  import { cn } from "$lib/ui/utils/cn";
 
   type Props = {
     isolated: boolean;

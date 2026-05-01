@@ -1,10 +1,10 @@
 <script lang="ts">
   import { Tabs } from "bits-ui";
   import type { WebContainer } from "@webcontainer/api";
-  import { attachPreview } from "../../preview";
-  import TerminalPanel from "./TerminalPanel.svelte";
-  import PreviewPanel from "./PreviewPanel.svelte";
-  import { cn } from "$lib/utils/cn";
+  import { attachPreview } from "$lib/features/preview/preview";
+  import TerminalPanel from "$lib/features/terminal/components/TerminalPanel.svelte";
+  import PreviewPanel from "$lib/features/preview/components/PreviewPanel.svelte";
+  import { cn } from "$lib/ui/utils/cn";
 
   const isolated = globalThis.crossOriginIsolated;
 

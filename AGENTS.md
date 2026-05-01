@@ -86,6 +86,10 @@ The goal is to turn useful one-time agent work into reusable project terrain.
   - More explicit control protocol.
   - Best for complex, high-risk, cross-module, audit, training, or handoff-heavy work.
 
+## 页面与设计（项目约定）
+
+- **页面与组件**：视觉与交互以 `docs/design/BitsUI.md` 为准（Bits UI 设计稿索引与 Figma 节点约定）。实现或改版 UI 前应对照该文档中的链接与说明，避免脱离既定设计体系。
+
 ## Safety And Hygiene
 
 - Do not commit local runtime data, memory stores, vector databases, credentials, or traces.

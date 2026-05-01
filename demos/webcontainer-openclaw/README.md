@@ -9,11 +9,11 @@
 - **Tailwind CSS v4**（`@tailwindcss/vite`）+ **`clsx` / `tailwind-merge`**（`cn()`）
 - **xterm.js**、**@webcontainer/api**
 
-全局样式入口：[`src/app.css`](./src/app.css)（设计变量 + `@import "tailwindcss"`）；宿主布局见 `src/lib/components/`。
+全局样式入口：[`src/app.css`](./src/app.css)（设计变量 + `@import "tailwindcss"`）；业务布局与面板见 `src/lib/features/`（`shell` / `terminal` / `preview`），公共样式工具见 `src/lib/ui/`。
 
 ## 配置
 
-根目录 [`terminal.config.json`](./terminal.config.json) 控制日志截断与单行命令长度上限（`maxCmdLen` 等）。构建时由 `src/terminal.ts` 静态导入。
+根目录 [`terminal.config.json`](./terminal.config.json) 控制日志截断与单行命令长度上限（`maxCmdLen` 等）。构建时由 `src/lib/features/terminal/terminal.ts` 静态导入。
 
 ## 已知限制（stdin / 非 PTY）
 
