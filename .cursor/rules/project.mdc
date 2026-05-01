@@ -47,4 +47,9 @@ src/lib/
 - `ui/*` → **禁止**引用 → `features/*`
 - `core/*` → **禁止**引用 → `features/*`（必要时通过注入或回调由上层连接）
 
+**`core` / `utils` 编码风格**：
+
+- 在 **`core/**`** 与 **`ui/utils/**`**（以及各应用包中与之对应的 `core`、`utils` 目录）编写可复用逻辑时，**以类（class）为主**：用实例或带静态方法的类型封装状态与行为，**避免**用大量顶层函数拼出模块 API。
+- 类型定义、类型守卫、常量导出等与「组织方式」无关的声明可保持现有写法；**业务无关的可复用过程**应归入命名清晰的类（或服务对象），便于测试、注入与演进。
+
 **示例**：`demos/webcontainer-openclaw` 采用 `features/shell`、`features/terminal`、`features/preview` 与 `core/webcontainer`、`ui/utils`。

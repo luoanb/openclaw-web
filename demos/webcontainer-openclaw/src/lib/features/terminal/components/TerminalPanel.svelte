@@ -1,27 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import type { WebContainer } from "@webcontainer/api";
-  import { Terminal } from "@xterm/xterm";
-  import { FitAddon } from "@xterm/addon-fit";
-  import { bootWebContainer, ensureWorkspace, FEASIBILITY_PATH } from "$lib/core/webcontainer/boot";
-  import {
-    abortCurrentShell,
-    clearTerminal,
-    createLogRing,
-    createOutputReaderRef,
-    createProcessRef,
-    createStdinForwardRef,
-    loadTerminalConfig,
-    runShellLine,
-    runSpawn,
-    writeCapped,
-    type LogRing,
-    type ProcessRef,
-    type StdinForwardRef,
-  } from "$lib/features/terminal/terminal";
+  import TerminalPane from "$lib/features/terminal/components/TerminalPane.svelte";
   import Button from "$lib/ui/components/Button.svelte";
-  import PanelFrame from "$lib/ui/components/PanelFrame.svelte";
-  import { toast } from "$lib/ui/toast/toast.svelte";
+  import { cn } from "$lib/ui/utils/cn";
 
   type Props = {
     isolated: boolean;
@@ -30,249 +11,124 @@
 
   let { isolated, wirePreview }: Props = $props();
 
-  let hostEl: HTMLDivElement | undefined = $state();
-  let term: Terminal | undefined;
-  let fit: FitAddon | undefined;
-  let ro: ResizeObserver | undefined;
+  type TermTab = { id: string; label: string };
 
-  const cfg = loadTerminalConfig();
-  const ring: LogRing = createLogRing();
-  const processRef: ProcessRef = createProcessRef();
-  const stdinForwardRef: StdinForwardRef = createStdinForwardRef();
-  const outputReaderRef = createOutputReaderRef();
-  const lineBuf = { buf: "" };
+  let tabSeq = $state(1);
+  let tabs = $state<TermTab[]>([{ id: "t-1", label: "终端 1" }]);
+  let activeId = $state("t-1");
 
-  let busy = $state(false);
-  const busyGate = { current: false };
-  $effect(() => {
-    busyGate.current = busy;
-  });
-
-  let hasForegroundProcess = $state(false);
-
-  function syncProcessState(): void {
-    hasForegroundProcess = processRef.current != null;
+  function addTab(): void {
+    tabSeq += 1;
+    const id = `t-${tabSeq}`;
+    const n = tabs.length + 1;
+    tabs = [...tabs, { id, label: `终端 ${n}` }];
+    activeId = id;
   }
 
-  let canAbort = $derived(hasForegroundProcess);
-  let canRunPoc = $derived(isolated && !busy);
-
-  onMount(() => {
-    if (!hostEl) return;
-    const t = new Terminal({
-      cursorBlink: true,
-      cursorStyle: "bar",
-      disableStdin: false,
-      fontSize: 14,
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-      theme: {
-        background: "var(--xterm-bg)",
-        foreground: "var(--xterm-fg)",
-        cursor: "var(--xterm-cursor)",
-      },
-    });
-    const fa = new FitAddon();
-    t.loadAddon(fa);
-    t.open(hostEl);
-    ro = new ResizeObserver(() => {
-      try {
-        fa.fit();
-      } catch {
-        /* host may be 0-sized briefly */
-      }
-    });
-    ro.observe(hostEl);
-    requestAnimationFrame(() => {
-      fa.fit();
-      t.focus();
-    });
-    term = t;
-    fit = fa;
-
-    t.onData((data) => {
-      if (stdinForwardRef.current) {
-        stdinForwardRef.current.write(data).catch(() => {});
-        return;
-      }
-      if (busyGate.current) {
-        toast("已有命令运行中，请先「中止」后再输入新命令。", { variant: "warning" });
-        return;
-      }
-      for (let i = 0; i < data.length; i++) {
-        const c = data[i]!;
-        if (c === "\r" || c === "\n") {
-          const line = lineBuf.buf;
-          lineBuf.buf = "";
-          void executeShellLine(line);
-          return;
-        }
-        if (c === "\x7f" || c === "\b") {
-          if (lineBuf.buf.length > 0) {
-            lineBuf.buf = lineBuf.buf.slice(0, -1);
-            writeCapped(t, ring, "\b \b", cfg);
-          }
-          continue;
-        }
-        if (c >= " " || c === "\t") {
-          lineBuf.buf += c;
-          writeCapped(t, ring, c, cfg);
-        }
-      }
-    });
-
-    return () => {
-      ro?.disconnect();
-      ro = undefined;
-      t.dispose();
-      term = undefined;
-      fit = undefined;
-    };
-  });
-
-  async function executeShellLine(rawLine: string): Promise<void> {
-    const line = rawLine.trim();
-    if (!line) return;
-    const t = term;
-    if (!t) return;
-    if (busy || !isolated) {
-      if (!isolated) {
-        toast("需要 crossOriginIsolated 环境才能执行命令。请通过本 demo 的 Vite dev/preview 访问并硬刷新。", {
-          variant: "warning",
-        });
-      }
-      return;
-    }
-    busy = true;
-    lineBuf.buf = "";
-    try {
-      const wc = await bootWebContainer();
-      wirePreview(wc);
-      await ensureWorkspace(wc);
-      await runShellLine(
-        wc,
-        line,
-        t,
-        ring,
-        processRef,
-        cfg,
-        stdinForwardRef,
-        syncProcessState,
-        { noCommandEcho: true },
-        outputReaderRef,
-      );
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      toast(`执行失败：${msg}`, { variant: "error" });
-      writeCapped(t, ring, `\r\n[错误] ${msg}\r\n`, cfg);
-    } finally {
-      busy = false;
-      syncProcessState();
-      requestAnimationFrame(() => fit?.fit());
-    }
+  function closeTab(id: string): void {
+    if (tabs.length <= 1) return;
+    const idx = tabs.findIndex((t) => t.id === id);
+    if (idx < 0) return;
+    const next = tabs[idx + 1] ?? tabs[idx - 1];
+    tabs = tabs.filter((t) => t.id !== id);
+    if (activeId === id && next) activeId = next.id;
   }
 
-  function onAbort(): void {
-    abortCurrentShell(processRef, {
-      stdinRef: stdinForwardRef,
-      outputReaderRef,
-    });
-    queueMicrotask(() => syncProcessState());
-  }
+  /** 整行 hover/选中底在父级 `group`；此处只负责文字与焦点环 */
+  const tabTrigger = (selected: boolean, closable: boolean) =>
+    cn(
+      "relative z-0 w-full rounded-md py-1.5 text-left text-xs font-medium tracking-wide transition-colors outline-none",
+      closable ? "pl-2 pr-8" : "px-2",
+      "text-[color:var(--text-primary)]/75 hover:text-[color:var(--text-primary)]",
+      selected && "text-[color:var(--text-primary)]",
+      "focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--shell-bg)]"
+    );
 
-  async function onPoc(): Promise<void> {
-    const t = term;
-    if (!t) return;
-    if (busy || !isolated) {
-      if (!isolated) {
-        toast("需要 crossOriginIsolated 环境才能运行一键 PoC。请通过本 demo 的 Vite dev/preview 访问并硬刷新。", {
-          variant: "warning",
-        });
-      }
-      return;
-    }
-    busy = true;
-    lineBuf.buf = "";
-    clearTerminal(t, ring);
-    writeCapped(t, ring, "WebContainer.boot() …\r\n", cfg);
-    try {
-      const wc = await bootWebContainer();
-      wirePreview(wc);
-      writeCapped(t, ring, "已 boot。mount package.json …\r\n", cfg);
-      await ensureWorkspace(wc);
-      const installCode = await runSpawn(
-        wc,
-        t,
-        ring,
-        processRef,
-        "npm",
-        ["install"],
-        "\r\n$ npm install\r\n",
-        cfg,
-        stdinForwardRef,
-        syncProcessState,
-        outputReaderRef,
-      );
-      if (installCode !== 0) {
-        toast(`npm install 失败，详见 ${FEASIBILITY_PATH}`, { variant: "error" });
-        writeCapped(t, ring, `\r\n[npm install 失败] 见 ${FEASIBILITY_PATH}\r\n`, cfg);
-        return;
-      }
-      await runSpawn(
-        wc,
-        t,
-        ring,
-        processRef,
-        "npx",
-        ["openclaw", "--help"],
-        "\r\n$ npx openclaw --help\r\n",
-        cfg,
-        stdinForwardRef,
-        syncProcessState,
-        outputReaderRef,
-      );
-      writeCapped(
-        t,
-        ring,
-        "\r\n[PoC 完成] CLI 可加载不代表完整 gateway；见可行性文档。\r\n",
-        cfg,
-      );
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      toast(`PoC 失败：${msg}`, { variant: "error" });
-      writeCapped(t, ring, `\r\n[错误] ${msg}\r\n`, cfg);
-    } finally {
-      busy = false;
-      syncProcessState();
-      requestAnimationFrame(() => fit?.fit());
-    }
-  }
+  /** 行内右侧，仅在父级 `group-hover` / `focus-within` 时显现 */
+  const closeBtn = cn(
+    "absolute right-0.5 top-1/2 z-[1] flex -translate-y-1/2 cursor-pointer items-center justify-center rounded p-1",
+    "text-[color:var(--text-primary)]/55 outline-none transition-[color,opacity]",
+    "hover:text-[color:var(--text-primary)]",
+    "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
+    "group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+    "focus-visible:opacity-100 focus-visible:pointer-events-auto focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--shell-bg)]"
+  );
 
-  function presetPaste(text: string): void {
-    term?.focus();
-    term?.paste(text);
-  }
+  const rowShell = (selected: boolean) =>
+    cn(
+      "group relative min-h-8 rounded-md transition-colors",
+      "hover:bg-[color:var(--tab-rail-bg)]",
+      selected && "bg-[color:var(--tab-rail-bg)]"
+    );
 </script>
 
-<div class="mb-3 flex shrink-0 flex-wrap items-center gap-2">
-  <Button variant="danger" disabled={!canAbort} title="中止当前子进程" onclick={onAbort}>
-    中止
-  </Button>
-  <Button variant="secondary" disabled={!canRunPoc} onclick={() => void onPoc()}>一键 PoC</Button>
-  <div class="flex flex-wrap gap-1.5" aria-label="预设命令">
-    <Button variant="ghost" onclick={() => presetPaste("npx openclaw --help")}>openclaw --help</Button>
-    <Button variant="ghost" onclick={() => presetPaste("npm run dev")}>npm run dev</Button>
-    <Button variant="ghost" onclick={() => presetPaste("npx serve -l 3000")}>serve :3000</Button>
+<div class="flex min-h-0 flex-1 flex-row gap-2">
+  <div class="relative min-h-0 min-w-0 flex-1">
+    {#each tabs as t (t.id)}
+      <div
+        class="absolute inset-0 flex min-h-0 flex-col"
+        class:hidden={activeId !== t.id}
+        class:pointer-events-none={activeId !== t.id}
+        aria-hidden={activeId !== t.id}
+      >
+        <TerminalPane {isolated} {wirePreview} visible={activeId === t.id} />
+      </div>
+    {/each}
   </div>
-</div>
 
-<!-- svelte-ignore a11y_no_noninteractive_tabindex: xterm 宿主需可聚焦以承接键盘输入 -->
-<PanelFrame class="min-h-48 flex-1 overflow-hidden p-0">
-  <div
-    bind:this={hostEl}
-    class="h-full min-h-[12rem] outline-none tab-panel-focus"
-    role="log"
-    aria-live="polite"
-    aria-label="终端"
-    tabindex="0"
-  ></div>
-</PanelFrame>
+  <aside
+    class="flex w-[8.5rem] shrink-0 flex-col border-l border-[color:var(--border-subtle)] pl-2"
+    aria-label="终端会话侧栏"
+  >
+    <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto py-0.5">
+      <Button
+        variant="ghost"
+        class="h-8 w-full shrink-0 justify-start px-2 text-xs"
+        title="新建终端"
+        onclick={addTab}
+      >
+        新建
+      </Button>
+
+      <div
+        role="tablist"
+        aria-label="终端会话"
+        class="flex min-h-0 flex-1 flex-col gap-0.5"
+      >
+        {#each tabs as t (t.id)}
+          <div class={rowShell(activeId === t.id)}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeId === t.id}
+              class={tabTrigger(activeId === t.id, tabs.length > 1)}
+              onclick={() => (activeId = t.id)}
+            >
+              {t.label}
+            </button>
+            {#if tabs.length > 1}
+              <button
+                type="button"
+                class={closeBtn}
+                aria-label={`关闭 ${t.label}`}
+                onclick={() => closeTab(t.id)}
+              >
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 3l6 6M9 3L3 9" />
+                </svg>
+              </button>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    </div>
+  </aside>
+</div>

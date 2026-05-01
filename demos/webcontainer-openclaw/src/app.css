@@ -2,7 +2,7 @@
 
 /**
  * Design tokens — Bits UI kit (Community), fileKey P4HsiLObiYcXgVqrtHMHdH.
- * Tabs frame 2791:1098; Dialog 2783:747; Button secondary 2722:511 (dark-host interpretation).
+ * Tabs frame 2791:1098; Dialog 2783:747; Dropdown 2777:830 / 2777:840; Button secondary 2722:511 (dark-host interpretation).
  */
 :root {
   --shell-bg: #171717;
@@ -35,6 +35,20 @@
   --panel-border: rgba(245, 245, 245, 0.12);
   --panel-radius: 12px;
   --panel-shadow: 0 10px 30px 1px rgba(0, 0, 0, 0.35);
+
+  /* Dropdown — Bits UI kit nodes 2777:830 / 2777:840 / 208:360（与 Trigger + 展开面板一致） */
+  --dropdown-trigger-radius: 8px;
+  --dropdown-trigger-bg: rgba(255, 255, 255, 0.05);
+  --dropdown-trigger-border: rgba(245, 245, 245, 0.12);
+  --dropdown-trigger-hover-bg: rgba(255, 255, 255, 0.09);
+  --dropdown-trigger-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  --dropdown-content-radius: 8px;
+  --dropdown-item-radius: 6px;
+  --dropdown-content-bg: #1f1f22;
+  --dropdown-border: rgba(245, 245, 245, 0.1);
+  --dropdown-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --dropdown-item-highlight-bg: rgba(255, 255, 255, 0.08);
 
   --icon-link-border: rgba(255, 255, 255, 0.14);
   --icon-link-border-hover: rgba(255, 255, 255, 0.28);

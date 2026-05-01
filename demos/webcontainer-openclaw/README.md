@@ -13,7 +13,7 @@
 
 ## 配置
 
-根目录 [`terminal.config.json`](./terminal.config.json) 控制日志截断与单行命令长度上限（`maxCmdLen` 等）。构建时由 `src/lib/features/terminal/terminal.ts` 静态导入。
+根目录 [`terminal.config.json`](./terminal.config.json) 控制日志截断与单行命令长度上限（`maxCmdLen` 等）。构建时由 `src/lib/core/terminal/config.ts`（经 `TerminalConfigLoader`）静态导入。
 
 ## 已知限制（stdin / 非 PTY）
 

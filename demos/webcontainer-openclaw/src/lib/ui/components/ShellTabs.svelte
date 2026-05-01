@@ -17,7 +17,7 @@
     "text-[color:var(--tab-inactive-fg)] hover:text-[color:var(--text-primary)]",
     "focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--tab-rail-bg)]",
     "data-[state=active]:bg-[color:var(--tab-active-bg)] data-[state=active]:text-[color:var(--tab-active-fg)]",
-    "data-[state=active]:shadow-[0_1px_0_1px_rgba(0,0,0,0.05)]",
+    "data-[state=active]:shadow-[0_1px_0_1px_rgba(0,0,0,0.05)]"
   );
 </script>
 
@@ -25,7 +25,7 @@
   bind:value
   class={cn(
     "flex min-h-dvh flex-col bg-[linear-gradient(180deg,var(--shell-bg)_0%,var(--shell-bg-end)_100%)]",
-    "text-[color:var(--text-primary)] antialiased",
+    "text-[color:var(--text-primary)] antialiased"
   )}
 >
   <header
@@ -34,10 +34,10 @@
     <Tabs.List
       class={cn(
         "inline-flex items-center gap-1 rounded-[10px] bg-[color:var(--tab-rail-bg)] p-1",
-        "shadow-[inset_0_1px_0_0_rgba(0,0,0,0.04)]",
+        "shadow-[inset_0_1px_0_0_rgba(0,0,0,0.04)]"
       )}
     >
-      <Tabs.Trigger value="terminal" class={triggerClass}>终端</Tabs.Trigger>
+      <Tabs.Trigger value="terminal" class={triggerClass}>运行</Tabs.Trigger>
       <Tabs.Trigger value="preview" class={triggerClass}>预览</Tabs.Trigger>
     </Tabs.List>
     {#if actions}
