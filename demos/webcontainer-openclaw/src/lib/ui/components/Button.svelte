@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { cn } from "$lib/ui/utils/cn";
+  import { cn } from "$lib/utils.js";
 
   type Variant = "secondary" | "danger" | "ghost";
 
@@ -27,21 +27,21 @@
   const base = cn(
     "inline-flex cursor-pointer items-center justify-center gap-1.5 font-medium tracking-wide transition-colors outline-none",
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45",
-    "focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--shell-bg)]",
+    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
   );
 
   const variants: Record<Variant, string> = {
     secondary: cn(
-      "rounded-[9px] border border-[color:var(--btn-secondary-border)] bg-[color:var(--btn-secondary-bg)] px-3 py-2 text-[15px] leading-none text-[color:var(--btn-secondary-fg)]",
-      "shadow-[0_1px_0_1px_rgba(0,0,0,0.04)] hover:bg-[color:var(--btn-secondary-hover-bg)]",
+      "rounded-[9px] border border-border bg-secondary text-secondary-foreground px-3 py-2 text-[15px] leading-none",
+      "shadow-[0_1px_0_1px_rgba(0,0,0,0.04)] hover:bg-secondary/80",
     ),
     danger: cn(
-      "rounded-[9px] border border-transparent bg-[color:var(--danger)] px-3 py-2 text-[15px] leading-none text-white",
-      "shadow-[0_1px_0_1px_rgba(0,0,0,0.08)] hover:bg-[color:var(--danger-hover)]",
+      "rounded-[9px] border border-transparent bg-destructive text-destructive-foreground px-3 py-2 text-[15px] leading-none",
+      "shadow-[0_1px_0_1px_rgba(0,0,0,0.08)] hover:bg-destructive/90",
     ),
     ghost: cn(
-      "rounded-lg border border-transparent bg-transparent px-2.5 py-1.5 text-xs text-[color:var(--btn-ghost-fg)]",
-      "hover:bg-[color:var(--btn-ghost-hover-bg)] hover:text-[color:var(--text-primary)]",
+      "rounded-lg border border-transparent bg-transparent px-2.5 py-1.5 text-xs text-muted-foreground",
+      "hover:bg-muted hover:text-foreground",
     ),
   };
 </script>

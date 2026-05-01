@@ -12,16 +12,8 @@ const isolationHeaders = {
 } as const;
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      $lib: path.resolve(__dirname, "src/lib"),
-    },
-  },
+  resolve: { alias: { $lib: path.resolve(__dirname, "src/lib") } },
   plugins: [tailwindcss(), svelte()],
-  server: {
-    headers: isolationHeaders,
-  },
-  preview: {
-    headers: isolationHeaders,
-  },
+  server: { headers: isolationHeaders },
+  preview: { headers: isolationHeaders },
 });

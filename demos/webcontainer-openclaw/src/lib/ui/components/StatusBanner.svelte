@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { cn } from "$lib/ui/utils/cn";
+  import { cn } from "$lib/utils.js";
 
   type Variant = "success" | "warning";
 
@@ -13,18 +13,14 @@
   let { variant, class: className = "", children }: Props = $props();
 
   const styles: Record<Variant, string> = {
-    success: cn(
-      "border-[color:var(--banner-ok-border)] bg-[color:var(--banner-ok-bg)] text-[color:var(--banner-ok-fg)]",
-    ),
-    warning: cn(
-      "border-[color:var(--banner-warn-border)] bg-[color:var(--banner-warn-bg)] text-[color:var(--banner-warn-fg)]",
-    ),
+    success: "border-border bg-green-50 text-green-800",
+    warning: "border-border bg-yellow-50 text-yellow-800",
   };
 </script>
 
 <div
   class={cn(
-    "shrink-0 border-b px-3 py-2 text-sm leading-snug",
+    "shrink-0 border-b px-3 py-2 text-sm",
     styles[variant],
     className,
   )}

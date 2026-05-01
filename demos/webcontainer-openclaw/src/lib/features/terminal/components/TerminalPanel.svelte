@@ -2,7 +2,7 @@
   import type { WebContainer } from "@webcontainer/api";
   import TerminalPane from "$lib/features/terminal/components/TerminalPane.svelte";
   import Button from "$lib/ui/components/Button.svelte";
-  import { cn } from "$lib/ui/utils/cn";
+  import { cn } from "$lib/utils.js";
 
   type Props = {
     isolated: boolean;

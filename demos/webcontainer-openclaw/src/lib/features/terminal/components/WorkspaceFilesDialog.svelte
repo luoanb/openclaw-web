@@ -1,10 +1,25 @@
 <script lang="ts">
-  import { Dialog, DropdownMenu } from "bits-ui";
+  import Dialog from "$lib/components/ui/dialog/dialog.svelte";
+  import DialogContent from "$lib/components/ui/dialog/dialog-content.svelte";
+  import DialogOverlay from "$lib/components/ui/dialog/dialog-overlay.svelte";
+  import DialogPortal from "$lib/components/ui/dialog/dialog-portal.svelte";
+  import DialogTitle from "$lib/components/ui/dialog/dialog-title.svelte";
+  import DialogDescription from "$lib/components/ui/dialog/dialog-description.svelte";
+  import DialogClose from "$lib/components/ui/dialog/dialog-close.svelte";
+  import DropdownMenu from "$lib/components/ui/dropdown-menu/dropdown-menu.svelte";
+  import DropdownMenuContent from "$lib/components/ui/dropdown-menu/dropdown-menu-content.svelte";
+  import DropdownMenuItem from "$lib/components/ui/dropdown-menu/dropdown-menu-item.svelte";
+  import DropdownMenuPortal from "$lib/components/ui/dropdown-menu/dropdown-menu-portal.svelte";
+  import DropdownMenuTrigger from "$lib/components/ui/dropdown-menu/dropdown-menu-trigger.svelte";
+  import Button from "$lib/components/ui/button/button.svelte";
   import type { WebContainer } from "@webcontainer/api";
-  import Button from "$lib/ui/components/Button.svelte";
   import { toast } from "$lib/ui/toast/toast.svelte";
-  import { cn } from "$lib/ui/utils/cn";
-  import { bootWebContainer, ensureWorkspace, mountImportedWorkspace } from "$lib/core/webcontainer/boot";
+  import { cn } from "$lib/utils.js";
+  import {
+    bootWebContainer,
+    ensureWorkspace,
+    mountImportedWorkspace,
+  } from "$lib/core/webcontainer/boot";
   import {
     WorkspaceTreeIdbStore,
     IdbQuotaError,
@@ -41,7 +56,6 @@
   let exporting = $state(false);
   let importingId = $state<string | null>(null);
 
-  /** 每项 = 一种导出动作（点击即执行），顺序与官方 `ExportOptions.format` 一致。 */
   const exportActions = (
     [
       "json-tree",
@@ -50,7 +64,9 @@
     ] as const satisfies readonly WorkspaceExportKind[]
   ).map((kind) => ({ kind, label: EXPORT_KIND_LABELS[kind] }));
 
-  const actionsLocked = $derived(!isolated || busy || exporting || importingId !== null);
+  const actionsLocked = $derived(
+    !isolated || busy || exporting || importingId !== null,
+  );
 
   function u8ToArrayBuffer(u8: Uint8Array): ArrayBuffer {
     const out = new ArrayBuffer(u8.byteLength);
@@ -113,7 +129,9 @@
       await refreshSnapshots();
     } catch (e) {
       if (e instanceof IdbQuotaError) {
-        toast("存储空间不足，无法保存快照（IndexedDB 配额）。", { variant: "error" });
+        toast("存储空间不足，无法保存快照（IndexedDB 配额）。", {
+          variant: "error",
+        });
       } else if (e instanceof InvalidSnapshotError) {
         toast(`导出数据无效：${e.message}`, { variant: "error" });
       } else {
@@ -133,7 +151,9 @@
       wirePreview(wc);
       const snap = await store.getSnapshot(snapshotId);
       if (!exportKindIsImportable(snap.exportKind)) {
-        toast("ZIP 归档无法导入回 WebContainer（仅 json/binary 可 mount）。", { variant: "warning" });
+        toast("ZIP 归档无法导入回 WebContainer（仅 json/binary 可 mount）。", {
+          variant: "warning",
+        });
         return;
       }
       const payload = snap.tree ?? snap.binaryPayload;
@@ -152,81 +172,84 @@
   }
 </script>
 
-<Dialog.Root bind:open>
-  <Dialog.Portal>
-    <Dialog.Overlay class="fixed inset-0 z-50 bg-black/55" />
-    <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-[60] flex max-h-[min(100%-2rem,32rem)] w-[min(100%-2rem,26rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-[12px] border border-[color:var(--panel-border)] bg-[color:var(--surface-elevated)] p-4 pb-12 shadow-[var(--panel-shadow)] outline-none"
+<Dialog bind:open>
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogContent
+      class="fixed left-1/2 top-1/2 z-[60] flex max-h-[min(100%-2rem,32rem)] w-[min(100%-2rem,26rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden rounded-xl border border-border bg-popover p-4 pb-12 shadow-lg outline-none"
     >
-      <Dialog.Title class="pr-8 text-base font-semibold tracking-wide text-[color:var(--text-primary)]">
+      <DialogTitle
+        class="pr-8 text-base font-semibold tracking-wide text-foreground"
+      >
         工作区文件
-      </Dialog.Title>
-      <Dialog.Description class="sr-only">
+      </DialogTitle>
+      <DialogDescription class="sr-only">
         导出或导入 WebContainer 工作区快照；快照保存在本机 IndexedDB。
-      </Dialog.Description>
+      </DialogDescription>
 
       <div class="flex flex-wrap items-center gap-2">
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger
+        <DropdownMenu>
+          <DropdownMenuTrigger
             disabled={actionsLocked}
             aria-label="导出快照"
             class={cn(
-              "inline-flex h-9 min-w-[7.5rem] cursor-pointer items-center justify-between gap-2 rounded-[length:var(--dropdown-trigger-radius)] border border-[color:var(--dropdown-trigger-border)] bg-[color:var(--dropdown-trigger-bg)] px-3 text-[13px] font-medium leading-none text-[color:var(--text-primary)] shadow-[var(--dropdown-trigger-shadow)] transition-colors outline-none",
-              "hover:bg-[color:var(--dropdown-trigger-hover-bg)]",
-              "focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--shell-bg)]",
-              "data-[state=open]:bg-[color:var(--dropdown-trigger-hover-bg)]",
+              "inline-flex h-9 min-w-[7.5rem] items-center justify-center gap-2 rounded-md border border-input bg-background px-3 text-[13px] font-medium leading-none shadow-sm transition-colors outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[state=open]:bg-muted",
               actionsLocked && "pointer-events-none opacity-45",
             )}
           >
             <span>{exporting ? "导出中…" : "导出"}</span>
             <svg
-              class="size-[14px] shrink-0 text-[color:var(--text-muted)]"
+              class="size-[14px] shrink-0"
               viewBox="0 0 12 12"
               fill="none"
               stroke="currentColor"
               stroke-width="1.6"
               aria-hidden="true"
             >
-              <path d="M3 4.5l3 3 3-3" stroke-linecap="round" stroke-linejoin="round" />
+              <path
+                d="M3 4.5l3 3 3-3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
+          </DropdownMenuTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuContent
               class={cn(
-                "z-[100] min-w-[var(--bits-dropdown-menu-anchor-width)] overflow-hidden p-1 outline-none",
-                "rounded-[length:var(--dropdown-content-radius)] border border-[color:var(--dropdown-border)]",
-                "bg-[color:var(--dropdown-content-bg)] shadow-[var(--dropdown-shadow)]",
+                "z-[100] min-w-[8rem] overflow-hidden p-1 outline-none",
+                "rounded-lg border border-border bg-popover text-popover-foreground shadow-md",
               )}
               sideOffset={6}
               align="start"
             >
               {#each exportActions as action (action.kind)}
-                <DropdownMenu.Item
+                <DropdownMenuItem
                   textValue={action.label}
                   disabled={actionsLocked}
                   onSelect={() => void runExport(action.kind)}
                   class={cn(
-                    "relative flex min-h-8 cursor-pointer select-none items-center rounded-[length:var(--dropdown-item-radius)] px-2 py-2 text-[13px] leading-snug text-[color:var(--text-primary)] outline-none",
-                    "data-[highlighted]:bg-[color:var(--dropdown-item-highlight-bg)] data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
+                    "relative flex min-h-8 cursor-pointer select-none items-center rounded-md px-2 py-2 text-[13px] leading-snug text-foreground outline-none",
+                    "data-[highlighted]:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-45",
                   )}
                 >
                   {action.label}
-                </DropdownMenu.Item>
+                </DropdownMenuItem>
               {/each}
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+            </DropdownMenuContent>
+          </DropdownMenuPortal>
+        </DropdownMenu>
       </div>
 
       {#if !isolated}
-        <p class="text-xs text-[color:var(--text-muted)]">
-          需要 crossOriginIsolated（请通过本 demo 的 dev/preview 访问）才能导出或导入。
+        <p class="text-xs text-muted-foreground">
+          需要 crossOriginIsolated（请通过本 demo 的 dev/preview
+          访问）才能导出或导入。
         </p>
       {/if}
 
       <div class="min-h-0 flex-1 overflow-y-auto">
         {#if snapshots.length === 0}
-          <p class="py-6 text-center text-sm text-[color:var(--text-muted)]">
+          <p class="py-6 text-center text-sm text-muted-foreground">
             暂无导出，请点击上方「导出」并在菜单中选择导出方式。
           </p>
         {:else}
@@ -235,15 +258,17 @@
               <li
                 class={cn(
                   "group relative flex min-h-10 flex-wrap items-center gap-2 rounded-md px-2 py-1.5 transition-colors",
-                  "hover:bg-[color:var(--surface-muted)]",
+                  "hover:bg-muted",
                 )}
               >
                 <div class="min-w-0 flex-1 text-xs leading-snug">
-                  <div class="truncate font-medium text-[color:var(--text-primary)]">
+                  <div class="truncate font-medium text-foreground">
                     {row.exportRootPath}
                   </div>
-                  <div class="mt-0.5 text-[color:var(--text-muted)]">
-                    {new Date(row.savedAt).toLocaleString()} · {formatExportKind(row.exportKind)}
+                  <div class="mt-0.5 text-muted-foreground">
+                    {new Date(row.savedAt).toLocaleString()} · {formatExportKind(
+                      row.exportKind,
+                    )}
                   </div>
                 </div>
                 {#if exportKindIsImportable(row.exportKind)}
@@ -264,7 +289,10 @@
                     </Button>
                   </div>
                 {:else}
-                  <span class="shrink-0 text-[11px] text-[color:var(--text-muted)]" title="官方 API 仅 json/binary 可 mount">
+                  <span
+                    class="shrink-0 text-[11px] text-muted-foreground"
+                    title="官方 API 仅 json/binary 可 mount"
+                  >
                     ZIP 不可导入
                   </span>
                 {/if}
@@ -274,8 +302,8 @@
         {/if}
       </div>
 
-      <Dialog.Close
-        class="absolute right-3 top-3 rounded-md p-1 text-[color:var(--text-muted)] outline-none hover:bg-[color:var(--surface-muted)] hover:text-[color:var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--surface-elevated)]"
+      <DialogClose
+        class="absolute right-3 top-3 rounded-md p-1 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-label="关闭"
       >
         <svg class="size-4" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -286,7 +314,7 @@
             stroke-linecap="round"
           />
         </svg>
-      </Dialog.Close>
-    </Dialog.Content>
-  </Dialog.Portal>
-</Dialog.Root>
+      </DialogClose>
+    </DialogContent>
+  </DialogPortal>
+</Dialog>

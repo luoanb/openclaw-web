@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { cn } from "$lib/ui/utils/cn";
+  import { cn } from "$lib/utils.js";
 
   type Props = {
     class?: string;
@@ -12,8 +12,7 @@
 
 <div
   class={cn(
-    "panel-frame overflow-hidden border border-[color:var(--panel-border)] bg-[color:var(--panel-bg)] shadow-[var(--panel-shadow)]",
-    "rounded-[var(--panel-radius)]",
+    "overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm",
     className,
   )}
 >
