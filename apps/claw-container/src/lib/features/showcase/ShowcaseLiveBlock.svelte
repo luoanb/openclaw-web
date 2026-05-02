@@ -37,6 +37,44 @@
 
 	let { slug }: { slug: string } = $props();
 
+	const PREVIEW_MAP = {
+		"alert-dialog": () => import("./previews/alert-dialog.svelte"),
+		"aspect-ratio": () => import("./previews/aspect-ratio.svelte"),
+		"breadcrumb": () => import("./previews/breadcrumb.svelte"),
+		"button-group": () => import("./previews/button-group.svelte"),
+		"calendar": () => import("./previews/calendar.svelte"),
+		"carousel": () => import("./previews/carousel.svelte"),
+		"chart": () => import("./previews/chart.svelte"),
+		"collapsible": () => import("./previews/collapsible.svelte"),
+		"command": () => import("./previews/command.svelte"),
+		"context-menu": () => import("./previews/context-menu.svelte"),
+		"data-table": () => import("./previews/data-table.svelte"),
+		"dialog": () => import("./previews/dialog.svelte"),
+		"drawer": () => import("./previews/drawer.svelte"),
+		"dropdown-menu": () => import("./previews/dropdown-menu.svelte"),
+		"empty": () => import("./previews/empty.svelte"),
+		"field": () => import("./previews/field.svelte"),
+		"form": () => import("./previews/form.svelte"),
+		"hover-card": () => import("./previews/hover-card.svelte"),
+		"input-group": () => import("./previews/input-group.svelte"),
+		"input-otp": () => import("./previews/input-otp.svelte"),
+		"menubar": () => import("./previews/menubar.svelte"),
+		"native-select": () => import("./previews/native-select.svelte"),
+		"navigation-menu": () => import("./previews/navigation-menu.svelte"),
+		"pagination": () => import("./previews/pagination.svelte"),
+		"popover": () => import("./previews/popover.svelte"),
+		"range-calendar": () => import("./previews/range-calendar.svelte"),
+		"resizable": () => import("./previews/resizable.svelte"),
+		"scroll-area": () => import("./previews/scroll-area.svelte"),
+		"select": () => import("./previews/select.svelte"),
+		"sheet": () => import("./previews/sheet.svelte"),
+		"sidebar": () => import("./previews/sidebar.svelte"),
+		"slider": () => import("./previews/slider.svelte"),
+		"sonner": () => import("./previews/sonner.svelte"),
+		"table": () => import("./previews/table.svelte"),
+		"toggle-group": () => import("./previews/toggle-group.svelte"),
+	} as Record<string, () => Promise<unknown>>;
+
 	let accordionValue = $state<string | undefined>(undefined);
 	let tabValue = $state("a");
 	let radioValue = $state("one");
@@ -45,6 +83,8 @@
 	let checked = $state(false);
 	let inputVal = $state("");
 	let textareaVal = $state("多行文本预览。");
+
+	let previewPromise = $derived(PREVIEW_MAP[slug as keyof typeof PREVIEW_MAP]?.());
 </script>
 
 {#if slug === "accordion"}
@@ -174,4 +214,16 @@
 			<TooltipContent side="bottom">Tooltip 内容示例</TooltipContent>
 		</Tooltip>
 	</TooltipProvider>
+{:else if previewPromise}
+	{#await previewPromise}
+		<div class="bg-muted/25 flex h-20 items-center justify-center rounded-md">
+			<span class="text-muted-foreground text-xs">加载中...</span>
+		</div>
+	{:then mod}
+		<svelte:component this={(mod as any).default} />
+	{:catch}
+		<div class="bg-muted/25 flex h-20 items-center justify-center rounded-md">
+			<span class="text-muted-foreground text-xs">加载失败</span>
+		</div>
+	{/await}
 {/if}
