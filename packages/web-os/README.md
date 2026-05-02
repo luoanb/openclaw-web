@@ -5,18 +5,26 @@
 **入口**：从包根导入即可（本仓库通过 `"web-os": "workspace:*"` 链接）。
 
 ```ts
-import { bootWebContainer, attachPreview, WebContainerShellRunner } from "web-os";
+import { bootWebContainer, attachPreview, WebContainerTerminalSession } from "web-os";
 ```
 
 **运行环境**：依赖 `@webcontainer/api` 与浏览器 **cross-origin isolated**（通常由 dev/preview 服务器返回 COOP/COEP 头）。终端相关 API 需配合 `@xterm/xterm` 的 `Terminal` 实例使用。
+
+**契约与默认实例（`packages/` 库约定）**：对外优先暴露 **`interface`**，逻辑落在 **类**（如 `TerminalConfigLoader`、`WebContainerTerminalSession`）与 **`webOsBoot` / `webOsPreviewAttachment`** 等默认单例上；**`terminalCwdPrompt`** 为实现 **`ITerminalCwdPrompt`** 的**无状态对象**（与 **`TerminalCwdPrompt`** 同一引用）。Shell 执行与进程 IO 已收敛在 **`WebContainerTerminalSession`**（`terminalSession.ts`）。原有的 **`bootWebContainer`、`attachPreview`** 以及 **`TerminalCwdPrompt.*` 调用形式**仍可用。
 
 ---
 
 ## 预览（Preview）
 
+源码域：`packages/web-os/src/preview/`（`preview.contracts.ts` + `preview.ts`）。
+
 | 名称 | 说明 |
 |------|------|
-| `attachPreview(wc, iframe, sink)` | 订阅 WebContainer 的 `server-ready`：先 `sink({ status: "waiting" })`，就绪后设置 `iframe.src = url` 并 `sink({ status: "ready", url, port })`。返回 **取消订阅函数**。 |
+| `IWebOsPreviewAttachment` | 推荐契约：`attach(wc, iframe, sink)` → 取消订阅函数。 |
+| `IPreviewAttachment` | `@deprecated`，与 `IWebOsPreviewAttachment` 等价。 |
+| `WebOsPreviewAttachment` | 默认实现类。 |
+| `webOsPreviewAttachment` | 默认单例（与 `attachPreview` 行为一致）。 |
+| `attachPreview(wc, iframe, sink)` | 委托 `webOsPreviewAttachment.attach`。订阅 WebContainer 的 `server-ready`：先 `sink({ status: "waiting" })`，就绪后设置 `iframe.src = url` 并 `sink({ status: "ready", url, port })`。 |
 | `PreviewStatus` | `"idle" \| "waiting" \| "ready" \| "load-error"` |
 | `PreviewStatusEvent` | `{ status, url?, port? }` |
 
@@ -26,12 +34,19 @@ import { bootWebContainer, attachPreview, WebContainerShellRunner } from "web-os
 
 ## WebContainer 引导（Boot）
 
+源码：`packages/web-os/src/webcontainer/boot.contracts.ts`、`boot.ts`。
+
 | 名称 | 说明 |
 |------|------|
+| `IBoot` | 推荐契约：`boot` / `ensureWorkspace` / `mountImportedWorkspace`。 |
+| `IWebOsBoot` | `@deprecated`，与 `IBoot` 等价。 |
+| `Boot` | 推荐实现类（会话级单例引导与挂载状态）。 |
+| `WebOsBoot` | `@deprecated`，与 `Boot` 为同一构造函数。 |
+| `webOsBoot` | 默认实例；`bootWebContainer` / `ensureWorkspace` / `mountImportedWorkspace` 均委托此类。 |
 | `bootWebContainer()` | 单例 `WebContainer.boot()`，多次调用共享同一实例。 |
 | `ensureWorkspace(wc)` | **首次**将内置最小模板树 `tree` `mount` 到容器（仅一次）；若已通过导入挂载过工作区则不再覆盖。 |
 | `mountImportedWorkspace(wc, payload)` | 用快照恢复整个虚拟 FS：`payload` 为 `FileSystemTree` 或 `ArrayBuffer`（与官方 `mount` 一致）。执行后标记「已挂载」，后续 `ensureWorkspace` 不再套用模板。 |
-| `OPENCLAW_VERSION` | 内置模板里声明的 openclaw 依赖版本字符串。 |
+| `OPENCLAW_VERSION` | 内置模板里声明的 openclaw 依赖版本字符串（定义见 `minimalWorkspaceTemplate.ts`，由 `boot` 再导出）。 |
 | `FEASIBILITY_PATH` | 文档路径常量（展示/链接用）。 |
 | `tree` | 内置最小 `FileSystemTree`（含根 `package.json`）。 |
 
@@ -84,12 +99,16 @@ import { bootWebContainer, attachPreview, WebContainerShellRunner } from "web-os
 
 ## 终端（Terminal，与 xterm + WebContainer 配合）
 
+对外 `interface` 与选项类型见域内 `*.contracts.ts`（`config` / `cwdPrompt` / `terminalSession`）；实现仍为 `config.ts`、`terminalSession.ts` 等。
+
 ### 配置
 
 | 名称 | 说明 |
 |------|------|
 | `TerminalConfig` | 日志字节/行上限、命令最大长度、截断策略与标记等。 |
 | `DEFAULT_TERMINAL_CONFIG` | 默认配置对象。 |
+| `ITerminalConfigLoader` | `load(): TerminalConfig`。 |
+| `terminalConfigLoader` | 默认单例；`TerminalConfigLoader.load()` 静态方法委托该实例。 |
 | `TerminalConfigLoader.load()` | 读取包内 `terminal.config.json` 并与默认值合并（固定 `truncateStrategy`）。 |
 
 ### 缓冲与引用对象
@@ -105,6 +124,12 @@ import { bootWebContainer, attachPreview, WebContainerShellRunner } from "web-os
 
 在「单行 `cd`」语义下解析/更新会话 cwd，并格式化提示符文案（如 `~/leaf/sub $ `）。
 
+| 名称 | 说明 |
+|------|------|
+| `ITerminalCwdPrompt` | `isCdOnlyLine`、`cdArgFromLine`、`resolveCdArg`、`formatPromptLabel`、`formatPromptLine`。 |
+| `terminalCwdPrompt` | 默认实现对象（`satisfies ITerminalCwdPrompt`）；无状态。 |
+| `TerminalCwdPrompt` | 与 `terminalCwdPrompt` **同一引用**，便于沿用 `TerminalCwdPrompt.*` 写法。 |
+
 | 方法 | 说明 |
 |------|------|
 | `isCdOnlyLine(line)` | 是否为整行 `cd`。 |
@@ -112,20 +137,20 @@ import { bootWebContainer, attachPreview, WebContainerShellRunner } from "web-os
 | `resolveCdArg(currentRel, arg)` | 解析相对/绝对路径片段。 |
 | `formatPromptLabel` / `formatPromptLine` | 展示用路径与完整 prompt 行。 |
 
-### Shell 执行：`WebContainerShellRunner`
+### 会话类：`WebContainerTerminalSession`（推荐）
 
-静态方法；需传入 `WebContainer`、`xterm.Terminal`、`TerminalLogBuffer`、`WebContainerProcessRef`、`TerminalConfig` 及 stdin 引用等（与现有 demo 一致）。
+源码：`terminalSession.contracts.ts`、`terminalSession.ts`。
 
-| 方法 | 说明 |
+| 名称 | 说明 |
 |------|------|
-| `abortCurrentShell(processRef, opts?)` | Ctrl-C、取消 reader、`kill` 当前进程。 |
-| `runSpawn(...)` | `wc.spawn` + 输出泵 + 退出码；运行期间设置 `stdinForwardRef`。 |
-| `runShellLine(wc, line, term, ring, processRef, cfg, stdinForwardRef, ...)` | 对单行执行 `sh -c`；支持 `RunShellLineOptions`（如 `noCommandEcho`、`cwd`）。 |
+| `IWebContainerTerminalSession` | 会话 Facade 契约：`bindWebContainer`、`runLine`、`runSpawn`、`abort`、`cwdRel`、`formatPromptLine`、`*Ref` / `logBuffer` 只读访问。 |
+| `WebContainerTerminalSession` | 实现类：构造传入 `term` + `config`；`WebContainer` 通过 **`bindWebContainer(wc)`** 注入（可与多面板共享同一 `wc`）；内部持有 `TerminalLogBuffer` 与各类 `*Ref`。 |
+| `WebContainerTerminalSessionOptions` | `term`、`config`、`onForegroundChange?`、`onCwdRelChange?`、`initialCwdRel?` |
+| `WebContainerTerminalSessionSpawnOptions` | `runSpawn` 的 `intro?`、`cwd?`（省略 `cwd` 时用会话 `cwdRel`） |
+| `RunShellLineOptions` | `runLine` 的 `noCommandEcho?`、`cwd?`（与单行 `sh -c` 回显及工作目录覆盖相关）。 |
+| `SpawnExtraOptions` | 底层 spawn 的 `cwd?`（相对容器 workdir）；一般通过 `runSpawn` 选项间接使用。 |
 
-| 类型 | 说明 |
-|------|------|
-| `RunShellLineOptions` | `noCommandEcho?`、`cwd?` |
-| `SpawnExtraOptions` | `cwd?`（相对容器 workdir） |
+**典型用法**：面板 `onMount` 创建 xterm `Terminal` 后 `new WebContainerTerminalSession({ term, config })`；在 `bootWebContainer()` 得到 `wc` 后 **`session.bindWebContainer(wc)`**，再 **`session.runLine("ls")`** / **`session.runSpawn("npm", ["install"])`**；多终端时 **每个面板一个 session 实例**，同一 `wc` 可 `bind` 到多个 session（勿共用同一组 `*Ref`）。
 
 ---
 

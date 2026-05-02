@@ -1,6 +1,6 @@
 import type { WebContainerProcess } from "@webcontainer/api";
 
-/** 当前前台子进程；由 `WebContainerShellRunner` 与 UI 中止逻辑读写。 */
+/** 当前前台子进程；由 `WebContainerTerminalSession` 与 UI 中止逻辑读写。 */
 export class WebContainerProcessRef {
   current: WebContainerProcess | null = null;
 }

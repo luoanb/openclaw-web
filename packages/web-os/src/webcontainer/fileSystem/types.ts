@@ -3,6 +3,7 @@ import type { FileSystemTree } from "@webcontainer/api";
 /** 与 `WebContainer#export` 的 `format` 对应：`json` | `binary` | `zip`（见 spec §4.10.2）。 */
 export type WorkspaceExportKind = "json-tree" | "binary-snapshot" | "zip-archive";
 
+/** IndexedDB 中持久化的工作区快照记录（schema v2）。 */
 export interface WorkspaceTreeSnapshotRecord {
   schemaVersion: 2;
   snapshotId: string;

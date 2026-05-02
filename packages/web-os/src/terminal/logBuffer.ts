@@ -1,5 +1,5 @@
 import type { Terminal } from "@xterm/xterm";
-import type { TerminalConfig } from "./config";
+import type { TerminalConfig } from "./config.contracts";
 
 /** 终端日志环形缓冲：按配置做字节与行数截断，并写入 xterm。 */
 export class TerminalLogBuffer {

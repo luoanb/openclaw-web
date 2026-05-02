@@ -1,4 +1,4 @@
-/** 会话 cwd：相对 WebContainer `workdir` 的 POSIX 路径（空串表示 workdir 根）。 */
+import type { ITerminalCwdPrompt } from "./cwdPrompt.contracts";
 
 const CD_ONLY = /^\s*cd(?:\s+(?<arg>.+))?\s*$/;
 
@@ -81,3 +81,5 @@ export class TerminalCwdPrompt {
     return `${TerminalCwdPrompt.formatPromptLabel(workdir, cwdRel)} $ `;
   }
 }
+
+const _check: ITerminalCwdPrompt = TerminalCwdPrompt; // 校验：将类（构造函数）赋值给接口类型的变量

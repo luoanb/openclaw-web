@@ -7,13 +7,8 @@
     bootWebContainer,
     ensureWorkspace,
     FEASIBILITY_PATH,
-    OutputReaderRef,
-    StdinForwardRef,
     TerminalConfigLoader,
-    TerminalCwdPrompt,
-    TerminalLogBuffer,
-    WebContainerProcessRef,
-    WebContainerShellRunner,
+    WebContainerTerminalSession,
     type TerminalConfig,
   } from "web-os";
   import WorkspaceFilesDialog from "$lib/features/terminal/components/WorkspaceFilesDialog.svelte";
@@ -36,11 +31,10 @@
   let ro: ResizeObserver | undefined;
 
   const cfg: TerminalConfig = TerminalConfigLoader.load();
-  const logBuffer = new TerminalLogBuffer();
-  const processRef = new WebContainerProcessRef();
-  const stdinForwardRef = new StdinForwardRef();
-  const outputReaderRef = new OutputReaderRef();
   const lineBuf = { buf: "" };
+
+  /** 在 `onMount` 内赋值，供命令执行与提示符使用 */
+  let shellSession!: WebContainerTerminalSession;
 
   let busy = $state(false);
   const busyGate = { current: false };
@@ -52,24 +46,17 @@
   /** WebContainer `workdir` 绝对路径；首屏前为空串 */
   let sessionWorkdir = $state("");
 
-  /** 相对 `workdir` 的会话 cwd */
-  let cwdRel = $state("");
-
-  function syncProcessState(): void {
-    hasForegroundProcess = processRef.current != null;
-  }
-
   let canAbort = $derived(hasForegroundProcess);
   let canRunPoc = $derived(isolated && !busy);
 
   let filesDialogOpen = $state(false);
 
   function promptLine(): string {
-    return TerminalCwdPrompt.formatPromptLine(sessionWorkdir, cwdRel);
+    return shellSession.formatPromptLine(sessionWorkdir);
   }
 
   function writeInputPrompt(t: Terminal): void {
-    logBuffer.writeCapped(t, `\r\n${promptLine()}`, cfg);
+    shellSession.logBuffer.writeCapped(t, `\r\n${promptLine()}`, cfg);
   }
 
   $effect(() => {
@@ -112,17 +99,25 @@
       }
     });
     ro.observe(hostEl);
+    shellSession = new WebContainerTerminalSession({
+      term: t,
+      config: cfg,
+      onForegroundChange: (running) => {
+        hasForegroundProcess = running;
+      },
+    });
+
     requestAnimationFrame(() => {
       fa.fit();
-      logBuffer.writeCapped(t, promptLine(), cfg);
+      shellSession.logBuffer.writeCapped(t, promptLine(), cfg);
       t.focus();
     });
     term = t;
     fit = fa;
 
     t.onData((data) => {
-      if (stdinForwardRef.current) {
-        stdinForwardRef.current.write(data).catch(() => {});
+      if (shellSession.stdinForwardRef.current) {
+        shellSession.stdinForwardRef.current.write(data).catch(() => {});
         return;
       }
       if (busyGate.current) {
@@ -142,13 +137,13 @@
         if (c === "\x7f" || c === "\b") {
           if (lineBuf.buf.length > 0) {
             lineBuf.buf = lineBuf.buf.slice(0, -1);
-            logBuffer.writeCapped(t, "\b \b", cfg);
+            shellSession.logBuffer.writeCapped(t, "\b \b", cfg);
           }
           continue;
         }
         if (c >= " " || c === "\t") {
           lineBuf.buf += c;
-          logBuffer.writeCapped(t, c, cfg);
+          shellSession.logBuffer.writeCapped(t, c, cfg);
         }
       }
     });
@@ -177,44 +172,22 @@
   ): Promise<boolean> {
     const t = term;
     if (!t) return false;
-    const spawnCwd = cwdRel.trim() ? { cwd: cwdRel.trim() } : undefined;
-    const installCode = await WebContainerShellRunner.runSpawn(
-      wc,
-      t,
-      logBuffer,
-      processRef,
-      "npm",
-      ["install"],
-      "\r\n$ npm install\r\n",
-      cfg,
-      stdinForwardRef,
-      syncProcessState,
-      outputReaderRef,
-      spawnCwd
-    );
+    shellSession.bindWebContainer(wc);
+    const installCode = await shellSession.runSpawn("npm", ["install"], {
+      intro: "\r\n$ npm install\r\n",
+    });
     if (installCode !== 0) {
       toast(`npm install 失败，详见 ${FEASIBILITY_PATH}`, { variant: "error" });
-      logBuffer.writeCapped(
+      shellSession.logBuffer.writeCapped(
         t,
         `\r\n[npm install 失败] 见 ${FEASIBILITY_PATH}\r\n`,
         cfg
       );
       return false;
     }
-    await WebContainerShellRunner.runSpawn(
-      wc,
-      t,
-      logBuffer,
-      processRef,
-      "npx",
-      ["openclaw", "--help"],
-      "\r\n$ npx openclaw --help\r\n",
-      cfg,
-      stdinForwardRef,
-      syncProcessState,
-      outputReaderRef,
-      spawnCwd
-    );
+    await shellSession.runSpawn("npx", ["openclaw", "--help"], {
+      intro: "\r\n$ npx openclaw --help\r\n",
+    });
     return true;
   }
 
@@ -228,7 +201,7 @@
       const ok = await runNpmInstallAndOpenClawHelp(wc);
       if (ok) {
         toast("导入完成：依赖已重装。", { variant: "success" });
-        logBuffer.writeCapped(
+        shellSession.logBuffer.writeCapped(
           t,
           "\r\n[导入完成] 工作区已从快照恢复并完成 npm install / openclaw --help。\r\n",
           cfg
@@ -237,10 +210,9 @@
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast(`重装步骤失败：${msg}`, { variant: "error" });
-      logBuffer.writeCapped(t, `\r\n[错误] ${msg}\r\n`, cfg);
+      shellSession.logBuffer.writeCapped(t, `\r\n[错误] ${msg}\r\n`, cfg);
     } finally {
       busy = false;
-      syncProcessState();
       writeInputPrompt(t);
       requestAnimationFrame(() => fit?.fit());
     }
@@ -272,43 +244,21 @@
       wirePreview(wc);
       await ensureWorkspace(wc);
       await ensureWorkdir(wc);
-      const shellOpts = { noCommandEcho: true, cwd: cwdRel || undefined };
-      const { code } = await WebContainerShellRunner.runShellLine(
-        wc,
-        trimmed,
-        t,
-        logBuffer,
-        processRef,
-        cfg,
-        stdinForwardRef,
-        syncProcessState,
-        shellOpts,
-        outputReaderRef
-      );
-      if (code === 0 && TerminalCwdPrompt.isCdOnlyLine(trimmed)) {
-        cwdRel = TerminalCwdPrompt.resolveCdArg(
-          cwdRel,
-          TerminalCwdPrompt.cdArgFromLine(trimmed)
-        );
-      }
+      shellSession.bindWebContainer(wc);
+      await shellSession.runLine(trimmed, { noCommandEcho: true });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast(`执行失败：${msg}`, { variant: "error" });
-      logBuffer.writeCapped(t, `\r\n[错误] ${msg}\r\n`, cfg);
+      shellSession.logBuffer.writeCapped(t, `\r\n[错误] ${msg}\r\n`, cfg);
     } finally {
       busy = false;
-      syncProcessState();
       writeInputPrompt(t);
       requestAnimationFrame(() => fit?.fit());
     }
   }
 
   function onAbort(): void {
-    WebContainerShellRunner.abortCurrentShell(processRef, {
-      stdinRef: stdinForwardRef,
-      outputReaderRef,
-    });
-    queueMicrotask(() => syncProcessState());
+    shellSession.abort();
   }
 
   async function onPoc(): Promise<void> {
@@ -327,17 +277,18 @@
     }
     busy = true;
     lineBuf.buf = "";
-    logBuffer.clear(t);
-    logBuffer.writeCapped(t, "WebContainer.boot() …\r\n", cfg);
+    shellSession.logBuffer.clear(t);
+    shellSession.logBuffer.writeCapped(t, "WebContainer.boot() …\r\n", cfg);
     try {
       const wc = await bootWebContainer();
       wirePreview(wc);
-      logBuffer.writeCapped(t, "已 boot。mount package.json …\r\n", cfg);
+      shellSession.bindWebContainer(wc);
+      shellSession.logBuffer.writeCapped(t, "已 boot。mount package.json …\r\n", cfg);
       await ensureWorkspace(wc);
       await ensureWorkdir(wc);
       const ok = await runNpmInstallAndOpenClawHelp(wc);
       if (!ok) return;
-      logBuffer.writeCapped(
+      shellSession.logBuffer.writeCapped(
         t,
         "\r\n[PoC 完成] CLI 可加载不代表完整 gateway；见可行性文档。\r\n",
         cfg
@@ -345,10 +296,9 @@
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast(`PoC 失败：${msg}`, { variant: "error" });
-      logBuffer.writeCapped(t, `\r\n[错误] ${msg}\r\n`, cfg);
+      shellSession.logBuffer.writeCapped(t, `\r\n[错误] ${msg}\r\n`, cfg);
     } finally {
       busy = false;
-      syncProcessState();
       writeInputPrompt(t);
       requestAnimationFrame(() => fit?.fit());
     }

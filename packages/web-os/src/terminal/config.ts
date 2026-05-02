@@ -1,13 +1,7 @@
 import rawConfig from "../../terminal.config.json";
+import type { ITerminalConfigLoader, TerminalConfig } from "./config.contracts";
 
-/** 与 `terminal.config.json` 字段一致；缺失项由默认值补齐 */
-export type TerminalConfig = {
-  logMaxBytes: number;
-  logMaxLines: number;
-  maxCmdLen: number;
-  truncateStrategy: "drop-head";
-  truncateMarker: string;
-};
+export type { TerminalConfig } from "./config.contracts";
 
 export const DEFAULT_TERMINAL_CONFIG: TerminalConfig = {
   logMaxBytes: 409600,
@@ -17,9 +11,9 @@ export const DEFAULT_TERMINAL_CONFIG: TerminalConfig = {
   truncateMarker: "\r\n[… 日志已截断 …]\r\n",
 };
 
-export class TerminalConfigLoader {
+export class TerminalConfigLoader implements ITerminalConfigLoader {
   /** 读取 `terminal.config.json` 并与默认值合并。 */
-  static load(): TerminalConfig {
+  load(): TerminalConfig {
     const u = rawConfig as Partial<TerminalConfig>;
     return {
       ...DEFAULT_TERMINAL_CONFIG,
@@ -27,4 +21,10 @@ export class TerminalConfigLoader {
       truncateStrategy: "drop-head",
     };
   }
+
+  static load(): TerminalConfig {
+    return terminalConfigLoader.load();
+  }
 }
+
+export const terminalConfigLoader = new TerminalConfigLoader();

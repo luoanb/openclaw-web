@@ -1,0 +1,93 @@
+---
+description: packages 库包的接口先行、类编程与目录结构（标准多能力布局）
+globs: "packages/**"
+alwaysApply: false
+---
+
+# packages/ 库包约定
+
+适用于仓库根目录 **`packages/`** 下的 workspace 包（可复用库、SDK、适配层等）。
+
+## 文件命名
+
+采用**语义化后缀 / 点分多层扩展 / 复合扩展名**
+
+1. 契约文件`*.contracts.ts`,举例：`demo.contracts.ts`
+2. 实现文件`*.ts`,举例：`demo.ts`
+3. 类型文件`*.types.ts`,举例：`demo.types.ts`
+
+## 类型命名/变量命名
+
+- 契约类型：`{Pascal}Contracts`
+- 类型：`I{Pascal}`
+- class：`{Pascal}`
+- 对象：`{pascal}`
+
+## 目录结构：标准多能力包（方案 3）
+
+```text
+packages/<name>/
+  README.md
+  package.json
+  src/
+    index.ts                 # 薄：统一 export
+    <domainA>/               # 能力域 A，例：terminal
+      index.ts               # 可选：该域子 barrel
+      *.contracts.ts         # 可选：该域对外契约
+      *.ts                   # 实现类、refs、纯函数等
+    <domainB>/               # 能力域 B，例：webcontainer
+      index.ts               # 可选
+      boot.contracts.ts      # 示例：点分契约文件名
+      boot.ts                # 示例：与 stem 一致的主实现
+      <subModule>/           # 可选：子域，例 fileSystem
+        index.ts
+        types.ts
+        ...
+```
+
+##
+
+### 通用底线
+
+- **`src/index.ts`**：只做 **聚合再导出**，不写复杂业务逻辑。
+- **域优先**：每个顶层子目录（如 `terminal/`、`webcontainer/`）表示一块并列能力；域内可再分子模块（强内聚子域，如 `webcontainer/fileSystem/`）。
+- **对外契约须有注释**
+- **README**：包根 **`README.md`** 维护对外 API 说明；与导出不一致时 **先改文档再改代码**（与本仓库 Spec / 代码一致性约定一致）。
+- **交叉能力**：仅当能力很小且独立时，可在 `src/` 根下放单个模块文件（如 `preview.ts`）；一旦变大，升为 **`preview/`** 域目录。
+
+## 接口先行，后做实现
+
+1. **先固定对外契约**：在展开具体实现前，明确并落地**公开 API**——导出类型、`interface`、必要的 `abstract class` 或等价契约，以及 README / micro spec 中与对外行为一致的签名说明；**契约代码侧须有 JSDoc/TSDoc**，与文档同源描述行为，而非「只有 README、类型裸奔」。
+2. **实现随后**：目录划分、内部模块与算法细节在契约就绪后再写，避免先实现再补类型或事后倒推边界。
+3. **契约变更要显式**：破坏性变更须同步类型导出、调用方与文档；优先通过版本说明或适配层消化，避免静默改行为。
+
+## 编码风格：优先类编程
+
+- 与 **`project.mdc`** 中 `src/lib` 的 **`core/**`、`utils/**`** 约定对齐：**可复用、含状态或生命周期**的逻辑优先用 **class** 封装（实例职责清晰；必要时静态工厂或清晰的静态方法），避免用大量松散顶层函数拼成「模块 API」。
+- **纯类型声明、常量、类型守卫**等不必强行类化；**无关联的单次工具**可保留函数；同一主题下的多段协作逻辑优先归入**命名单一的类或服务对象**，便于测试与注入。
+- **面向接口（类型）编程**：对外导出类型/抽象，实现类可被替换（测试替身或替代实现）。
+
+## 静态类契约示例
+
+```ts
+// 定义静态部分应有的形状
+interface MathUtilsStatic {
+  add(a: number, b: number): number;
+  sub(a: number, b: number): number;
+}
+
+// 实现静态类
+class MathUtils {
+  static add(a: number, b: number) {
+    return a + b;
+  }
+  static sub(a: number, b: number) {
+    return a - b;
+  }
+  // 假如忘记实现 sub，TS 会报错
+}
+
+// 校验：将类（构造函数）赋值给接口类型的变量
+const _check: MathUtilsStatic = MathUtils; // ✅ 通过校验
+// 若 MathUtils 缺少 sub 或类型不匹配，此处会报错
+```
