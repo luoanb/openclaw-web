@@ -35,8 +35,9 @@
 			<code>HMR</code>
 		</p>
 
-		<p class="mt-2">
+		<p class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
 			<a href="/about" use:link class="text-primary underline underline-offset-4">About（演示路由）</a>
+			<a href="/demo" use:link class="text-primary underline underline-offset-4">组件展示 Demo</a>
 		</p>
 	</div>
 
