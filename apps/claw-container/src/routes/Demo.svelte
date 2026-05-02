@@ -7,20 +7,24 @@
 	<header
 		class="border-border bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-0 z-20 border-b backdrop-blur-md"
 	>
-		<div class="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-			<div class="flex min-w-0 flex-col gap-0.5">
-				<h1 class="truncate text-base font-semibold tracking-tight">组件展示</h1>
-				<p class="text-muted-foreground text-xs">$lib/components/ui 预览与占位（v1）</p>
+		<div
+			class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4"
+		>
+			<div class="flex min-w-0 flex-col gap-0">
+				<h1 class="truncate text-sm font-semibold tracking-tight">组件展示</h1>
+				<p class="text-muted-foreground text-[11px] leading-tight">$lib/components/ui · v1</p>
 			</div>
-			<nav class="flex flex-wrap items-center gap-3 text-sm">
+			<nav class="text-muted-foreground flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs">
 				<a href="/" use:link class="text-primary hover:underline">首页</a>
+				<span class="text-border" aria-hidden="true">|</span>
 				<a href="/about" use:link class="text-primary hover:underline">About</a>
-				<span class="text-muted-foreground" aria-current="page">Demo</span>
+				<span class="text-border" aria-hidden="true">|</span>
+				<span class="text-foreground font-medium" aria-current="page">Demo</span>
 			</nav>
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-4xl px-4 py-8">
+	<main class="mx-auto max-w-6xl px-3 py-4 sm:px-4 sm:py-5">
 		<ShowcasePage />
 	</main>
 </div>

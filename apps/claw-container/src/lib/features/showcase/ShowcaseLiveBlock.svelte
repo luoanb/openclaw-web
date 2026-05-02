@@ -48,7 +48,7 @@
 </script>
 
 {#if slug === "accordion"}
-	<Accordion type="single" bind:value={accordionValue} class="max-w-md">
+	<Accordion type="single" bind:value={accordionValue} class="max-w-md text-sm">
 		<AccordionItem value="one">
 			<AccordionTrigger>第一节</AccordionTrigger>
 			<AccordionContent>第一节下的说明文字。</AccordionContent>
@@ -59,26 +59,26 @@
 		</AccordionItem>
 	</Accordion>
 {:else if slug === "alert"}
-	<Alert class="max-w-lg">
+	<Alert class="max-w-md text-sm">
 		<AlertTitle>提示</AlertTitle>
 		<AlertDescription>这是一条 Alert 组件的最小示例。</AlertDescription>
 	</Alert>
 {:else if slug === "avatar"}
-	<div class="flex items-center gap-3">
+	<div class="flex items-center gap-2">
 		<Avatar>
 			<AvatarFallback>OC</AvatarFallback>
 		</Avatar>
-		<span class="text-muted-foreground text-sm">仅 Fallback 文本</span>
+		<span class="text-muted-foreground text-xs">仅 Fallback</span>
 	</div>
 {:else if slug === "badge"}
-	<div class="flex flex-wrap gap-2">
+	<div class="flex flex-wrap gap-1.5">
 		<Badge>默认</Badge>
 		<Badge variant="secondary">次要</Badge>
 		<Badge variant="outline">描边</Badge>
 		<Badge variant="destructive">危险</Badge>
 	</div>
 {:else if slug === "button"}
-	<div class="flex flex-wrap items-center gap-2">
+	<div class="flex flex-wrap items-center gap-1.5">
 		<Button type="button">默认</Button>
 		<Button type="button" variant="secondary">次要</Button>
 		<Button type="button" variant="outline">描边</Button>
@@ -87,84 +87,84 @@
 		<Button type="button" size="icon" aria-label="图标按钮">⋯</Button>
 	</div>
 {:else if slug === "card"}
-	<Card class="max-w-md">
+	<Card class="max-w-md" size="sm">
 		<CardHeader>
 			<CardTitle>卡片标题</CardTitle>
 			<CardDescription>卡片副标题或说明。</CardDescription>
 		</CardHeader>
-		<CardContent class="text-muted-foreground text-sm">CardContent 区域。</CardContent>
+		<CardContent class="text-muted-foreground text-xs">CardContent 区域。</CardContent>
 	</Card>
 {:else if slug === "checkbox"}
-	<label class="flex cursor-pointer items-center gap-2">
+	<label class="flex cursor-pointer items-center gap-1.5">
 		<Checkbox bind:checked />
-		<span class="text-sm">同意条款（演示）</span>
+		<span class="text-xs">同意条款（演示）</span>
 	</label>
 {:else if slug === "input"}
 	<Input bind:value={inputVal} type="text" placeholder="请输入文字" class="max-w-sm" />
 {:else if slug === "kbd"}
-	<div class="flex flex-wrap items-center gap-2">
+	<div class="flex flex-wrap items-center gap-1.5 text-xs">
 		<Kbd>Ctrl</Kbd>
-		<span class="text-muted-foreground text-sm">+</span>
+		<span class="text-muted-foreground">+</span>
 		<Kbd>K</Kbd>
 	</div>
 {:else if slug === "label"}
-	<div class="grid max-w-sm gap-2">
+	<div class="grid max-w-sm gap-1">
 		<Label for="showcase-demo-field">字段标签</Label>
 		<Input id="showcase-demo-field" placeholder="与 Label 关联" />
 	</div>
 {:else if slug === "progress"}
 	<Progress value={progressValue} class="max-w-xs" />
-	<div class="mt-2 flex gap-2">
+	<div class="mt-1.5 flex flex-wrap gap-1.5">
 		<Button type="button" size="sm" variant="outline" onclick={() => (progressValue = 0)}>0</Button>
 		<Button type="button" size="sm" variant="outline" onclick={() => (progressValue = 50)}>50</Button>
 		<Button type="button" size="sm" variant="outline" onclick={() => (progressValue = 100)}>100</Button>
 	</div>
 {:else if slug === "radio-group"}
-	<RadioGroup bind:value={radioValue} class="max-w-xs space-y-2">
-		<label class="flex cursor-pointer items-center gap-2">
+	<RadioGroup bind:value={radioValue} class="max-w-xs space-y-1">
+		<label class="flex cursor-pointer items-center gap-1.5">
 			<RadioGroupItem value="one" />
-			<span class="text-sm">选项一</span>
+			<span class="text-xs">选项一</span>
 		</label>
-		<label class="flex cursor-pointer items-center gap-2">
+		<label class="flex cursor-pointer items-center gap-1.5">
 			<RadioGroupItem value="two" />
-			<span class="text-sm">选项二</span>
+			<span class="text-xs">选项二</span>
 		</label>
 	</RadioGroup>
 {:else if slug === "separator"}
-	<div class="flex h-10 max-w-xs items-center gap-2">
-		<span class="text-sm">左</span>
-		<Separator orientation="vertical" class="h-6" />
-		<span class="text-sm">右</span>
+	<div class="flex h-8 max-w-xs items-center gap-1.5">
+		<span class="text-xs">左</span>
+		<Separator orientation="vertical" class="h-5" />
+		<span class="text-xs">右</span>
 	</div>
-	<Separator class="my-3 max-w-xs" />
+	<Separator class="my-2 max-w-xs" />
 	<p class="text-muted-foreground text-xs">横向分隔线</p>
 {:else if slug === "skeleton"}
-	<div class="flex max-w-xs flex-col gap-2">
+	<div class="flex max-w-xs flex-col gap-1.5">
 		<Skeleton class="h-10 w-full" />
 		<Skeleton class="h-4 w-3/4" />
 		<Skeleton class="h-4 w-1/2" />
 	</div>
 {:else if slug === "spinner"}
-	<div class="flex items-center gap-2 text-sm">
+	<div class="flex items-center gap-1.5 text-xs">
 		<Spinner />
 		<span class="text-muted-foreground">加载中</span>
 	</div>
 {:else if slug === "switch"}
-	<label class="flex cursor-pointer items-center gap-2">
+	<label class="flex cursor-pointer items-center gap-1.5">
 		<Switch bind:checked={switchOn} />
-		<span class="text-sm">{switchOn ? "已开启" : "已关闭"}</span>
+		<span class="text-xs">{switchOn ? "已开启" : "已关闭"}</span>
 	</label>
 {:else if slug === "tabs"}
-	<Tabs bind:value={tabValue} class="max-w-md">
+	<Tabs bind:value={tabValue} class="max-w-md text-sm">
 		<TabsList>
 			<TabsTrigger value="a">标签 A</TabsTrigger>
 			<TabsTrigger value="b">标签 B</TabsTrigger>
 		</TabsList>
-		<TabsContent value="a" class="text-muted-foreground mt-2 border-t pt-3">面板 A 内容</TabsContent>
-		<TabsContent value="b" class="text-muted-foreground mt-2 border-t pt-3">面板 B 内容</TabsContent>
+		<TabsContent value="a" class="text-muted-foreground mt-1.5 border-t pt-2 text-xs">面板 A</TabsContent>
+		<TabsContent value="b" class="text-muted-foreground mt-1.5 border-t pt-2 text-xs">面板 B</TabsContent>
 	</Tabs>
 {:else if slug === "textarea"}
-	<Textarea bind:value={textareaVal} rows={3} class="max-w-lg" />
+	<Textarea bind:value={textareaVal} rows={2} class="max-w-lg text-sm" />
 {:else if slug === "tooltip"}
 	<TooltipProvider delayDuration={200}>
 		<Tooltip>
