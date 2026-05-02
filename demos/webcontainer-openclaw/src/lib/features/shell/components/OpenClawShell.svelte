@@ -4,7 +4,7 @@
   import TabsTrigger from "$lib/components/ui/tabs/tabs-trigger.svelte";
   import TabsContent from "$lib/components/ui/tabs/tabs-content.svelte";
   import type { WebContainer } from "@webcontainer/api";
-  import { attachPreview } from "$lib/features/preview/preview";
+  import { attachPreview } from "web-os";
   import TerminalPanel from "$lib/features/terminal/components/TerminalPanel.svelte";
   import PreviewPanel from "$lib/features/preview/components/PreviewPanel.svelte";
   import StatusBanner from "$lib/ui/components/StatusBanner.svelte";

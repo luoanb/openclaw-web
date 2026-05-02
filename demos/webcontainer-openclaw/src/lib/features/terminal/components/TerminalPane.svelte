@@ -7,9 +7,6 @@
     bootWebContainer,
     ensureWorkspace,
     FEASIBILITY_PATH,
-  } from "$lib/core/webcontainer/boot";
-  import WorkspaceFilesDialog from "$lib/features/terminal/components/WorkspaceFilesDialog.svelte";
-  import {
     OutputReaderRef,
     StdinForwardRef,
     TerminalConfigLoader,
@@ -18,7 +15,8 @@
     WebContainerProcessRef,
     WebContainerShellRunner,
     type TerminalConfig,
-  } from "$lib/core/terminal";
+  } from "web-os";
+  import WorkspaceFilesDialog from "$lib/features/terminal/components/WorkspaceFilesDialog.svelte";
   import Button from "$lib/ui/components/Button.svelte";
   import PanelFrame from "$lib/ui/components/PanelFrame.svelte";
   import { toast } from "$lib/ui/toast/toast.svelte";

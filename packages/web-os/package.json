@@ -1,0 +1,17 @@
+{
+  "name": "web-os",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@webcontainer/api": "^1.6.1",
+    "@xterm/xterm": "^6.0.0"
+  }
+}

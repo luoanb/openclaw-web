@@ -1,4 +1,4 @@
-import rawConfig from "../../../../terminal.config.json";
+import rawConfig from "../../terminal.config.json";
 
 /** 与 `terminal.config.json` 字段一致；缺失项由默认值补齐 */
 export type TerminalConfig = {

@@ -19,20 +19,16 @@
     bootWebContainer,
     ensureWorkspace,
     mountImportedWorkspace,
-  } from "$lib/core/webcontainer/boot";
-  import {
     WorkspaceTreeIdbStore,
     IdbQuotaError,
     InvalidSnapshotError,
     exportKindIsImportable,
-    type WorkspaceExportKind,
-    type WorkspaceTreeSnapshotRecord,
-  } from "$lib/core/webcontainer/fileSystem";
-  import {
     EXPORT_KIND_LABELS,
     EXPORT_ROOT_PATH,
     WORKSPACE_KEY,
-  } from "$lib/core/webcontainer/workspaceConstants";
+    type WorkspaceExportKind,
+    type WorkspaceTreeSnapshotRecord,
+  } from "web-os";
 
   type Props = {
     isolated: boolean;

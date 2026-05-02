@@ -172,6 +172,9 @@ importers:
       svelte:
         specifier: ^5.55.5
         version: 5.55.5(@typescript-eslint/types@8.59.1)
+      web-os:
+        specifier: workspace:*
+        version: link:../../packages/web-os
     devDependencies:
       '@fontsource-variable/inter':
         specifier: ^5.2.8
@@ -261,6 +264,15 @@ importers:
         version: 8.59.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.2)
 
   packages/typescript-config: {}
+
+  packages/web-os:
+    dependencies:
+      '@webcontainer/api':
+        specifier: ^1.6.1
+        version: 1.6.4
+      '@xterm/xterm':
+        specifier: ^6.0.0
+        version: 6.0.0
 
 packages:
 
