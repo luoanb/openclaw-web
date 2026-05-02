@@ -22,6 +22,10 @@ importers:
         version: 5.9.2
 
   apps/claw-container:
+    dependencies:
+      svelte-spa-router:
+        specifier: ^5.1.0
+        version: 5.1.0(svelte@5.55.5(@typescript-eslint/types@8.59.1))
     devDependencies:
       '@fontsource-variable/inter':
         specifier: ^5.2.8
@@ -2581,6 +2585,10 @@ packages:
     resolution: {integrity: sha512-dYqgNSZbDwkaJ2ceRd9ojCGjBq+mOm9LmtXnAnEGyHhN/5R7iDW2TRw3h+o/jCFxus3P2LfWIIiwowAjANm7IA==}
     engines: {node: '>= 0.4'}
 
+  regexparam@2.0.2:
+    resolution: {integrity: sha512-A1PeDEYMrkLrfyOwv2jwihXbo9qxdGD3atBYQA9JJgreAx8/7rC6IUkWOw2NQlOxLp2wL0ifQbh1HuidDfYA6w==}
+    engines: {node: '>=8'}
+
   resolve-from@4.0.0:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
     engines: {node: '>=4'}
@@ -2810,6 +2818,11 @@ packages:
 
   svelte-sonner@1.1.1:
     resolution: {integrity: sha512-5cd3p7wa4cq0NsqslMwdlPb7x1JglEZ/GKrLePWNr5bCxR1nagAVrY01FRFrXfUGs41miLt3C327+8XJo5BzZw==}
+    peerDependencies:
+      svelte: ^5.0.0
+
+  svelte-spa-router@5.1.0:
+    resolution: {integrity: sha512-YGtXOF+advJnQBvS4mvRnHVUF0qpSI2pUrSxidz4s7X9x80IKEgYzupx6j46gZcIcN3BYjmuLUbsgQv1S5bZzQ==}
     peerDependencies:
       svelte: ^5.0.0
 
@@ -5373,6 +5386,8 @@ snapshots:
       gopd: 1.2.0
       set-function-name: 2.0.2
 
+  regexparam@2.0.2: {}
+
   resolve-from@4.0.0: {}
 
   resolve-pkg-maps@1.0.0:
@@ -5730,6 +5745,11 @@ snapshots:
   svelte-sonner@1.1.1(svelte@5.55.5(@typescript-eslint/types@8.59.1)):
     dependencies:
       runed: 0.28.0(svelte@5.55.5(@typescript-eslint/types@8.59.1))
+      svelte: 5.55.5(@typescript-eslint/types@8.59.1)
+
+  svelte-spa-router@5.1.0(svelte@5.55.5(@typescript-eslint/types@8.59.1)):
+    dependencies:
+      regexparam: 2.0.2
       svelte: 5.55.5(@typescript-eslint/types@8.59.1)
 
   svelte-toolbelt@0.10.6(@sveltejs/kit@2.59.0(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.5(@typescript-eslint/types@8.59.1))(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.5(@typescript-eslint/types@8.59.1))(typescript@5.9.2)(vite@7.3.2(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)))(svelte@5.55.5(@typescript-eslint/types@8.59.1)):
