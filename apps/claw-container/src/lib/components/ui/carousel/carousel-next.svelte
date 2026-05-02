@@ -3,7 +3,8 @@
 	import { getEmblaContext } from "./context.js";
 	import { cn } from "$lib/utils.js";
 	import { Button, type Props } from "$lib/components/ui/button/index.js";
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import { HugeiconsIcon } from "@hugeicons/svelte"
+	import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 
 	let {
 		ref = $bindable(null),
@@ -34,6 +35,6 @@
 	bind:ref
 	{...restProps}
 >
-	<ChevronRightIcon  />
+	<HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2}  />
 	<span class="sr-only">Next slide</span>
 </Button>

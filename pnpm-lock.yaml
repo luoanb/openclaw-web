@@ -27,12 +27,15 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0(svelte@5.55.5(@typescript-eslint/types@8.59.1))
     devDependencies:
-      '@fontsource-variable/geist':
-        specifier: ^5.2.8
-        version: 5.2.8
       '@fontsource-variable/inter':
         specifier: ^5.2.8
         version: 5.2.8
+      '@hugeicons/core-free-icons':
+        specifier: ^4.1.1
+        version: 4.1.1
+      '@hugeicons/svelte':
+        specifier: ^1.1.2
+        version: 1.1.2(svelte@5.55.5(@typescript-eslint/types@8.59.1))
       '@internationalized/date':
         specifier: ^3.12.1
         version: 3.12.1
@@ -492,9 +495,6 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
-  '@fontsource-variable/geist@5.2.8':
-    resolution: {integrity: sha512-cJ6m9e+8MQ5dCYJsLylfZrgBh6KkG4bOLckB35Tr9J/EqdkEM6QllH5PxqP1dhTvFup+HtMRPuz9xOjxXJggxw==}
-
   '@fontsource-variable/inter@5.2.8':
     resolution: {integrity: sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==}
 
@@ -503,6 +503,14 @@ packages:
 
   '@hapi/topo@5.1.0':
     resolution: {integrity: sha512-foQZKJig7Ob0BMAYBfcJk8d77QtOe7Wo4ox7ff1lQYoNNAb6jwcY1ncdoy2e9wQZzvNy7ODZCYJkK8kzmcAnAg==}
+
+  '@hugeicons/core-free-icons@4.1.1':
+    resolution: {integrity: sha512-teqIBvPHl90ygIwKyJwTxOH8aNp1X1PjDTcMvLkEwdPxPD+8mssrZ5kXKIAJJFYPsz69a8LYQY0UPid4PAdavg==}
+
+  '@hugeicons/svelte@1.1.2':
+    resolution: {integrity: sha512-yYmLFE+tq/mJmmjNaGxnaA99+H9yOzZmWJOMxKd9g9EJ8FCTCG8jpTgzVSv5bpuXDjQZFIGJz+Z/syiXhrS0mA==}
+    peerDependencies:
+      svelte: ^5.0.0
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -3328,8 +3336,6 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@fontsource-variable/geist@5.2.8': {}
-
   '@fontsource-variable/inter@5.2.8': {}
 
   '@hapi/hoek@9.3.0':
@@ -3339,6 +3345,12 @@ snapshots:
     dependencies:
       '@hapi/hoek': 9.3.0
     optional: true
+
+  '@hugeicons/core-free-icons@4.1.1': {}
+
+  '@hugeicons/svelte@1.1.2(svelte@5.55.5(@typescript-eslint/types@8.59.1))':
+    dependencies:
+      svelte: 5.55.5(@typescript-eslint/types@8.59.1)
 
   '@humanfs/core@0.19.2':
     dependencies:

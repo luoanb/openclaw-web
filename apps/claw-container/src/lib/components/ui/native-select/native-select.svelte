@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { cn, type WithElementRef } from "$lib/utils.js";
 	import type { HTMLSelectAttributes } from "svelte/elements";
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import { HugeiconsIcon } from "@hugeicons/svelte"
+	import { UnfoldMoreIcon } from '@hugeicons/core-free-icons';
 
 	type NativeSelectProps = Omit<WithElementRef<HTMLSelectAttributes>, "size"> & {
 		size?: "sm" | "default";
@@ -30,10 +31,10 @@
 		bind:this={ref}
 		data-slot="native-select"
 		data-size={size}
-		class="bg-input/50 placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-9 w-full min-w-0 appearance-none rounded-3xl border border-transparent py-1 pr-8 pl-3 text-sm transition-[color,box-shadow,background-color] select-none focus-visible:ring-3 aria-invalid:ring-3 data-[size=sm]:h-8 outline-none disabled:pointer-events-none disabled:cursor-not-allowed"
+		class="border-input bg-input/20 placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-7 w-full min-w-0 appearance-none rounded-md border py-0.5 pr-6 pl-2 text-xs/relaxed transition-colors select-none focus-visible:ring-2 aria-invalid:ring-2 data-[size=sm]:h-6 data-[size=sm]:text-[0.625rem] outline-none disabled:pointer-events-none disabled:cursor-not-allowed"
 		{...restProps}
 	>
 		{@render children?.()}
 	</select>
-	<ChevronDownIcon class="text-muted-foreground top-1/2 right-2.5 size-4 -translate-y-1/2 pointer-events-none absolute select-none" aria-hidden data-slot="native-select-icon" />
+	<HugeiconsIcon icon={UnfoldMoreIcon} strokeWidth={2} class="text-muted-foreground top-1/2 right-1.5 size-3.5 -translate-y-1/2 group-data-[size=sm]/native-select:size-3 group-data-[size=sm]/native-select:-translate-y-[calc(--spacing(1.25))] pointer-events-none absolute select-none" aria-hidden data-slot="native-select-icon" />
 </div>

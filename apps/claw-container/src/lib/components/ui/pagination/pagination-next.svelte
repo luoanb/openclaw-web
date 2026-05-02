@@ -2,7 +2,8 @@
 	import type { ComponentProps } from "svelte";
 	import { cn } from "$lib/utils.js";
 	import { PaginationLink } from "./index.js";
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import { HugeiconsIcon } from "@hugeicons/svelte"
+	import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 
 	type PaginationNextProps = ComponentProps<typeof PaginationLink>;
 
@@ -16,5 +17,5 @@
 	{...restProps}
 >
 	<span class="cn-pagination-next-text hidden sm:block">Next</span>
-	<ChevronRightIcon data-icon="inline-end" />
+	<HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={2} data-icon="inline-end" />
 </PaginationLink>

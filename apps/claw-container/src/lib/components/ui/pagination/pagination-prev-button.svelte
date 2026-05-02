@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Pagination as PaginationPrimitive } from "bits-ui";
-	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
+	import { HugeiconsIcon } from "@hugeicons/svelte"
+	import { ArrowLeftIcon } from '@hugeicons/core-free-icons';
 	import { cn } from "$lib/utils.js";
 	import { buttonVariants } from "../button/index.js";
 
@@ -13,7 +14,7 @@
 </script>
 
 {#snippet Fallback()}
-	<ChevronLeftIcon class={cn("size-4", className)} />
+	<HugeiconsIcon icon={ArrowLeftIcon} strokeWidth={2} class={cn("size-4", className)} />
 	<span>Previous</span>
 {/snippet}
 

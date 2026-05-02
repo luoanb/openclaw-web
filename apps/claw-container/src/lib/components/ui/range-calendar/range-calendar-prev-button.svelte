@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { RangeCalendar as RangeCalendarPrimitive } from "bits-ui";
-	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
+	import { HugeiconsIcon } from "@hugeicons/svelte"
+	import { ArrowLeftIcon } from '@hugeicons/core-free-icons';
 	import { buttonVariants, type ButtonVariant } from "$lib/components/ui/button/index.js";
 	import { cn } from "$lib/utils.js";
 
@@ -16,7 +17,7 @@
 </script>
 
 {#snippet Fallback()}
-	<ChevronLeftIcon class={cn("size-4", className)} />
+	<HugeiconsIcon icon={ArrowLeftIcon} strokeWidth={2} class={cn("size-4", className)} />
 {/snippet}
 
 <RangeCalendarPrimitive.PrevButton
