@@ -2,6 +2,11 @@
 export type TerminalConfig = {
   logMaxBytes: number;
   logMaxLines: number;
+  /**
+   * 前台子进程输出流式写入时，`this.buf` 在触发「整屏 clear 截断」前的字节放宽倍数（相对 `logMaxBytes`）。
+   * 进程结束后仍会 `compactToCap` 按正常上限压回。
+   */
+  logForegroundHardMaxFactor: number;
   maxCmdLen: number;
   truncateStrategy: "drop-head";
   truncateMarker: string;

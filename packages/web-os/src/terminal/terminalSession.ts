@@ -94,21 +94,32 @@ async function runSpawnCore(
     ...(cwd ? { cwd } : {}),
   });
   processRef.current = proc;
+  try {
+    proc.resize(termDims(term));
+  } catch {
+    /* 与 spawn 的 terminal 尺寸对齐；部分时序下可忽略 */
+  }
   const writer = proc.input.getWriter();
   stdinForwardRef.current = writer;
   onProcessStarted?.();
+  let exitCode = -1;
   try {
     const [, code] = await Promise.all([
       drainProcessOutput(
         proc.output,
-        (t) => ring.writeCapped(term, t, cfg),
+        (t) =>
+          ring.writeCapped(term, t, cfg, { streamingForeground: true }),
         outputReaderRef,
       ),
       proc.exit,
     ]);
-    ring.writeCapped(term, `\r\n[exit ${code}]\r\n`, cfg);
-    return code;
+    exitCode = code;
   } finally {
+    try {
+      ring.compactToCap(term, cfg);
+    } catch {
+      /* term 已 dispose 等 */
+    }
     stdinForwardRef.current = null;
     try {
       await writer.close();
@@ -122,6 +133,8 @@ async function runSpawnCore(
     }
     processRef.current = null;
   }
+  ring.writeCapped(term, `\r\n[exit ${exitCode}]\r\n`, cfg);
+  return exitCode;
 }
 
 async function runShellLineCore(
@@ -188,6 +201,8 @@ export class WebContainerTerminalSession implements IWebContainerTerminalSession
   private readonly _outputReaderRef: OutputReaderRef;
   private readonly _onForegroundChange?: (running: boolean) => void;
   private readonly _onCwdRelChange?: (cwdRel: string) => void;
+  private _resizeDisposable: { dispose: () => void } | undefined;
+  private _resizeFlushRaf = 0;
 
   constructor(options: WebContainerTerminalSessionOptions) {
     this._term = options.term;
@@ -199,6 +214,29 @@ export class WebContainerTerminalSession implements IWebContainerTerminalSession
     this._outputReaderRef = new OutputReaderRef();
     this._onForegroundChange = options.onForegroundChange;
     this._onCwdRelChange = options.onCwdRelChange;
+
+    this._resizeDisposable = this._term.onResize((dim) => {
+      const cols = Math.max(dim.cols, 40);
+      const rows = Math.max(dim.rows, 12);
+      cancelAnimationFrame(this._resizeFlushRaf);
+      this._resizeFlushRaf = requestAnimationFrame(() => {
+        this._resizeFlushRaf = 0;
+        const p = this._processRef.current;
+        if (!p) return;
+        try {
+          p.resize({ cols, rows });
+        } catch {
+          /* 进程已退出等 */
+        }
+      });
+    });
+  }
+
+  dispose(): void {
+    this._resizeDisposable?.dispose();
+    this._resizeDisposable = undefined;
+    cancelAnimationFrame(this._resizeFlushRaf);
+    this._resizeFlushRaf = 0;
   }
 
   bindWebContainer(wc: WebContainer): void {

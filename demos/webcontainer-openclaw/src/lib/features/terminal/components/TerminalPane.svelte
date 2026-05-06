@@ -149,6 +149,7 @@
     });
 
     return () => {
+      shellSession.dispose();
       ro?.disconnect();
       ro = undefined;
       t.dispose();

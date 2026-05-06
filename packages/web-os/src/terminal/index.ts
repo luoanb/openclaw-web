@@ -5,6 +5,7 @@ export {
   terminalConfigLoader,
 } from "./config";
 export { TerminalLogBuffer } from "./logBuffer";
+export type { WriteCappedOptions } from "./logBuffer";
 export {
   OutputReaderRef,
   StdinForwardRef,

@@ -82,4 +82,4 @@ export class TerminalCwdPrompt {
   }
 }
 
-const _check: ITerminalCwdPrompt = TerminalCwdPrompt; // 校验：将类（构造函数）赋值给接口类型的变量
+export const terminalCwdPrompt: ITerminalCwdPrompt = TerminalCwdPrompt; // 校验：将类（构造函数）赋值给接口类型的变量

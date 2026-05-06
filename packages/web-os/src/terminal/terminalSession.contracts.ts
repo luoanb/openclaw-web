@@ -67,6 +67,11 @@ export interface IWebContainerTerminalSession {
 
   /** Ctrl-C、取消输出 reader、`kill` 当前前台进程。 */
   abort(): void;
+
+  /**
+   * 释放 `Terminal.onResize` 等订阅；在 dispose xterm `Terminal` 之前调用，避免泄漏。
+   */
+  dispose(): void;
 }
 
 export type WebContainerTerminalSessionOptions = {

@@ -115,7 +115,7 @@ import { bootWebContainer, attachPreview, WebContainerTerminalSession } from "we
 
 | 名称 | 说明 |
 |------|------|
-| `TerminalLogBuffer` | 按配置截断后写入 `Terminal`（`writeCapped` / `clear`）。 |
+| `TerminalLogBuffer` | 按配置截断后写入 `Terminal`（`writeCapped` / `clear` / `compactToCap`）；前台流式输出可用 `writeCapped(..., { streamingForeground: true })` 推迟破坏性 `clear`，见 `terminal.config.json` 的 `logForegroundHardMaxFactor`。 |
 | `WebContainerProcessRef` | 持有当前 `WebContainerProcess`（`current`）。 |
 | `StdinForwardRef` | 持有子进程 stdin 的 writer（`current`）。 |
 | `OutputReaderRef` | 持有 stdout pump 的 reader，便于中止时 `cancel`。 |
@@ -143,14 +143,14 @@ import { bootWebContainer, attachPreview, WebContainerTerminalSession } from "we
 
 | 名称 | 说明 |
 |------|------|
-| `IWebContainerTerminalSession` | 会话 Facade 契约：`bindWebContainer`、`runLine`、`runSpawn`、`abort`、`cwdRel`、`formatPromptLine`、`*Ref` / `logBuffer` 只读访问。 |
-| `WebContainerTerminalSession` | 实现类：构造传入 `term` + `config`；`WebContainer` 通过 **`bindWebContainer(wc)`** 注入（可与多面板共享同一 `wc`）；内部持有 `TerminalLogBuffer` 与各类 `*Ref`。 |
+| `IWebContainerTerminalSession` | 会话 Facade 契约：`bindWebContainer`、`runLine`、`runSpawn`、`abort`、`dispose`、`cwdRel`、`formatPromptLine`、`*Ref` / `logBuffer` 只读访问。 |
+| `WebContainerTerminalSession` | 实现类：构造传入 `term` + `config`；订阅 **`term.onResize`**，在前台进程存在时调用 **`WebContainerProcess.resize`**；`WebContainer` 通过 **`bindWebContainer(wc)`** 注入（可与多面板共享同一 `wc`）；内部持有 `TerminalLogBuffer` 与各类 `*Ref`。 |
 | `WebContainerTerminalSessionOptions` | `term`、`config`、`onForegroundChange?`、`onCwdRelChange?`、`initialCwdRel?` |
 | `WebContainerTerminalSessionSpawnOptions` | `runSpawn` 的 `intro?`、`cwd?`（省略 `cwd` 时用会话 `cwdRel`） |
 | `RunShellLineOptions` | `runLine` 的 `noCommandEcho?`、`cwd?`（与单行 `sh -c` 回显及工作目录覆盖相关）。 |
 | `SpawnExtraOptions` | 底层 spawn 的 `cwd?`（相对容器 workdir）；一般通过 `runSpawn` 选项间接使用。 |
 
-**典型用法**：面板 `onMount` 创建 xterm `Terminal` 后 `new WebContainerTerminalSession({ term, config })`；在 `bootWebContainer()` 得到 `wc` 后 **`session.bindWebContainer(wc)`**，再 **`session.runLine("ls")`** / **`session.runSpawn("npm", ["install"])`**；多终端时 **每个面板一个 session 实例**，同一 `wc` 可 `bind` 到多个 session（勿共用同一组 `*Ref`）。
+**典型用法**：面板 `onMount` 创建 xterm `Terminal` 后 `new WebContainerTerminalSession({ term, config })`；在 `bootWebContainer()` 得到 `wc` 后 **`session.bindWebContainer(wc)`**，再 **`session.runLine("ls")`** / **`session.runSpawn("npm", ["install"])`**；在销毁 `Terminal` 之前调用 **`session.dispose()`** 以释放 `onResize` 订阅。多终端时 **每个面板一个 session 实例**，同一 `wc` 可 `bind` 到多个 session（勿共用同一组 `*Ref`）。
 
 ---
 
