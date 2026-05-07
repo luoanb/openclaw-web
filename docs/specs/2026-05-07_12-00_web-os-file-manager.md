@@ -112,6 +112,7 @@
 
 - `FileManagerIdbStore`：`open()`、`pushTreeRecord(driveId, tree)`（**不** 写 `mergedTree` / `isCurrent`）、`listRecords(driveId)`、`mergeDriveToBootTree(driveId): Promise<FileSystemTree>`（§4.1 / §4.1.1 / §4.2：**原子** 写 `tip.mergedTree`、`tip.isCurrent`、清旧锚点）。
 - `FileManagerSync`（或等价）：`start(wc, driveId, options?: { debounceMs; exportRootPath })`、`stop()`：注册 `fs.watch`、防抖导出、调用 `pushTreeRecord`。
+- `FileSystemTreeMerge`（**仅 static**）：`mergeFileSystemTrees`、`sortRecordsBySchemaVersion`、`findTipRecord`、`computeMergedForDrive`、`resolveMountTree`；**不** 再于包入口提供同名的顶层函数式导出，避免与「类为主」的 API 重复。
 
 公开类型放入 `*.interfaces.ts` 或 `types.ts`，错误类复用或对齐 `fileSystem/errors` 风格。
 
@@ -138,4 +139,5 @@
 
 ## 10. Change Log（实现后回写）
 
-- （待实现后填写：PR 链接、实际 DB 名、export 路径修正。）
+- **实现**：`packages/web-os/src/webcontainer/fileManager/`（`FileManagerIdbStore`、`FileManagerSync`、`FileSystemTreeMerge` / `mergeTrees.impl.ts`）；IDB 名 **`openclaw-wc-file-manager`**，store **`tree_records`**。
+- **导出**：`web-os` 包入口已 `export *` 上述模块。
