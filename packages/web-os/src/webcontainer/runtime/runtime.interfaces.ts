@@ -9,10 +9,10 @@ import type { IFileManagerIdbStore } from "../fileManager/fileManager.interfaces
 export interface IWebOsRuntime {
   readonly fileStore: IFileManagerIdbStore;
 
-  /** `boot` → 按当前默认盘解析树并挂载（含 §5.2 前置空树）。 */
+  /** 首次：`boot` + 当前盘挂载；之后：直接返回同一 `wc`（不重复引导）。换盘用 `switchDriveAndBoot`。 */
   start(): Promise<WebContainer>;
 
-  /** §5.2 → `wc.mount(payload)`；标记来源为 import。 */
+  /** §5.2 → `wc.mount(payload)`。 */
   mount(wc: WebContainer, payload: FileSystemTree | ArrayBuffer): Promise<void>;
 
   /** `setCurrentDriveId` → §5.2 → 挂新当前盘树。 */

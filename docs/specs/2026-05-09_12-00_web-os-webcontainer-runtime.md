@@ -70,21 +70,22 @@
 
 ### 5.3 `start()` —— 对外启动（默认唯一入口）
 
-**契约**：一次调用返回的 `WebContainer` **已经**在 **§5.2 空树前置（若未短路）后** 按当前默认盘完成 **`mount(真实树)`**（若命中 §8.4 的 **import** 跳过策略，则 **不**用当前盘树覆盖导入结果，直至换盘等）。
+**契约**：一次调用返回的 `WebContainer` **已经**在 **§5.2 空树前置（若未短路）后** 按当前默认盘完成 **`mount(真实树)`**。
 
 **内部顺序（须实现等价语义）**：
 
 1. `wc = await WebContainer.boot()`（单例 Promise 缓存，仅首次真正 boot）。
-2. `await fileStore.open()`。
-3. 解析 **当前盘** `driveId`（§6）；得到树 `tree = await resolveMountTreeForDrive(driveId)`（含种子盘后）。
-4. 若挂载来源允许覆盖为当前盘（§8.4）：§5.2 **先空树再真实树** → 来源记 **filemanager**，并 **更新「上轮挂载位置」记录**。
-5. 返回 `wc`。
+2. 若 **`start()` 已成功执行过一次完整引导**（实现可采用 **`startCompleted`**）：**直接返回 `wc`**，不再 **`fileStore.open()`**、不再挂载。
+3. 否则：`await fileStore.open()` → 解析当前盘（§6）→ §5.2 **先空树再真实树** → 标记 **`startCompleted`**。
+4. 返回 `wc`。
 
-**幂等**：同盘、来源已为 **filemanager** 时可短路（实现细节）；若短路，注释须说明与「空树 + 真实树」的等价关系或与 §5.2 一致的例外。「按当前盘挂载」与 **`switchDriveAndBoot`** 重复逻辑 **私有方法复用**，**不**对外暴露 `ensureWorkspace`。
+**换盘**：须使用 **`switchDriveAndBoot`**（内部仍会 §5.2 + 挂新盘）；**不要**指望仅靠反复 **`start()`** 换盘。
+
+**幂等**：第二次及以后的 **`start()`** 仅返回同一 **`wc`**。「按当前盘挂载」与 **`switchDriveAndBoot`** 重复逻辑 **私有方法复用**，**不**对外暴露 `ensureWorkspace`。
 
 ### 5.4 换盘并挂载当前盘（推荐对外 API）
 
-**语义**：`await fileStore.setCurrentDriveId(targetDriveId)` → 清除挂载短路状态 → 与 **`start()`** 共用 WC 缓存 → **§5.2** → **按新当前盘** `resolveMountTreeForDrive` + `wc.mount(真实树)`。
+**语义**：`await fileStore.setCurrentDriveId(targetDriveId)` → 与 **`start()`** 共用 WC 缓存 → **§5.2** → **按新当前盘** `resolveMountTreeForDrive` + `wc.mount(真实树)`。
 
 **命名候选**（实现时统一）：
 
@@ -99,7 +100,7 @@
 
 **命名**：对外 **`mount`**；与 **`WebContainer#mount`** 区分：**`webOsRuntime.mount(wc, payload)`** 自带 §5.2 **再委托**。
 
-**运行时**：来源记 **import**（§8.4）；**成功后** 更新 **挂载位置** 记录。
+**运行时**：与 **`start()`** 幂等无关；导入后若需回到当前盘文件树，请调用 **`switchDriveAndBoot`**（或未来专用 API），**不要**依赖 **`start()`** 再次挂载。
 
 **可选删除**：不做导入可从 **`IWebOsRuntime`** 去掉 **`mount`**；直接调用 **`wc.mount`** 则无 §5.2 统一语义。
 
@@ -198,7 +199,7 @@ export interface IWebOsRuntime {
 
 **便捷函数（可选）**：若包内需顶层函数，建议 **`startWebOs()`** 等 **指向 `start()`** 的新名，**禁止**复用 `bootWebContainer`；亦可仅导出 `webOsRuntime.start`。
 
-### 8.4 错误、前置条件与挂载来源
+### 8.4 错误、前置条件与 `start()` 幂等
 
 **错误传播（不吞）：**
 
@@ -206,12 +207,7 @@ export interface IWebOsRuntime {
 - `InvalidSnapshotError` / `IdbQuotaError` 等：来自 File Manager 写路径。
 - `WebContainer.boot()` / `wc.mount()`；若 §5.2 回退使用 **`fs.rm`**，其错误同样 **不吞**。
 
-**挂载来源（实现约束，可不导出类型）：**
-
-| 来源 | 含义 | 对 **`start()`** 的影响 |
-|------|------|-------------------------------|
-| `filemanager` | 最近一次成功来自当前盘的 `resolveMountTreeForDrive` + `mount` | 同 `driveId` 可短路 |
-| `import` | 最近一次为运行时 **`mount`**（§5.5） | **`start()`** **跳过**用当前盘覆盖，直至 `switchDriveAndBoot` 或另行约定 |
+**`start()`**：首次完成引导与当前盘挂载后，实现置 **`startCompleted`**（或等价）；后续 **`start()`** **仅返回**同一 **`wc`**，**不**重复 **`open`/挂载**。换盘 **不用**靠再次 **`start()`**，而用 **`switchDriveAndBoot`**。
 
 ### 8.5 `switchDriveAndBoot` 后置保证
 
@@ -247,7 +243,7 @@ export interface IWebOsRuntime {
 
 1. 设置当前盘为 D1 → **仅调用 `webOsRuntime.start()`** → 容器内文件树与 `resolveMountTreeForDrive(D1)` 一致（且中途无需应用再单独调用挂载）。
 2. `switchDriveAndBoot(D2)` → 容器树切换为 D2 的解析结果；`getCurrentDriveId() === D2`。
-3. **若契约保留 `mount`**：`mount` 后，在未换盘前，**`start()`** 行为符合 §5.5 / §8.4（不静默覆盖导入或明确约定覆盖）。若已删除 **`mount`**，本条不适用。
+3. **若契约保留 `mount`**：`mount` 后 **`start()`** 仍直接返回 **`wc`**；回到 File Manager 当前盘树用 **`switchDriveAndBoot(getCurrentDriveId())`** 或显式换盘。若已删除 **`mount`**，本条不适用。
 
 ---
 
@@ -267,4 +263,4 @@ export interface IWebOsRuntime {
 | 2026-05-09 | 初稿：运行时 + 当前盘挂载 + 换盘流程，供方案对齐 |
 | 2026-05-09 | 补充 §8 契约设计：`IBoot` / `IWebOsRuntime`、错误与挂载来源、包导出约定 |
 | 2026-05-09 | **§5.2 修订**：干净挂载以 **`mount({})`** 为主；**同一挂载位置**可简化/短路；**`fs.rm`** 仅作空树无效时的回退 |
-| 2026-05-09 | **落地**：`packages/web-os/src/webcontainer/runtime/`（`WebOsRuntime`、`webOsRuntime`、`switchDriveAndBoot`）；删除 **`boot.ts` / `boot.interfaces.ts`**；demo 改用 **`webOsRuntime.start()` / `mount()`** |
+| 2026-05-09 | **`start()`** 幂等：`startCompleted`，再次 **`start()`** 直接返回 **`wc`**（移除 **`lastSyncedDriveId`** 短路） |

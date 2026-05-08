@@ -4,19 +4,18 @@ import { FileManagerIdbStore } from "../fileManager/fileManagerIdbStore.impl";
 import type { IFileManagerIdbStore } from "../fileManager/fileManager.interfaces";
 import { tree as minimalSeedTree } from "../minimalWorkspaceTemplate";
 
-type MountKind = "none" | "filemanager" | "import";
-
 /**
  * Web OS WebContainer 运行时：当前盘挂载、换盘、导入快照与 §5.2 干净挂载（先 `mount({})`）。
+ *
+ * **`startCompleted`**：首次 `start()` 成功落地当前盘后即为 true；之后 **`start()`** 只返回同一 `wc`，不再重复 `open`/挂载（单例 `boot` 本身也只执行一次）。换盘见 **`switchDriveAndBoot`**。
  */
 export class WebOsRuntime implements IWebOsRuntime {
   readonly fileStore: IFileManagerIdbStore;
 
   private wcSingleton: Promise<WebContainer> | null = null;
 
-  private mountKind: MountKind = "none";
-
-  private lastFilemanagerDriveId: string | null = null;
+  /** 首次 `start()` 已成功完成引导与当前盘挂载后为 true。 */
+  private startCompleted = false;
 
   constructor(fileStore?: IFileManagerIdbStore) {
     this.fileStore = fileStore ?? new FileManagerIdbStore();
@@ -51,29 +50,17 @@ export class WebOsRuntime implements IWebOsRuntime {
     await this.cleanMountThenApply(wc, async () => {
       await wc.mount(tree);
     });
-
-    this.mountKind = "filemanager";
-    this.lastFilemanagerDriveId = driveId;
   }
 
   async start(): Promise<WebContainer> {
     const wc = await this.getOrBootWc();
+    if (this.startCompleted) {
+      return wc;
+    }
+
     await this.fileStore.open();
-
-    if (this.mountKind === "import") {
-      return wc;
-    }
-
-    const driveId = await this.fileStore.getCurrentDriveId();
-    if (
-      this.mountKind === "filemanager" &&
-      driveId !== null &&
-      this.lastFilemanagerDriveId === driveId
-    ) {
-      return wc;
-    }
-
     await this.mountWorkspaceFromCurrentDrive(wc);
+    this.startCompleted = true;
     return wc;
   }
 
@@ -81,14 +68,11 @@ export class WebOsRuntime implements IWebOsRuntime {
     await this.cleanMountThenApply(wc, async () => {
       await wc.mount(payload);
     });
-    this.mountKind = "import";
   }
 
   async switchDriveAndBoot(driveId: string): Promise<WebContainer> {
     await this.fileStore.open();
     await this.fileStore.setCurrentDriveId(driveId);
-    this.mountKind = "none";
-    this.lastFilemanagerDriveId = null;
 
     const wc = await this.getOrBootWc();
     await this.mountWorkspaceFromCurrentDrive(wc);
