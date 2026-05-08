@@ -1,5 +1,5 @@
 import type { WebContainer } from "@webcontainer/api";
-import type { IWebOsPreviewAttachment, PreviewStatusEvent } from "./preview.contracts";
+import type { IWebOsPreviewAttachment, PreviewStatusEvent } from "./preview.interfaces";
 
 export class WebOsPreviewAttachment implements IWebOsPreviewAttachment {
   attach(

@@ -5,18 +5,18 @@
 **入口**：从包根导入即可（本仓库通过 `"web-os": "workspace:*"` 链接）。
 
 ```ts
-import { bootWebContainer, attachPreview, WebContainerTerminalSession } from "web-os";
+import { webOsRuntime, attachPreview, WebContainerTerminalSession } from "web-os";
 ```
 
 **运行环境**：依赖 `@webcontainer/api` 与浏览器 **cross-origin isolated**（通常由 dev/preview 服务器返回 COOP/COEP 头）。终端相关 API 需配合 `@xterm/xterm` 的 `Terminal` 实例使用。
 
-**契约与默认实例（`packages/` 库约定）**：对外优先暴露 **`interface`**，逻辑落在 **类**（如 `TerminalConfigLoader`、`WebContainerTerminalSession`）与 **`webOsBoot` / `webOsPreviewAttachment`** 等默认单例上；**`terminalCwdPrompt`** 为实现 **`ITerminalCwdPrompt`** 的**无状态对象**（与 **`TerminalCwdPrompt`** 同一引用）。Shell 执行与进程 IO 已收敛在 **`WebContainerTerminalSession`**（`terminalSession.ts`）。原有的 **`bootWebContainer`、`attachPreview`** 以及 **`TerminalCwdPrompt.*` 调用形式**仍可用。
+**契约与默认实例（`packages/` 库约定）**：对外优先暴露 **`interface`**，逻辑落在 **类**（如 `TerminalConfigLoader`、`WebContainerTerminalSession`）与 **`webOsRuntime` / `webOsPreviewAttachment`** 等默认单例上；**`terminalCwdPrompt`** 为实现 **`ITerminalCwdPrompt`** 的**无状态对象**（与 **`TerminalCwdPrompt`** 同一引用）。Shell 执行与进程 IO 已收敛在 **`WebContainerTerminalSession`**（`terminalSession.ts`）。**`attachPreview`** 与 **`TerminalCwdPrompt.*`** 调用形式不变。
 
 ---
 
 ## 预览（Preview）
 
-源码域：`packages/web-os/src/preview/`（`preview.contracts.ts` + `preview.ts`）。
+源码域：`packages/web-os/src/preview/`（`preview.interfaces.ts` + `preview.ts`）。
 
 | 名称 | 说明 |
 |------|------|
@@ -32,23 +32,21 @@ import { bootWebContainer, attachPreview, WebContainerTerminalSession } from "we
 
 ---
 
-## WebContainer 引导（Boot）
+## WebContainer 运行时（Runtime）
 
-源码：`packages/web-os/src/webcontainer/boot.contracts.ts`、`boot.ts`。
+源码：`packages/web-os/src/webcontainer/runtime/`（`runtime.interfaces.ts`、`webOsRuntime.impl.ts`）。按 File Manager **当前盘**挂载工作区；正式 **`mount` 前**先 **`mount({})`** 做干净挂载（见 `docs/specs/2026-05-09_12-00_web-os-webcontainer-runtime.md`）。
 
 | 名称 | 说明 |
 |------|------|
-| `IBoot` | 推荐契约：`boot` / `ensureWorkspace` / `mountImportedWorkspace`。 |
-| `IWebOsBoot` | `@deprecated`，与 `IBoot` 等价。 |
-| `Boot` | 推荐实现类（会话级单例引导与挂载状态）。 |
-| `WebOsBoot` | `@deprecated`，与 `Boot` 为同一构造函数。 |
-| `webOsBoot` | 默认实例；`bootWebContainer` / `ensureWorkspace` / `mountImportedWorkspace` 均委托此类。 |
-| `bootWebContainer()` | 单例 `WebContainer.boot()`，多次调用共享同一实例。 |
-| `ensureWorkspace(wc)` | **首次**将内置最小模板树 `tree` `mount` 到容器（仅一次）；若已通过导入挂载过工作区则不再覆盖。 |
-| `mountImportedWorkspace(wc, payload)` | 用快照恢复整个虚拟 FS：`payload` 为 `FileSystemTree` 或 `ArrayBuffer`（与官方 `mount` 一致）。执行后标记「已挂载」，后续 `ensureWorkspace` 不再套用模板。 |
-| `OPENCLAW_VERSION` | 内置模板里声明的 openclaw 依赖版本字符串（定义见 `minimalWorkspaceTemplate.ts`，由 `boot` 再导出）。 |
-| `FEASIBILITY_PATH` | 文档路径常量（展示/链接用）。 |
-| `tree` | 内置最小 `FileSystemTree`（含根 `package.json`）。 |
+| `IWebOsRuntime` | `start` / `mount` / `switchDriveAndBoot`、`fileStore`。 |
+| `WebOsRuntime` | 实现类；可注入 `IFileManagerIdbStore`。 |
+| `webOsRuntime` | 默认单例。 |
+| `switchDriveAndBoot(driveId)` | 便捷函数；等价 `webOsRuntime.switchDriveAndBoot`。 |
+| `start()` | `WebContainer.boot()` + 当前盘 `resolveMountTreeForDrive` + `mount`（含§5.2 前置空树）。 |
+| `mount(wc, payload)` | §5.2 + `wc.mount(payload)`；快照导入用。 |
+| `OPENCLAW_VERSION` | 见 `minimalWorkspaceTemplate.ts`（包入口直接导出）。 |
+| `FEASIBILITY_PATH` | 文档路径常量。 |
+| `tree` | 内置最小 `FileSystemTree`（种子盘用）。 |
 
 ---
 
@@ -99,7 +97,7 @@ import { bootWebContainer, attachPreview, WebContainerTerminalSession } from "we
 
 ## 终端（Terminal，与 xterm + WebContainer 配合）
 
-对外 `interface` 与选项类型见域内 `*.contracts.ts`（`config` / `cwdPrompt` / `terminalSession`）；实现仍为 `config.ts`、`terminalSession.ts` 等。
+对外 `interface` 与选项类型见域内 `*.interfaces.ts`（`config` / `cwdPrompt` / `terminalSession`）；实现仍为 `config.ts`、`terminalSession.ts` 等。
 
 ### 配置
 
@@ -139,7 +137,7 @@ import { bootWebContainer, attachPreview, WebContainerTerminalSession } from "we
 
 ### 会话类：`WebContainerTerminalSession`（推荐）
 
-源码：`terminalSession.contracts.ts`、`terminalSession.ts`。
+源码：`terminalSession.interfaces.ts`、`terminalSession.ts`。
 
 | 名称 | 说明 |
 |------|------|
@@ -150,7 +148,7 @@ import { bootWebContainer, attachPreview, WebContainerTerminalSession } from "we
 | `RunShellLineOptions` | `runLine` 的 `noCommandEcho?`、`cwd?`（与单行 `sh -c` 回显及工作目录覆盖相关）。 |
 | `SpawnExtraOptions` | 底层 spawn 的 `cwd?`（相对容器 workdir）；一般通过 `runSpawn` 选项间接使用。 |
 
-**典型用法**：面板 `onMount` 创建 xterm `Terminal` 后 `new WebContainerTerminalSession({ term, config })`；在 `bootWebContainer()` 得到 `wc` 后 **`session.bindWebContainer(wc)`**，再 **`session.runLine("ls")`** / **`session.runSpawn("npm", ["install"])`**；在销毁 `Terminal` 之前调用 **`session.dispose()`** 以释放 `onResize` 订阅。多终端时 **每个面板一个 session 实例**，同一 `wc` 可 `bind` 到多个 session（勿共用同一组 `*Ref`）。
+**典型用法**：面板 `onMount` 创建 xterm `Terminal` 后 `new WebContainerTerminalSession({ term, config })`；在 **`await webOsRuntime.start()`** 得到 `wc` 后 **`session.bindWebContainer(wc)`**，再 **`session.runLine("ls")`** / **`session.runSpawn("npm", ["install"])`**；在销毁 `Terminal` 之前调用 **`session.dispose()`** 以释放 `onResize` 订阅。多终端时 **每个面板一个 session 实例**，同一 `wc` 可 `bind` 到多个 session（勿共用同一组 `*Ref`）。
 
 ---
 

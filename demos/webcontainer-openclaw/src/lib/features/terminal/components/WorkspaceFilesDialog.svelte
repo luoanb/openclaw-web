@@ -16,9 +16,7 @@
   import { toast } from "$lib/ui/toast/toast.svelte";
   import { cn } from "$lib/utils.js";
   import {
-    bootWebContainer,
-    ensureWorkspace,
-    mountImportedWorkspace,
+    webOsRuntime,
     WorkspaceTreeIdbStore,
     IdbQuotaError,
     InvalidSnapshotError,
@@ -91,9 +89,8 @@
     if (actionsLocked) return;
     exporting = true;
     try {
-      const wc = await bootWebContainer();
+      const wc = await webOsRuntime.start();
       wirePreview(wc);
-      await ensureWorkspace(wc);
 
       if (kind === "json-tree") {
         const tree = await wc.export(EXPORT_ROOT_PATH, { format: "json" });
@@ -143,7 +140,7 @@
     if (!isolated || busy || exporting) return;
     importingId = snapshotId;
     try {
-      const wc = await bootWebContainer();
+      const wc = await webOsRuntime.start();
       wirePreview(wc);
       const snap = await store.getSnapshot(snapshotId);
       if (!exportKindIsImportable(snap.exportKind)) {
@@ -157,7 +154,7 @@
         toast("快照缺少可挂载内容。", { variant: "error" });
         return;
       }
-      await mountImportedWorkspace(wc, payload);
+      await webOsRuntime.mount(wc, payload);
       await restartProjectAfterImport(wc);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

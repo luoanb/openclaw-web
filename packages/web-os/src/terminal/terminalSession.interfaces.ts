@@ -1,6 +1,6 @@
 import type { Terminal } from "@xterm/xterm";
 import type { WebContainer } from "@webcontainer/api";
-import type { TerminalConfig } from "./config.contracts";
+import type { TerminalConfig } from "./config.interfaces";
 import type { OutputReaderRef, StdinForwardRef, WebContainerProcessRef } from "./refs";
 import type { TerminalLogBuffer } from "./logBuffer";
 

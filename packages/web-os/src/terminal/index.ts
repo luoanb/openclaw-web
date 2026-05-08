@@ -1,4 +1,4 @@
-export type { ITerminalConfigLoader, TerminalConfig } from "./config.contracts";
+export type { ITerminalConfigLoader, TerminalConfig } from "./config.interfaces";
 export {
   DEFAULT_TERMINAL_CONFIG,
   TerminalConfigLoader,
@@ -11,7 +11,7 @@ export {
   StdinForwardRef,
   WebContainerProcessRef,
 } from "./refs";
-export type { ITerminalCwdPrompt } from "./cwdPrompt.contracts";
+export type { ITerminalCwdPrompt } from "./cwdPrompt.interfaces";
 export {
   TerminalCwdPrompt,
   terminalCwdPrompt,
@@ -22,5 +22,5 @@ export type {
   SpawnExtraOptions,
   WebContainerTerminalSessionOptions,
   WebContainerTerminalSessionSpawnOptions,
-} from "./terminalSession.contracts";
+} from "./terminalSession.interfaces";
 export { WebContainerTerminalSession } from "./terminalSession";

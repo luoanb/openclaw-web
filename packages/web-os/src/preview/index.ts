@@ -3,7 +3,7 @@ export type {
   IWebOsPreviewAttachment,
   PreviewStatus,
   PreviewStatusEvent,
-} from "./preview.contracts";
+} from "./preview.interfaces";
 export {
   attachPreview,
   WebOsPreviewAttachment,

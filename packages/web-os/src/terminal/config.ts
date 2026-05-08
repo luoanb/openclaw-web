@@ -1,7 +1,7 @@
 import rawConfig from "../../terminal.config.json";
-import type { ITerminalConfigLoader, TerminalConfig } from "./config.contracts";
+import type { ITerminalConfigLoader, TerminalConfig } from "./config.interfaces";
 
-export type { TerminalConfig } from "./config.contracts";
+export type { TerminalConfig } from "./config.interfaces";
 
 export const DEFAULT_TERMINAL_CONFIG: TerminalConfig = {
   logMaxBytes: 409600,

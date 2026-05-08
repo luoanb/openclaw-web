@@ -1,13 +1,13 @@
 import type { Terminal } from "@xterm/xterm";
 import type { WebContainer, WebContainerProcess } from "@webcontainer/api";
-import type { TerminalConfig } from "./config.contracts";
+import type { TerminalConfig } from "./config.interfaces";
 import type {
   IWebContainerTerminalSession,
   RunShellLineOptions,
   SpawnExtraOptions,
   WebContainerTerminalSessionOptions,
   WebContainerTerminalSessionSpawnOptions,
-} from "./terminalSession.contracts";
+} from "./terminalSession.interfaces";
 import { TerminalLogBuffer } from "./logBuffer";
 import {
   OutputReaderRef,

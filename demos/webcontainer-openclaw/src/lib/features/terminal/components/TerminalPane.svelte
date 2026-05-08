@@ -4,8 +4,7 @@
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import {
-    bootWebContainer,
-    ensureWorkspace,
+    webOsRuntime,
     FEASIBILITY_PATH,
     TerminalConfigLoader,
     WebContainerTerminalSession,
@@ -241,9 +240,8 @@
     busy = true;
     lineBuf.buf = "";
     try {
-      const wc = await bootWebContainer();
+      const wc = await webOsRuntime.start();
       wirePreview(wc);
-      await ensureWorkspace(wc);
       await ensureWorkdir(wc);
       shellSession.bindWebContainer(wc);
       await shellSession.runLine(trimmed, { noCommandEcho: true });
@@ -281,11 +279,10 @@
     shellSession.logBuffer.clear(t);
     shellSession.logBuffer.writeCapped(t, "WebContainer.boot() …\r\n", cfg);
     try {
-      const wc = await bootWebContainer();
+      const wc = await webOsRuntime.start();
       wirePreview(wc);
       shellSession.bindWebContainer(wc);
-      shellSession.logBuffer.writeCapped(t, "已 boot。mount package.json …\r\n", cfg);
-      await ensureWorkspace(wc);
+      shellSession.logBuffer.writeCapped(t, "已启动。mount 工作区 …\r\n", cfg);
       await ensureWorkdir(wc);
       const ok = await runNpmInstallAndOpenClawHelp(wc);
       if (!ok) return;

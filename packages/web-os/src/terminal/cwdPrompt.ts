@@ -1,4 +1,4 @@
-import type { ITerminalCwdPrompt } from "./cwdPrompt.contracts";
+import type { ITerminalCwdPrompt } from "./cwdPrompt.interfaces";
 
 const CD_ONLY = /^\s*cd(?:\s+(?<arg>.+))?\s*$/;
 

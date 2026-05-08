@@ -1,5 +1,5 @@
 import type { Terminal } from "@xterm/xterm";
-import type { TerminalConfig } from "./config.contracts";
+import type { TerminalConfig } from "./config.interfaces";
 
 /** `writeCapped` 可选行为（前台流式输出等）。 */
 export type WriteCappedOptions = {
