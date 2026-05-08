@@ -1,7 +1,11 @@
 import type { DirectoryNode, FileNode, FileSystemTree, SymlinkNode } from "@webcontainer/api";
 import { assertValidFileSystemTree } from "../fileSystem/treeGuard";
 import { staticImplements } from "../../utils/staticImplements";
-import type { FileManagerTreeRecord, FileSystemTreeMergeStatic } from "./fileManager.interfaces";
+import type {
+  FileManagerTreeRecord,
+  FileSystemTreeMergeStatic,
+  ResolveMountTreeResult,
+} from "./fileManager.interfaces";
 
 type TreeEntry = DirectoryNode | FileNode | SymlinkNode;
 
@@ -73,7 +77,7 @@ class FileSystemTreeMerge {
   /**
    * 全量 / 增量合并（Spec §4.1.1），不落库。
    */
-  static computeMergedForDrive(records: FileManagerTreeRecord[]): FileSystemTree {
+  private static computeMergedForDrive(records: FileManagerTreeRecord[]): FileSystemTree {
     const sorted = FileSystemTreeMerge.sortRecordsBySchemaVersion(records);
     if (sorted.length === 0) return {};
 
@@ -97,11 +101,17 @@ class FileSystemTreeMerge {
     }
   }
 
-  /** 启动挂载读路径（Spec §4.2）。 */
-  static resolveMountTree(records: FileManagerTreeRecord[]): FileSystemTree {
-    if (records.length === 0) return {};
+  /**
+   * 启动挂载读路径（Spec §4.2）：是否命中 tip.`mergedTree` 由 `usedTipMergedTreeCache` 表明（存储层据此决定是否 §4.2 写回）。
+   */
+  static resolveMountTreeWithCacheInfo(records: FileManagerTreeRecord[]): ResolveMountTreeResult {
+    if (records.length === 0) {
+      return { tree: {}, usedTipMergedTreeCache: false };
+    }
     const tip = FileSystemTreeMerge.findTipRecord(records);
-    if (!tip) return {};
+    if (!tip) {
+      return { tree: {}, usedTipMergedTreeCache: false };
+    }
     const anchor = records.find((r) => r.isCurrent === true && r.mergedTree !== undefined);
     if (
       anchor &&
@@ -109,9 +119,10 @@ class FileSystemTreeMerge {
       anchor.mergedTree !== undefined
     ) {
       assertValidFileSystemTree(anchor.mergedTree);
-      return anchor.mergedTree;
+      return { tree: anchor.mergedTree, usedTipMergedTreeCache: true };
     }
-    return FileSystemTreeMerge.computeMergedForDrive(records);
+    const tree = FileSystemTreeMerge.computeMergedForDrive(records);
+    return { tree, usedTipMergedTreeCache: false };
   }
 }
 
