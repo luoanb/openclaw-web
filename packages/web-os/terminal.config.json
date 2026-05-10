@@ -1,8 +1,0 @@
-{
-  "logMaxBytes": 409600,
-  "logMaxLines": 2000,
-  "logForegroundHardMaxFactor": 4,
-  "maxCmdLen": 8192,
-  "truncateStrategy": "drop-head",
-  "truncateMarker": "\r\n[… 日志已截断 …]\r\n"
-}

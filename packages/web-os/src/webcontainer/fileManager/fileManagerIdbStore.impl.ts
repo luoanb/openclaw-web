@@ -258,15 +258,17 @@ export class FileManagerIdbStore implements IFileManagerIdbStore {
 
   async setCurrentDriveId(driveId: string | null): Promise<void> {
     await this.open();
-    const store = this.db!.transaction(FILE_MANAGER_SETTINGS_STORE, "readwrite").objectStore(
-      FILE_MANAGER_SETTINGS_STORE,
-    );
     try {
+      if (driveId !== null) {
+        await this.assertDriveRegistered(driveId);
+      }
+      const store = this.db!.transaction(FILE_MANAGER_SETTINGS_STORE, "readwrite").objectStore(
+        FILE_MANAGER_SETTINGS_STORE,
+      );
       if (driveId === null) {
         await idbRequest(store.delete(FILE_MANAGER_SETTINGS_KEY_CURRENT_DRIVE));
         return;
       }
-      await this.assertDriveRegistered(driveId);
       await idbRequest(
         store.put({
           key: FILE_MANAGER_SETTINGS_KEY_CURRENT_DRIVE,

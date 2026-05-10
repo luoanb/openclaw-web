@@ -1,16 +1,24 @@
 # `web-os`
 
-面向浏览器 **WebContainer** 场景的 TypeScript 工具库：虚拟文件系统引导、工作区快照（IndexedDB）、与 **xterm** 集成的 shell 执行与缓冲、预览 iframe 与 `server-ready` 的对接。
+面向浏览器 **WebContainer** 场景的 TypeScript 工具库：虚拟文件系统引导、工作区快照（IndexedDB）、**`ShellSession` 绿场终端**、预览 iframe 与 `server-ready` 的对接。
 
 **入口**：从包根导入即可（本仓库通过 `"web-os": "workspace:*"` 链接）。
 
 ```ts
-import { webOsRuntime, attachPreview, WebContainerTerminalSession } from "web-os";
+import { webOsRuntime, attachPreview, ShellSession } from "web-os";
 ```
 
-**运行环境**：依赖 `@webcontainer/api` 与浏览器 **cross-origin isolated**（通常由 dev/preview 服务器返回 COOP/COEP 头）。终端相关 API 需配合 `@xterm/xterm` 的 `Terminal` 实例使用。
+**运行环境**：依赖 `@webcontainer/api` 与浏览器 **cross-origin isolated**（通常由 dev/preview 服务器返回 COOP/COEP 头）。**`ShellSession`** 仅依赖 WebContainer 进程流；**xterm.js** 由应用自行依赖（本包不再声明 `@xterm/xterm`）。
 
-**契约与默认实例（`packages/` 库约定）**：对外优先暴露 **`interface`**，逻辑落在 **类**（如 `TerminalConfigLoader`、`WebContainerTerminalSession`）与 **`webOsRuntime` / `webOsPreviewAttachment`** 等默认单例上；**`terminalCwdPrompt`** 为实现 **`ITerminalCwdPrompt`** 的**无状态对象**（与 **`TerminalCwdPrompt`** 同一引用）。Shell 执行与进程 IO 已收敛在 **`WebContainerTerminalSession`**（`terminalSession.ts`）。**`attachPreview`** 与 **`TerminalCwdPrompt.*`** 调用形式不变。
+**契约与默认实例（`packages/` 库约定）**：交互 Shell 见 **`ShellSession`**（`src/shell/`，stdin/out 透传 + 默认 `WebContainer.spawn('jsh')`），规格见 **`docs/specs/2026-05-09_17-00_web-os-shell-greenfield.md`**。**`attachPreview`** 用法不变。
+
+---
+
+## 单元测试
+
+分层策略、Vitest 工具链建议与验收契约见：**[`docs/specs/2026-05-09_16-00_web-os-unit-tests.md`](../../docs/specs/2026-05-09_16-00_web-os-unit-tests.md)**。
+
+在仓库根目录执行：`pnpm --filter web-os test`（或本包目录下 `pnpm test`）。
 
 ---
 
@@ -95,63 +103,22 @@ import { webOsRuntime, attachPreview, WebContainerTerminalSession } from "web-os
 
 ---
 
-## 终端（Terminal，与 xterm + WebContainer 配合）
+## Shell（绿场终端，`src/shell/`）
 
-对外 `interface` 与选项类型见域内 `*.interfaces.ts`（`config` / `cwdPrompt` / `terminalSession`）；实现仍为 `config.ts`、`terminalSession.ts` 等。
-
-### 配置
+与 **`@webcontainer/api`** 的 **`spawn`** / 进程流对接；**不**内置 xterm。
 
 | 名称 | 说明 |
 |------|------|
-| `TerminalConfig` | 日志字节/行上限、命令最大长度、截断策略与标记等。 |
-| `DEFAULT_TERMINAL_CONFIG` | 默认配置对象。 |
-| `ITerminalConfigLoader` | `load(): TerminalConfig`。 |
-| `terminalConfigLoader` | 默认单例；`TerminalConfigLoader.load()` 静态方法委托该实例。 |
-| `TerminalConfigLoader.load()` | 读取包内 `terminal.config.json` 并与默认值合并（固定 `truncateStrategy`）。 |
+| `ShellSession` | `start` / `write` / `writeBytes` / `resize` / `dispose` / `onOutput` / `onExit`。 |
+| `IShellSession` | 会话契约。 |
+| `ShellSessionOptions` | `command`、`args`、`cwd`、`env`、`terminal` 尺寸、`output`。 |
+| `DEFAULT_SHELL_COMMAND` | 默认 `jsh`。 |
+| `DEFAULT_TERMINAL_DIMENSIONS` | 默认 80×24。 |
 
-### 缓冲与引用对象
-
-| 名称 | 说明 |
-|------|------|
-| `TerminalLogBuffer` | 按配置截断后写入 `Terminal`（`writeCapped` / `clear` / `compactToCap`）；前台流式输出可用 `writeCapped(..., { streamingForeground: true })` 推迟破坏性 `clear`，见 `terminal.config.json` 的 `logForegroundHardMaxFactor`。 |
-| `WebContainerProcessRef` | 持有当前 `WebContainerProcess`（`current`）。 |
-| `StdinForwardRef` | 持有子进程 stdin 的 writer（`current`）。 |
-| `OutputReaderRef` | 持有 stdout pump 的 reader，便于中止时 `cancel`。 |
-
-### 会话路径提示：`TerminalCwdPrompt`
-
-在「单行 `cd`」语义下解析/更新会话 cwd，并格式化提示符文案（如 `~/leaf/sub $ `）。
-
-| 名称 | 说明 |
-|------|------|
-| `ITerminalCwdPrompt` | `isCdOnlyLine`、`cdArgFromLine`、`resolveCdArg`、`formatPromptLabel`、`formatPromptLine`。 |
-| `terminalCwdPrompt` | 默认实现对象（`satisfies ITerminalCwdPrompt`）；无状态。 |
-| `TerminalCwdPrompt` | 与 `terminalCwdPrompt` **同一引用**，便于沿用 `TerminalCwdPrompt.*` 写法。 |
-
-| 方法 | 说明 |
-|------|------|
-| `isCdOnlyLine(line)` | 是否为整行 `cd`。 |
-| `cdArgFromLine(line)` | 取出 cd 目标参数。 |
-| `resolveCdArg(currentRel, arg)` | 解析相对/绝对路径片段。 |
-| `formatPromptLabel` / `formatPromptLine` | 展示用路径与完整 prompt 行。 |
-
-### 会话类：`WebContainerTerminalSession`（推荐）
-
-源码：`terminalSession.interfaces.ts`、`terminalSession.ts`。
-
-| 名称 | 说明 |
-|------|------|
-| `IWebContainerTerminalSession` | 会话 Facade 契约：`bindWebContainer`、`runLine`、`runSpawn`、`abort`、`dispose`、`cwdRel`、`formatPromptLine`、`*Ref` / `logBuffer` 只读访问。 |
-| `WebContainerTerminalSession` | 实现类：构造传入 `term` + `config`；订阅 **`term.onResize`**，在前台进程存在时调用 **`WebContainerProcess.resize`**；`WebContainer` 通过 **`bindWebContainer(wc)`** 注入（可与多面板共享同一 `wc`）；内部持有 `TerminalLogBuffer` 与各类 `*Ref`。 |
-| `WebContainerTerminalSessionOptions` | `term`、`config`、`onForegroundChange?`、`onCwdRelChange?`、`initialCwdRel?` |
-| `WebContainerTerminalSessionSpawnOptions` | `runSpawn` 的 `intro?`、`cwd?`（省略 `cwd` 时用会话 `cwdRel`） |
-| `RunShellLineOptions` | `runLine` 的 `noCommandEcho?`、`cwd?`（与单行 `sh -c` 回显及工作目录覆盖相关）。 |
-| `SpawnExtraOptions` | 底层 spawn 的 `cwd?`（相对容器 workdir）；一般通过 `runSpawn` 选项间接使用。 |
-
-**典型用法**：面板 `onMount` 创建 xterm `Terminal` 后 `new WebContainerTerminalSession({ term, config })`；在 **`await webOsRuntime.start()`** 得到 `wc` 后 **`session.bindWebContainer(wc)`**，再 **`session.runLine("ls")`** / **`session.runSpawn("npm", ["install"])`**；在销毁 `Terminal` 之前调用 **`session.dispose()`** 以释放 `onResize` 订阅。多终端时 **每个面板一个 session 实例**，同一 `wc` 可 `bind` 到多个 session（勿共用同一组 `*Ref`）。
+**典型用法**：`await webOsRuntime.start()` 得到 `wc` → `new ShellSession(wc)` → `onOutput` 接到 UI → `write` 接入键盘。**规格**：`docs/specs/2026-05-09_17-00_web-os-shell-greenfield.md`。
 
 ---
 
 ## 依赖版本
 
-本包 `package.json` 声明：`@webcontainer/api`、`@xterm/xterm`。消费方通常还需直接依赖 `@xterm/addon-fit` 等（包未列出 addon，由应用按需添加）。
+本包 `package.json` 声明：`@webcontainer/api`。终端渲染（xterm）与 addon 由应用按需依赖。

@@ -28,4 +28,4 @@
 ## 当前已有内容
 
 - [`research/`](./research/)：`feasibility-openclaw-webcontainers.md`、`solution-s3-openclaw-browser.md`、`s3-phase-0-plan.md`、`s3-p0-d1-dependency-audit.md` 等。
-- [`specs/`](./specs/)：[browser-deps-audit WebContainers 证据驱动阻断 Spec](./specs/s3-browser-deps-audit-webcontainers-evidence-spec.md)（SDD Plan / 与包实现强绑定）；WebContainer OpenClaw 系列含终端预览、Svelte 迁移、VSCode 级终端路线图、**[UI 公共组件抽离（2026-05-01）](./specs/2026-05-01_10-00_WebContainer-OpenClaw-UI公共组件抽离.md)** 等。
+- [`specs/`](./specs/)：[browser-deps-audit WebContainers 证据驱动阻断 Spec](./specs/s3-browser-deps-audit-webcontainers-evidence-spec.md)（SDD Plan / 与包实现强绑定）；WebContainer OpenClaw 系列含终端预览、Svelte 迁移、VSCode 级终端路线图、**[UI 公共组件抽离（2026-05-01）](./specs/2026-05-01_10-00_WebContainer-OpenClaw-UI公共组件抽离.md)** 等；**[`web-os` 单元测试方案（2026-05-09）](./specs/2026-05-09_16-00_web-os-unit-tests.md)**。
