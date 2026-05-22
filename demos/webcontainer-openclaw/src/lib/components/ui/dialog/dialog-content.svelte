@@ -5,7 +5,9 @@
 	import * as Dialog from "./index.js";
 	import { cn, type WithoutChildrenOrChild } from "$lib/utils.js";
 	import type { ComponentProps } from "svelte";
-	import XIcon from '@lucide/svelte/icons/x';
+	import { Button } from "$lib/components/ui/button/index.js";
+	import { HugeiconsIcon } from "@hugeicons/svelte"
+	import { Cancel01Icon } from '@hugeicons/core-free-icons';
 
 	let {
 		ref = $bindable(null),
@@ -27,13 +29,7 @@
 		bind:ref
 		data-slot="dialog-content"
 		class={cn(
-			"bg-background text-foreground",
-			"border-border shadow-2xl",
-			"data-[state=open]:animate-in data-[state=closed]:animate-out",
-			"data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-			"data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-			"data-[state=closed]:exit-100 data-[state=open]:enter-100",
-			"fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border p-6 shadow-lg duration-200 sm:rounded-lg",
+			"bg-popover text-popover-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 ring-foreground/10 grid max-w-[calc(100%-2rem)] gap-4 rounded-xl p-4 text-xs/relaxed ring-1 duration-100 sm:max-w-sm fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2 outline-none",
 			className
 		)}
 		{...restProps}
@@ -42,13 +38,10 @@
 		{#if showCloseButton}
 			<DialogPrimitive.Close data-slot="dialog-close">
 				{#snippet child({ props })}
-					<button
-						class="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
-						{...props}
-					>
-						<XIcon class="h-4 w-4" />
+					<Button variant="ghost" class="absolute top-2 right-2" size="icon-sm" {...props}>
+						<HugeiconsIcon icon={Cancel01Icon} strokeWidth={2}  />
 						<span class="sr-only">Close</span>
-					</button>
+					</Button>
 				{/snippet}
 			</DialogPrimitive.Close>
 		{/if}

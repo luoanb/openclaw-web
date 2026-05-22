@@ -53,3 +53,7 @@ src/lib/
 - 类型定义、类型守卫、常量导出等与「组织方式」无关的声明可保持现有写法；**业务无关的可复用过程**应归入命名清晰的类（或服务对象），便于测试、注入与演进。
 
 **示例**：`demos/webcontainer-openclaw` 采用 `features/shell`、`features/terminal`、`features/preview` 与 `core/webcontainer`、`ui/utils`。
+
+## `packages/` 库包（workspace）
+
+编辑 **`packages/**`** 时：**先约定对外接口与类型，再写实现**；可复用逻辑**优先用类**封装；多能力包按 **标准目录结构（方案 3）** 分域组织。细则见 **`.cursor/rules/packages-lib.mdc`\*\*（按 glob 在编辑 packages 时自动附加）。

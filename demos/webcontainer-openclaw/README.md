@@ -13,13 +13,13 @@
 
 ## 配置
 
-根目录 [`terminal.config.json`](./terminal.config.json) 控制日志截断与单行命令长度上限（`maxCmdLen` 等）。构建时由 `src/lib/core/terminal/config.ts`（经 `TerminalConfigLoader`）静态导入。
+终端滚动缓冲与截断常量见 [`src/lib/features/terminal/xtermLogBuffer.ts`](./src/lib/features/terminal/xtermLogBuffer.ts)（`DEFAULT_TERMINAL_UI_CONFIG`，与历史 `terminal.config.json` 默认值对齐）。交互会话使用 **`web-os` 的 `ShellSession`**（真实 `jsh` stdin/out）；一键 PoC / `npm install` 仍通过 **`wc.spawn`** 前台进程写入 xterm。
 
 ## 已知限制（stdin / 非 PTY）
 
 - WebContainer 提供伪终端管道与 **`process.input`** 流；**不是** 操作系统级 PTY。
 - 依赖全屏 TUI（如部分 `ncurses`）、精确信号行为的 CLI **可能失败**。
-- 空闲时 **Enter** 将当前行以 `sh -c` 执行；**进程运行期间** 按键写入子进程 **stdin**。
+- **交互模式**：键盘输入经 xterm **`onData`** 写入 **`ShellSession.write`**，直达 **`jsh`**；**中止** 在前台 `npm`/`npx` 时 kill 进程，在交互 shell 时发送 Ctrl+C（字符串 `"\x03"`）。
 
 详见仓库 [`docs/research/feasibility-openclaw-webcontainers.md`](../../docs/research/feasibility-openclaw-webcontainers.md)。
 

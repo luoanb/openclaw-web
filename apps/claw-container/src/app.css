@@ -214,12 +214,9 @@ code {
   }
 }
 
+/* 全宽应用壳；旧版 Vite 模板曾用 1126px 居中“稿纸”列，宽屏会在两侧留空 */
 #app {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  width: 100%;
   min-height: 100svh;
   display: flex;
   flex-direction: column;

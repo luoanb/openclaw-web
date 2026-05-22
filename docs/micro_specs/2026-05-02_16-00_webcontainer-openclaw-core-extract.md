@@ -46,6 +46,7 @@
 - **`terminal.config.json`**：迁至 `packages/web-os/terminal.config.json`，`TerminalConfigLoader` 经 `src/terminal/config.ts` 引用；demo 根目录同名文件已删除。
 - **demo**：`package.json` 增加 `"web-os": "workspace:*"`；`TerminalPane.svelte`、`WorkspaceFilesDialog.svelte`、`OpenClawShell.svelte` 改为 `from "web-os"`；无需改 `vite.config.ts`。
 - **验证命令（均已通过）**：`pnpm install`；`pnpm exec tsc -p packages/web-os/tsconfig.json`；`pnpm --filter webcontainer-openclaw build`；`pnpm --filter webcontainer-openclaw check`。
+- **使用者文档**：`packages/web-os/README.md`（API 说明，导入方式与各模块职责表）。
 
 ---
 

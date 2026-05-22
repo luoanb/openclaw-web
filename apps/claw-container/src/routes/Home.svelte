@@ -1,164 +1,58 @@
-<script>
-	import svelteLogo from '../assets/svelte.svg';
-	import viteLogo from '../assets/vite.svg';
-	import heroImg from '../assets/hero.png';
-	import Counter from '$lib/Counter.svelte';
-	import { link } from 'svelte-spa-router';
+<script lang="ts">
+  import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+  } from "$lib/components/ui/tabs";
+  import { link } from "svelte-spa-router";
+
+  let tab = $state<"files" | "runtime" | "preview">("files");
 </script>
 
-<section id="center">
-	<div class="hero">
-		<img
-			src={heroImg}
-			class="base"
-			width="170"
-			height="179"
-			alt=""
-		/>
+<div class="flex min-h-[100dvh] flex-col bg-background text-foreground">
+  <!-- 与 Demo（ShowcaseLiveBlock tabs）一致：默认 variant = 分段底 + bg-muted，非 line 下划线 -->
+  <Tabs bind:value={tab} class="flex flex-1 flex-col gap-2 text-sm">
+    <header class="bg-background shrink-0 px-4 pt-4">
+      <TabsList
+        class="[&_[data-slot=tabs-trigger]]:min-w-0 [&_[data-slot=tabs-trigger]]:flex-1"
+      >
+        <TabsTrigger value="files">文件管理</TabsTrigger>
+        <TabsTrigger value="runtime">系统运行</TabsTrigger>
+        <TabsTrigger value="preview">功能预览</TabsTrigger>
+      </TabsList>
+    </header>
 
-		<img
-			src={svelteLogo}
-			class="framework"
-			alt="Svelte logo"
-		/>
+    <main class="flex min-h-0 flex-1 flex-col px-4 pb-6">
+      <TabsContent
+        value="files"
+        class="text-muted-foreground mt-1.5 flex-1 border-t border-border pt-2 text-xs"
+      >
+        <p>文件管理区域（待接入）</p>
+      </TabsContent>
+      <TabsContent
+        value="runtime"
+        class="text-muted-foreground mt-1.5 flex-1 border-t border-border pt-2 text-xs"
+      >
+        <p>系统运行区域（待接入）</p>
+      </TabsContent>
+      <TabsContent
+        value="preview"
+        class="mt-1.5 flex min-h-[40vh] flex-1 border-t border-border pt-2"
+      />
+    </main>
+  </Tabs>
 
-		<img src={viteLogo} class="vite" alt="Vite logo" />
-	</div>
-
-	<div>
-		<h1>Get started</h1>
-
-		<p>
-			Edit
-			<code>src/routes/Home.svelte</code>
-			and save to test
-			<code>HMR</code>
-		</p>
-
-		<p class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-			<a href="/about" use:link class="text-primary underline underline-offset-4">About（演示路由）</a>
-			<a href="/demo" use:link class="text-primary underline underline-offset-4">组件展示 Demo</a>
-		</p>
-	</div>
-
-	<Counter />
-</section>
-
-<div class="ticks"></div>
-
-<section id="next-steps">
-	<div id="docs">
-		<svg
-			class="icon"
-			role="presentation"
-			aria-hidden="true"
-		><use href="/icons.svg#documentation-icon"></use></svg>
-
-		<h2>Documentation</h2>
-		<p>Your questions, answered</p>
-
-		<ul>
-			<li>
-				<a
-					href="https://vite.dev/"
-					target="_blank"
-					rel="noreferrer"
-				>
-					<img class="logo" src={viteLogo} alt="" />
-					Explore Vite
-				</a>
-			</li>
-
-			<li>
-				<a
-					href="https://svelte.dev/"
-					target="_blank"
-					rel="noreferrer"
-				>
-					<img class="button-icon" src={svelteLogo} alt="" />
-					Learn more
-				</a>
-			</li>
-		</ul>
-	</div>
-
-	<div id="social">
-		<svg
-			class="icon"
-			role="presentation"
-			aria-hidden="true"
-		><use href="/icons.svg#social-icon"></use></svg>
-
-		<h2>Connect with us</h2>
-		<p>Join the Vite community</p>
-
-		<ul>
-			<li>
-				<a
-					href="https://github.com/vitejs/vite"
-					target="_blank"
-					rel="noreferrer"
-				>
-					<svg
-						class="button-icon"
-						role="presentation"
-						aria-hidden="true"
-					><use href="/icons.svg#github-icon"></use></svg>
-
-					GitHub
-				</a>
-			</li>
-
-			<li>
-				<a
-					href="https://chat.vite.dev/"
-					target="_blank"
-					rel="noreferrer"
-				>
-					<svg
-						class="button-icon"
-						role="presentation"
-						aria-hidden="true"
-					><use href="/icons.svg#discord-icon"></use></svg>
-
-					Discord
-				</a>
-			</li>
-
-			<li>
-				<a
-					href="https://x.com/vite_js"
-					target="_blank"
-					rel="noreferrer"
-				>
-					<svg
-						class="button-icon"
-						role="presentation"
-						aria-hidden="true"
-					><use href="/icons.svg#x-icon"></use></svg>
-
-					X.com
-				</a>
-			</li>
-
-			<li>
-				<a
-					href="https://bsky.app/profile/vite.dev"
-					target="_blank"
-					rel="noreferrer"
-				>
-					<svg
-						class="button-icon"
-						role="presentation"
-						aria-hidden="true"
-					><use href="/icons.svg#bluesky-icon"></use></svg>
-
-					Bluesky
-				</a>
-			</li>
-		</ul>
-	</div>
-</section>
-
-<div class="ticks"></div>
-<section id="spacer"></section>
+  <footer
+    class="border-t border-border px-4 py-3 text-xs text-muted-foreground flex items-center justify-center"
+  >
+    <span class="mr-3">演示路由</span>
+    <a href="/about" use:link class="text-primary underline underline-offset-4"
+      >About</a
+    >
+    <span class="mx-2 text-border">·</span>
+    <a href="/demo" use:link class="text-primary underline underline-offset-4"
+      >组件展示</a
+    >
+  </footer>
+</div>

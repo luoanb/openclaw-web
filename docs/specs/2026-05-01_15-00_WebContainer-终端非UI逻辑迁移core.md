@@ -114,7 +114,7 @@
 
 1. `cfg = TerminalConfigLoader.load()`；`ring = new TerminalLogBuffer()`；`processRef` / `stdinForwardRef` / `outputReaderRef` 各 `new` 一份。  
 2. 首屏或换行前：`TerminalCwdPrompt.formatPromptLine(workdir, cwdRel)` + `ring.writeCapped(term, …)`。  
-3. 用户回车：`WebContainerShellRunner.runShellLine(…)`；若 `code === 0` 且 `isCdOnlyLine(line)`，则 `cwdRel = resolveCdArg(cwdRel, cdArgFromLine(line))`。  
+3. 用户回车：`WebContainerShellRunner.runShellLine(…)`；若 `code === 0` 且 `isCdOnlyLine(line)`，则 `cwdRel = resolveCdArg(cwdRel, cdArgFromLine(line), workdirAbs)`（相对参数与交互式 shell 一致：基于当前会话目录与 **workdir** 锚点解析）。
 4. 长按中止：`abortCurrentShell(processRef, { stdinRef, outputReaderRef })`。  
 5. 自定义命令链：用 `runSpawn` 直接跑 `npm`/`npx` 等，参数与 `SpawnExtraOptions` 同上。
 
