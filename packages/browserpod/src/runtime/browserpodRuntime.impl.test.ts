@@ -27,6 +27,7 @@ describe("BrowserPodRuntimeManager", () => {
     const result = await manager.check();
 
     expect(result).toEqual({ ok: true, status: "supported", issues: [] });
+    expect(manager.status).toBe("supported");
     expect(booter.boot).not.toHaveBeenCalled();
   });
 
@@ -56,7 +57,23 @@ describe("BrowserPodRuntimeManager", () => {
 
     expect(first).toBe(second);
     expect(boot).toHaveBeenCalledTimes(1);
+    expect(manager.status).toBe("running");
     expect(manager.getSnapshot().session?.id).toBe(first.id);
+  });
+
+  it("maps missing API key check to failed runtime status", async () => {
+    const manager = new BrowserPodRuntimeManager(
+      createConfig({
+        apiKeyProvider: () => "",
+      }),
+    );
+
+    const result = await manager.check();
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe("misconfigured");
+    expect(manager.status).toBe("failed");
+    expect(result.issues[0]?.code).toBe("auth-missing");
   });
 
   it("maps missing API key to runtime contract error", async () => {

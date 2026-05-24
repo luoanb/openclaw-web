@@ -19,10 +19,14 @@
   - 当前已验证导出：`BrowserPod`。
   - 当前已验证调用：
     - `BrowserPod.boot({ apiKey, storageKey })`
-    - `pod.run(command, args, options)`
+    - `pod.run(command, args, { echo: true, terminal, cwd })`
     - `pod.onPortal(listener)`
-    - `pod.createDefaultTerminal(domElement)`
+    - `await pod.createDefaultTerminal(domElement)`
     - `pod.createCustomTerminal(options)` 仅作为 demo 探测能力存在，本轮 runtime 管理不把它声明为稳定完整 stdin 能力。
+  - 当前 web-claw 终端 adapter 的命令运行应继承 demo 证据：
+    - shell 组合命令使用 `pod.run("sh", ["-c", script], { echo: true, terminal, cwd })`。
+    - `terminal` 必须是 `createDefaultTerminal` resolve 后的 terminal handle，不能把未 await 的 Promise 传入 `pod.run`。
+    - 默认工作目录使用 BrowserPod demo 已验证的 `/home/user`，避免把 `/` 当作可交互用户目录。
   - 当前未在官方 reference 与本仓库证据中确认：
     - `stop` / `dispose`
     - 进程 `kill` / `signal` / 可中止句柄

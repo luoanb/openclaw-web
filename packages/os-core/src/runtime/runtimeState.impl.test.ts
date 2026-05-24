@@ -89,4 +89,38 @@ describe("RuntimeStateMachine", () => {
     expect(state.status).toBe("unsupported");
     expect(state.getSnapshot().lastCheck?.status).toBe("unsupported");
   });
+
+  it("turns supported checks into supported runtime status", () => {
+    const state = new RuntimeStateMachine();
+
+    state.setStatus("checking");
+    state.setCheckResult({
+      ok: true,
+      status: "supported",
+      issues: [],
+    });
+
+    expect(state.status).toBe("supported");
+    expect(state.getSnapshot().lastCheck?.status).toBe("supported");
+  });
+
+  it("turns misconfigured checks into failed runtime status", () => {
+    const state = new RuntimeStateMachine();
+
+    state.setStatus("checking");
+    state.setCheckResult({
+      ok: false,
+      status: "misconfigured",
+      issues: [
+        {
+          code: "auth-missing",
+          message: "BrowserPod API key is missing.",
+          recoverable: true,
+        },
+      ],
+    });
+
+    expect(state.status).toBe("failed");
+    expect(state.getSnapshot().lastCheck?.status).toBe("misconfigured");
+  });
 });

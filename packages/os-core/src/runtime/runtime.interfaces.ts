@@ -3,6 +3,7 @@ import type { RuntimeError } from "./runtime.errors";
 export type RuntimeStatus =
   | "idle"
   | "checking"
+  | "supported"
   | "booting"
   | "running"
   | "stopping"

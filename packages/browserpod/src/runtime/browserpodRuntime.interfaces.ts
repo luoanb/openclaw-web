@@ -22,6 +22,7 @@ export type BrowserPodLike = {
 };
 
 export type BrowserPodRunOptions = {
+  readonly echo?: boolean;
   readonly terminal: BrowserPodTerminalLike;
   readonly cwd?: string;
 };
@@ -32,7 +33,7 @@ export type BrowserPodRun = (
   options: BrowserPodRunOptions,
 ) => Promise<unknown>;
 
-export type BrowserPodCreateDefaultTerminal = (element: HTMLElement) => BrowserPodTerminalLike;
+export type BrowserPodCreateDefaultTerminal = (element: HTMLElement) => BrowserPodTerminalLike | Promise<BrowserPodTerminalLike>;
 
 export type BrowserPodCreateCustomTerminal = (options: {
   readonly cols?: number;

@@ -23,6 +23,7 @@
   - BrowserPod 官方 reference 记录 `BrowserPod.boot({ apiKey, nodeVersion?, storageKey? })`；`storageKey` 用于在同 origin 或多 tab 下分配独立磁盘。
   - BrowserPod 官方 BrowserPod 方法列表包含 `boot`、`run`、`onPortal`、`createDirectory`、`createFile`、`openFile`、`createDefaultTerminal`，未列出 stop/dispose。
   - BrowserPod demo 已验证固定 `storageKey`、多默认终端、运行命令与部分 stdin 能力。
+- BrowserPod demo 的成功命令运行证据使用 `await pod.createDefaultTerminal(element)` 后的 terminal handle，再调用 `pod.run(command, args, { echo: true, terminal, cwd })`；web-claw terminal adapter 应沿用该调用形态，默认 cwd 使用已验证的 `/home/user`。
 - 约束与风险：
   - app 和 UI 不应直接 import BrowserPod SDK 类型。
   - 终端、文件、预览等上层能力必须复用同一个 runtime session。
@@ -67,6 +68,7 @@
 
 - 旧 `docs/specs/2026-05-24_18-00_web-claw-core-contract.md` 已有 `idle`、`booting`、`running`、`stopping`、`stopped`、`failed` 草案。
 - 容器管理需求新增了启动前检查语义，因此需要 `checking`，用来区分“还没真正 boot，只是在检查浏览器、隔离环境、认证配置”。
+- 启动前检查通过后需要一个可供业务层直接判断的稳定状态，因此需要 `supported`，表示“环境与配置已通过检查、尚未启动 runtime、允许用户启动容器”。
 - 容器管理需求要求区分普通失败与环境不支持，因此需要 `unsupported`，避免把缺 COOP/COEP、浏览器不支持这类问题混成普通 `failed`。
 
 这些状态服务于上层交互，而不是复刻底层 SDK。它们用于决定：是否显示启动入口、是否禁用终端输入、UI 是否提供手动重试入口、错误文案如何区分、多个功能是否能复用同一个 session。
@@ -75,6 +77,7 @@
 export type RuntimeStatus =
   | "idle"
   | "checking"
+  | "supported"
   | "booting"
   | "running"
   | "stopping"
@@ -84,7 +87,8 @@ export type RuntimeStatus =
 ```
 
 - `idle`：尚未启动，可检查或启动。
-- `checking`：正在做浏览器、隔离环境、认证配置等前置检查。
+- `checking`：正在做浏览器、隔离环境、认证配置等前置检查；这是瞬时态，检查完成后必须转入 `supported`、`failed` 或 `unsupported`，不得停留在 `checking`。
+- `supported`：前置检查通过，runtime 尚未启动；UI 可展示启动入口，业务层无需再从 `lastCheck.status` 推断可启动性。
 - `booting`：正在启动 BrowserPod 或等价 runtime。
 - `running`：runtime session 可用。
 - `stopping`：容器正在关机。
@@ -450,6 +454,8 @@ packages/browserpod/
   - 缓解方式：终端 adapter 依赖 `RuntimeSession`，代码实现时禁止终端 UI 直接 import BrowserPod。
 - 风险：capability 粒度不足导致 UI 误承诺。
   - 缓解方式：使用多值能力声明，并让未验证能力保持 `unknown` 或 `unsupported`。
+- 风险：BrowserPod `pod.run` 参数与 demo 证据偏离，导致基础命令执行失败。
+  - 缓解方式：adapter 先 await `createDefaultTerminal`，再将 resolve 后的 terminal handle 传入 `pod.run("sh", ["-c", script], { echo: true, terminal, cwd })`；默认 cwd 为 `/home/user`，并用单测锁定该映射。
 
 ## Validation Plan / 验证计划
 
@@ -457,8 +463,10 @@ packages/browserpod/
   - TypeScript 类型检查。
   - package lint 或 repo 现有 lint 命令。
 - 单元/集成测试：
-  - `idle -> checking -> booting -> running`。
+  - `idle -> checking -> supported`。
+  - `supported -> checking -> supported -> booting -> running`。
   - `checking -> unsupported`。
+  - `checking -> failed`。
   - `booting -> failed`。
   - `running -> stopping -> stopped`。
   - 重复 `boot()` 复用当前 session。

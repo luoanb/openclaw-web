@@ -46,7 +46,6 @@
     try {
       terminalSession = await terminalService.createTerminal(runtimeManager.currentSession, {
         name: "Terminal 1",
-        cwd: "/",
         element: terminalElement,
       });
       terminalSnapshot = terminalSession.getSnapshot();

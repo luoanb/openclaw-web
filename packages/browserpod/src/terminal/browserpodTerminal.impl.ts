@@ -24,6 +24,7 @@ const BROWSERPOD_TERMINAL_CAPABILITIES: TerminalCapabilities = {
   resize: false,
   cwd: true,
 };
+const BROWSERPOD_DEFAULT_CWD = "/home/user";
 
 export class BrowserPodTerminalService implements TerminalService {
   private nextTerminalIndex = 1;
@@ -43,7 +44,7 @@ export class BrowserPodTerminalService implements TerminalService {
     const id = createTerminalId();
     const name = options.name ?? `Terminal ${this.nextTerminalIndex++}`;
     const element = options.element ?? createDetachedTerminalElement();
-    const terminal = createBrowserPodTerminal(pod, element);
+    const terminal = await createBrowserPodTerminal(pod, element);
 
     return new BrowserPodTerminalSession({
       id,
@@ -79,7 +80,7 @@ class BrowserPodTerminalSession implements TerminalSession {
     this.state = new TerminalStateMachine({
       id: options.id,
       name: options.name,
-      cwd: options.cwd,
+      cwd: options.cwd ?? BROWSERPOD_DEFAULT_CWD,
       capabilities: this.capabilities,
     });
     this.state.setLifecycleStatus("open");
@@ -206,6 +207,7 @@ class BrowserPodTerminalSession implements TerminalSession {
 
     try {
       const result = await this.pod.run("sh", ["-c", command], {
+        echo: true,
         terminal: this.terminal,
         cwd: this.cwd,
       });
@@ -217,7 +219,7 @@ class BrowserPodTerminalSession implements TerminalSession {
       return { ok: true };
     } catch (error) {
       this.state.endProcess({ endedAt: Date.now(), exitCode: null });
-      return this.failAction("failed", "BrowserPod command failed.", "terminal-command-failed", error);
+      return this.failAction("failed", formatBrowserPodCommandError(error), "terminal-command-failed", error);
     }
   }
 
@@ -240,7 +242,7 @@ class BrowserPodTerminalSession implements TerminalSession {
   }
 }
 
-function createBrowserPodTerminal(pod: BrowserPodLike, element: HTMLElement): BrowserPodTerminalLike {
+async function createBrowserPodTerminal(pod: BrowserPodLike, element: HTMLElement): Promise<BrowserPodTerminalLike> {
   if (typeof pod.createDefaultTerminal !== "function") {
     throw new TerminalContractError({
       code: "terminal-create-failed",
@@ -276,6 +278,16 @@ function readExitCode(result: unknown): number | null {
     if (typeof exitCode === "number") return exitCode;
   }
   return null;
+}
+
+function formatBrowserPodCommandError(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return `BrowserPod command failed: ${error.message}`;
+  }
+  if (typeof error === "string" && error) {
+    return `BrowserPod command failed: ${error}`;
+  }
+  return "BrowserPod command failed.";
 }
 
 function createTerminalId(): string {

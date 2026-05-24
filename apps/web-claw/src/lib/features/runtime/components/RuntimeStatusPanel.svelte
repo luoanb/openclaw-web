@@ -51,6 +51,7 @@
     const labels: Record<RuntimeStatus, string> = {
       idle: "未启动",
       checking: "检查中",
+      supported: "检查通过",
       booting: "启动中",
       running: "运行中",
       stopping: "关机中",
@@ -63,6 +64,7 @@
 
   function statusBadgeClass(status: RuntimeStatus) {
     if (status === "running") return "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300";
+    if (status === "supported") return "border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-300";
     if (status === "failed" || status === "unsupported") return "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300";
     if (status === "checking" || status === "booting" || status === "stopping") return "border-yellow-200 bg-yellow-50 text-yellow-800 dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-300";
     return "border-border bg-muted text-muted-foreground";

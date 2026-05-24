@@ -36,10 +36,60 @@ describe("BrowserPodTerminalService", () => {
 
     expect(result).toEqual({ ok: true });
     expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], {
+      echo: true,
       terminal,
       cwd: "/workspace",
     });
     expect(session.interactionStatus).toBe("ready");
+  });
+
+  it("uses BrowserPod's verified user home as the default cwd", async () => {
+    const run = vi.fn(async () => ({ exitCode: 0 }));
+    const terminal = {};
+    const pod: BrowserPodLike = {
+      run,
+      createDefaultTerminal: vi.fn(() => terminal),
+    };
+    const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
+    const runtimeSession = await runtimeManager.boot();
+    const service = new BrowserPodTerminalService(runtimeManager);
+
+    const session = await service.createTerminal(runtimeSession, {
+      element: {} as HTMLElement,
+    });
+    const result = await session.submitCommand("echo hello");
+
+    expect(result).toEqual({ ok: true });
+    expect(session.cwd).toBe("/home/user");
+    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], {
+      echo: true,
+      terminal,
+      cwd: "/home/user",
+    });
+  });
+
+  it("awaits BrowserPod default terminal creation before running commands", async () => {
+    const run = vi.fn(async () => ({ exitCode: 0 }));
+    const terminal = {};
+    const pod: BrowserPodLike = {
+      run,
+      createDefaultTerminal: vi.fn(async () => terminal),
+    };
+    const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
+    const runtimeSession = await runtimeManager.boot();
+    const service = new BrowserPodTerminalService(runtimeManager);
+
+    const session = await service.createTerminal(runtimeSession, {
+      element: {} as HTMLElement,
+    });
+    const result = await session.submitCommand("echo hello");
+
+    expect(result).toEqual({ ok: true });
+    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], {
+      echo: true,
+      terminal,
+      cwd: "/home/user",
+    });
   });
 
   it("handles clear as a terminal UI event without running a process", async () => {
@@ -84,6 +134,7 @@ describe("BrowserPodTerminalService", () => {
     expect(result).toEqual({ ok: true });
     expect(session.cwd).toBe("/workspace/packages/os-core");
     expect(run).toHaveBeenCalledWith("sh", ["-c", "cd '/workspace/packages/os-core'"], {
+      echo: true,
       terminal: expect.any(Object),
       cwd: "/workspace",
     });
@@ -106,6 +157,27 @@ describe("BrowserPodTerminalService", () => {
     expect(result).toMatchObject({
       ok: false,
       reason: "unsupported",
+    });
+  });
+
+  it("includes BrowserPod command failure details in action results", async () => {
+    const pod: BrowserPodLike = {
+      run: vi.fn(async () => {
+        throw new Error("sdk rejected command");
+      }),
+      createDefaultTerminal: vi.fn(() => ({})),
+    };
+    const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
+    const runtimeSession = await runtimeManager.boot();
+    const service = new BrowserPodTerminalService(runtimeManager);
+    const session = await service.createTerminal(runtimeSession, { element: {} as HTMLElement });
+
+    const result = await session.submitCommand("echo hello");
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "failed",
+      message: "BrowserPod command failed: sdk rejected command",
     });
   });
 });

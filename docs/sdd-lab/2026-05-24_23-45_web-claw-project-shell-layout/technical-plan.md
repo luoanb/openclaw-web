@@ -179,6 +179,7 @@ App.svelte
 - 页面进入即自动启动唯一当前容器。
 - 自动启动由纯 TS `WebClawRuntimeOrchestrator` 编排，Svelte 组件只触发 `appOpened()` 意图。
 - 若 manager 已处于 `running`，重复进入或组件重挂载应复用当前 session，不重复 boot。
+- 若 manager 已处于 `supported`，说明前置检查已通过但尚未启动，应继续触发 boot 或展示可启动入口。
 - 若处于 `checking` / `booting`，主区域展示终端加载态。
 - 若处于 `failed`，主区域展示终端阻塞态，并提供“重试启动”和“打开容器面板”。
 - 若处于 `unsupported`，主区域展示不可恢复说明，不展示无效重试。
@@ -223,7 +224,7 @@ store 状态层
 ### 与现有 runtime 技术方案的关系
 
 - 本方案继承 `container-runtime-management`：
-  - `RuntimeStatus`: `idle`、`checking`、`booting`、`running`、`stopping`、`stopped`、`failed`、`unsupported`。
+  - `RuntimeStatus`: `idle`、`checking`、`supported`、`booting`、`running`、`stopping`、`stopped`、`failed`、`unsupported`。
   - `RuntimeManager`: `check?()`、`boot()`、`stop()`、`getSnapshot()`、`onEvent()`。
   - `RuntimeSession` 不暴露 `createTerminal()`、`run()`、`createPreview()` 等上层方法。
   - capabilities 是能力声明，不是运行状态。
@@ -272,6 +273,7 @@ store 状态层
   - Tab 右侧 More 菜单放低频系统操作：`打开容器面板`、`容器关机`、后续可扩展 `复制诊断信息`。
 - Main area：
   - `checking` / `booting`：显示终端加载态，文案围绕“正在准备这台浏览器内计算机”。
+  - `supported`：显示可启动状态；若自动启动策略仍启用，通常只会短暂出现。
   - `running`：显示终端面板。
   - `failed`：显示错误摘要、重试入口、打开容器面板入口。
   - `unsupported`：显示环境不支持原因与修复建议。
@@ -308,6 +310,9 @@ store 状态层
 - `checking`：
   - 主区域显示检查中 skeleton/progress。
   - 抽屉展示 COOP/COEP、API Key、storageKey resolver 等检查项。
+- `supported`：
+  - 主区域显示可启动状态或继续进入自动启动流程。
+  - 抽屉展示最近一次检查通过。
 - `booting`：
   - 主区域显示终端加载态。
   - Tabs 保持可见，Files/Preview 仍可切换到占位，但不可触发 runtime 能力。

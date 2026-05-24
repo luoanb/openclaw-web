@@ -77,10 +77,11 @@ export class RuntimeStateMachine {
   }
 
   setCheckResult(result: RuntimeCheckResult): void {
-    const status = result.status === "unsupported" ? "unsupported" : this.snapshot.status;
+    const status = RuntimeStateMachine.statusFromCheckResult(result);
+    const statusChanged = status !== this.snapshot.status;
     this.updateSnapshot({ lastCheck: result, status });
     this.emit({ type: "runtime-check", result });
-    if (status === "unsupported") {
+    if (statusChanged) {
       this.emit({ type: "runtime-status", status });
     }
   }
@@ -128,6 +129,12 @@ export class RuntimeStateMachine {
     for (const listener of this.listeners) {
       listener(event);
     }
+  }
+
+  private static statusFromCheckResult(result: RuntimeCheckResult): RuntimeStatus {
+    if (result.status === "supported") return "supported";
+    if (result.status === "unsupported") return "unsupported";
+    return "failed";
   }
 }
 
