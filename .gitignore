@@ -89,3 +89,5 @@ temp/
 * (1).pptx
 * (1).pdf
 AGENTS.expcap.md
+
+.playwright-mcp/

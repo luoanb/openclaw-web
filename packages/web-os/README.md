@@ -1,5 +1,9 @@
 # `web-os`
 
+> **废案（已放弃）** — 本目录为**浏览器运行时选型过程**中产生的探索包，**不得**作为新功能或正式产品的开发基线。状态说明见 **[`STATUS.md`](./STATUS.md)**。下文 API 文档仅作历史参考。
+
+---
+
 面向浏览器 **WebContainer** 场景的 TypeScript 工具库：虚拟文件系统引导、工作区快照（IndexedDB）、**`ShellSession` 绿场终端**、预览 iframe 与 `server-ready` 的对接。
 
 **入口**：从包根导入即可（本仓库通过 `"web-os": "workspace:*"` 链接）。

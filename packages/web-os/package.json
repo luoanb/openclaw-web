@@ -2,6 +2,7 @@
   "name": "web-os",
   "version": "0.0.0",
   "private": true,
+  "description": "[废案] 选型过程中的 WebContainer runtime 探索包；勿用于新开发。见 STATUS.md。",
   "type": "module",
   "sideEffects": false,
   "scripts": {

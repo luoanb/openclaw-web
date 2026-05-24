@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-23T12:00:00.000Z",
+  "title": "Design System: OpenClaw Web",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "oklch(1 0 0)",
+        "tonalRamp": [
+          "oklch(0.15 0 0)",
+          "oklch(0.25 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.55 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.75 0 0)",
+          "oklch(0.88 0 0)",
+          "oklch(0.95 0 0)",
+          "oklch(1 0 0)"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Ink Primary",
+        "canonical": "oklch(0.205 0 0)",
+        "tonalRamp": [
+          "oklch(0.12 0 0)",
+          "oklch(0.18 0 0)",
+          "oklch(0.22 0 0)",
+          "oklch(0.28 0 0)",
+          "oklch(0.35 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.55 0 0)",
+          "oklch(0.65 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.92 0 0)"
+        ]
+      },
+      "destructive": {
+        "role": "tertiary",
+        "displayName": "Signal Red",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": [
+          "oklch(0.25 0.12 27)",
+          "oklch(0.32 0.14 27)",
+          "oklch(0.40 0.16 27)",
+          "oklch(0.48 0.18 27)",
+          "oklch(0.52 0.20 27)",
+          "oklch(0.58 0.22 27)",
+          "oklch(0.65 0.23 27)",
+          "oklch(0.72 0.24 27)",
+          "oklch(0.82 0.20 27)",
+          "oklch(0.92 0.10 27)"
+        ]
+      },
+      "marketing-violet": {
+        "role": "tertiary",
+        "displayName": "Signal Violet",
+        "canonical": "oklch(0.58 0.28 302)",
+        "tonalRamp": [
+          "oklch(0.20 0.10 302)",
+          "oklch(0.28 0.14 302)",
+          "oklch(0.36 0.18 302)",
+          "oklch(0.44 0.22 302)",
+          "oklch(0.52 0.26 302)",
+          "oklch(0.58 0.28 302)",
+          "oklch(0.66 0.26 302)",
+          "oklch(0.74 0.22 302)",
+          "oklch(0.84 0.14 302)",
+          "oklch(0.94 0.06 302)"
+        ]
+      },
+      "dark-sidebar-accent": {
+        "role": "secondary",
+        "displayName": "Sidebar Focus Violet",
+        "canonical": "oklch(0.488 0.243 264.376)",
+        "tonalRamp": [
+          "oklch(0.18 0.08 264)",
+          "oklch(0.24 0.12 264)",
+          "oklch(0.30 0.16 264)",
+          "oklch(0.36 0.19 264)",
+          "oklch(0.42 0.21 264)",
+          "oklch(0.49 0.24 264)",
+          "oklch(0.56 0.22 264)",
+          "oklch(0.64 0.18 264)",
+          "oklch(0.76 0.12 264)",
+          "oklch(0.90 0.05 264)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Marketing heroes only; not workbench chrome." },
+      "headline": { "displayName": "Headline", "purpose": "Section titles on marketing pages." },
+      "title": { "displayName": "Title", "purpose": "Card titles, tab triggers, sidebar items." },
+      "body": { "displayName": "Body", "purpose": "Default UI copy; max 65–75ch in prose." },
+      "label": { "displayName": "Label", "purpose": "Buttons, badges, compact metadata." },
+      "mono": { "displayName": "Mono", "purpose": "Code blocks and terminal-adjacent output." }
+    },
+    "shadows": [
+      {
+        "name": "marketing-lift",
+        "value": "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)",
+        "purpose": "Legacy marketing sections only; not workbench cards."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Default transition-all on buttons and interactive controls."
+      },
+      {
+        "name": "ease-out-quart",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Preferred entrance/exit when animation is required; no bounce."
+      }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Default workbench CTA; ink fill on light canvas.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\">Run</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 0.5rem; gap: 0.25rem; font-family: 'Inter Variable', system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; line-height: 1.35; color: var(--primary-foreground); background: var(--primary); border: 1px solid transparent; border-radius: calc(var(--radius) * 0.8); cursor: pointer; transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.1s; outline: none; } .ds-btn-primary:hover { background: color-mix(in oklch, var(--primary) 80%, transparent); } .ds-btn-primary:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 30%, transparent); border-color: var(--ring); } .ds-btn-primary:active:not([aria-haspopup]) { transform: translateY(1px); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary actions on dense toolbars.",
+      "html": "<button type=\"button\" class=\"ds-btn-outline\">Cancel</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 0.5rem; font-family: 'Inter Variable', system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; color: var(--foreground); background: transparent; border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.8); cursor: pointer; transition: background 0.2s, color 0.2s; } .ds-btn-outline:hover { background: color-mix(in oklch, var(--input) 50%, transparent); } .ds-btn-outline:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 30%, transparent); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Tertiary/icon-adjacent actions in sidebars and tables.",
+      "html": "<button type=\"button\" class=\"ds-btn-ghost\">More</button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 0.5rem; font-family: 'Inter Variable', system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; color: var(--foreground); background: transparent; border: 1px solid transparent; border-radius: calc(var(--radius) * 0.8); cursor: pointer; } .ds-btn-ghost:hover { background: var(--muted); color: var(--foreground); } .ds-btn-ghost:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 30%, transparent); }"
+    },
+    {
+      "name": "Destructive Button",
+      "kind": "button",
+      "refersTo": "button-destructive",
+      "description": "Irreversible actions; tinted destructive, not solid red fill.",
+      "html": "<button type=\"button\" class=\"ds-btn-destructive\">Delete</button>",
+      "css": ".ds-btn-destructive { display: inline-flex; align-items: center; justify-content: center; height: 1.75rem; padding: 0 0.5rem; font-family: 'Inter Variable', system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; color: var(--destructive); background: color-mix(in oklch, var(--destructive) 10%, transparent); border: 1px solid transparent; border-radius: calc(var(--radius) * 0.8); cursor: pointer; } .ds-btn-destructive:hover { background: color-mix(in oklch, var(--destructive) 20%, transparent); } .ds-btn-destructive:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklch, var(--destructive) 20%, transparent); }"
+    },
+    {
+      "name": "Default Card",
+      "kind": "card",
+      "refersTo": "card-default",
+      "description": "Grouped content; ring elevation, no drop shadow.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Watch events</h3><p class=\"ds-card-body\">Filesystem callbacks appear here.</p></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 1rem; padding: 1rem; background: var(--card); color: var(--card-foreground); border-radius: var(--radius); box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent); font-family: 'Inter Variable', system-ui, sans-serif; } .ds-card-title { margin: 0; font-size: 0.75rem; font-weight: 500; line-height: 1.35; } .ds-card-body { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--muted-foreground); max-width: 65ch; }"
+    },
+    {
+      "name": "Segmented Tabs",
+      "kind": "nav",
+      "refersTo": "button-ghost",
+      "description": "Workbench header tabs (Files / Runtime / Preview pattern).",
+      "html": "<nav class=\"ds-tabs\" aria-label=\"Workbench\"><div class=\"ds-tabs-list\"><button type=\"button\" class=\"ds-tab ds-tab-active\">文件管理</button><button type=\"button\" class=\"ds-tab\">系统运行</button><button type=\"button\" class=\"ds-tab\">功能预览</button></div></nav>",
+      "css": ".ds-tabs-list { display: flex; gap: 0.25rem; padding: 0.25rem; background: var(--muted); border-radius: calc(var(--radius) * 0.8); } .ds-tab { flex: 1; min-width: 0; height: 1.75rem; padding: 0 0.5rem; font-family: 'Inter Variable', system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: var(--muted-foreground); background: transparent; border: none; border-radius: calc(var(--radius) * 0.6); cursor: pointer; } .ds-tab:hover { color: var(--foreground); } .ds-tab-active { background: var(--background); color: var(--foreground); box-shadow: 0 1px 2px rgba(0,0,0,0.06); } .ds-tab:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "button-outline",
+      "description": "Standard single-line input on workbench forms.",
+      "html": "<input type=\"text\" class=\"ds-input\" placeholder=\"Path\" aria-label=\"Path\" />",
+      "css": ".ds-input { display: block; width: 100%; max-width: 24rem; height: 1.75rem; padding: 0 0.5rem; font-family: 'Inter Variable', system-ui, sans-serif; font-size: 0.75rem; color: var(--foreground); background: var(--background); border: 1px solid var(--input); border-radius: calc(var(--radius) * 0.8); outline: none; box-sizing: border-box; } .ds-input::placeholder { color: var(--muted-foreground); } .ds-input:focus-visible { box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 30%, transparent); border-color: var(--ring); } .ds-input[aria-invalid=\"true\"] { border-color: var(--destructive); box-shadow: 0 0 0 2px color-mix(in oklch, var(--destructive) 20%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Embedded Workbench",
+    "overview": "OpenClaw Web is a product surface: a browser-hosted developer environment. Visual design serves density, legibility, and long sessions. The system stacks Figma Bits UI kit on shadcn-svelte + Tailwind v4 primitives with OKLCH semantic tokens. Workbench chrome uses restrained neutrals; legacy marketing shell retains purple accent variables. Figma is normative for component shape and states via docs/design/BitsUI.md.",
+    "keyCharacteristics": [
+      "Product register: tool UI density",
+      "OKLCH semantic tokens with .dark class",
+      "Inter Variable as single sans workhorse",
+      "Bits UI primitives in $lib/components/ui/*",
+      "Ring + tonal layering for cards",
+      "Compact control sizes (h-7 default button)"
+    ],
+    "rules": [
+      { "name": "The Figma-First Rule", "body": "Any new button, input, dialog, or tab state must be traceable to a row in docs/design/BitsUI.md before merge.", "section": "colors" },
+      { "name": "The One-Violet Rule", "body": "Marketing violet appears on ≤10% of any workbench screen. Workbench actions use ink primary, not Signal Violet.", "section": "colors" },
+      { "name": "The No-Pure-Black Rule", "body": "Never set #000 or #fff. Use OKLCH canvas/ink tokens or tinted legacy variables.", "section": "colors" },
+      { "name": "The Compact UI Rule", "body": "Inside $lib/components/ui/*, default to text-xs and text-xs/relaxed. Do not import marketing 56px headings into product routes.", "section": "typography" },
+      { "name": "The Inter-Is-Baseline Rule", "body": "Inter is the project default, not a differentiator. Pair with spacing, hierarchy, and Figma-accurate states.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces sit flat at rest. Hover states adjust background opacity, not Y-translate stacks, except subtle active translate on buttons.", "section": "elevation" },
+      { "name": "The Ring-Not-Card-Grid Rule", "body": "Prefer bordered sections and sidebar grouping over identical shadowed card matrices.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do open docs/design/BitsUI.md and the linked Figma node before changing any control variant or spacing.",
+      "Do use semantic tokens (bg-background, text-muted-foreground, border-border) in new Svelte routes and features.",
+      "Do keep body copy within 65–75ch in readable prose areas.",
+      "Do use OKLCH tokens from apps/claw-container/src/app.css as the single source of truth for theme changes.",
+      "Do match Bits UI dark variants when implementing dark: Tailwind classes.",
+      "Do prefer inline panels, tabs, and sidebars over modals for frequent actions."
+    ],
+    "donts": [
+      "Don't ship purple-to-blue gradients, neon glows, or glassmorphism as default chrome.",
+      "Don't use border-left or border-right >1px as a colored accent stripe on lists, alerts, or cards.",
+      "Don't use background-clip: text gradient headings.",
+      "Don't lay out features as identical icon + title + blurb card grids without a Figma reference.",
+      "Don't default to Inter + purple accent as the only brand move.",
+      "Don't use pure #000 / #fff or untinted gray text on tinted backgrounds.",
+      "Don't animate layout properties or use bounce/elastic easing.",
+      "Don't open a modal when a tab, drawer, or inline expansion can carry the flow.",
+      "Don't invent component styles that contradict the Bits UI kit."
+    ]
+  }
+}
