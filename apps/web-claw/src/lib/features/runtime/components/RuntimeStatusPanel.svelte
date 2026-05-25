@@ -15,16 +15,8 @@
       snapshot = manager.getSnapshot();
     });
 
-    void runInitialCheck();
-
     return unsubscribe;
   });
-
-  async function runInitialCheck() {
-    if (manager.check && snapshot.status === "idle") {
-      await runAction(() => manager.check?.({ reason: "app-open" }));
-    }
-  }
 
   async function bootRuntime() {
     await runAction(() => manager.boot({ reason: snapshot.status === "failed" ? "retry" : "manual" }));

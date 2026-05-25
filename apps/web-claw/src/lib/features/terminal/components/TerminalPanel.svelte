@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { Button } from "$lib/components/ui/button";
   import { RuntimeManagerProvider } from "$lib/core/runtime";
   import { TerminalServiceProvider } from "$lib/core/terminal";
@@ -10,9 +10,13 @@
 
   let runtimeSnapshot: RuntimeSnapshot = $state(runtimeManager.getSnapshot());
   let terminalElement: HTMLDivElement | undefined = $state();
+  let promptElement: HTMLInputElement | undefined = $state();
   let terminalSession: TerminalSession | null = $state(null);
   let terminalSnapshot: TerminalSnapshot | null = $state(null);
   let terminalInput = $state("");
+  let commandHistory: string[] = $state([]);
+  let historyCursor: number | null = $state(null);
+  let historyDraft = $state("");
   let busy = $state(false);
   let errorMessage: string | null = $state(null);
   let notices: string[] = $state([]);
@@ -54,6 +58,9 @@
       errorMessage = error instanceof Error ? error.message : String(error);
     } finally {
       busy = false;
+      if (terminalSession) {
+        await focusPrompt();
+      }
     }
   }
 
@@ -63,6 +70,8 @@
     terminalSession = null;
     terminalSnapshot = null;
     notices = [];
+    historyCursor = null;
+    historyDraft = "";
   }
 
   function handleTerminalEvent(event: TerminalEvent) {
@@ -90,19 +99,74 @@
     busy = true;
     errorMessage = null;
     terminalInput = "";
+    historyCursor = null;
+    historyDraft = "";
+    appendCommandHistory(command);
     const result = await terminalSession.submitCommand(command);
     terminalSnapshot = terminalSession.getSnapshot();
     if (!result.ok) {
       errorMessage = result.message;
     }
     busy = false;
+    await focusPrompt();
   }
 
   function handlePromptKeydown(event: KeyboardEvent) {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      showPreviousHistory();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      showNextHistory();
+      return;
+    }
+
     if (event.key !== "Enter") return;
 
     event.preventDefault();
     void submitPrompt();
+  }
+
+  function appendCommandHistory(command: string) {
+    if (commandHistory.at(-1) === command) return;
+    commandHistory = [...commandHistory, command];
+  }
+
+  function showPreviousHistory() {
+    if (commandHistory.length === 0 || promptDisabled()) return;
+
+    if (historyCursor === null) {
+      historyDraft = terminalInput;
+      historyCursor = commandHistory.length - 1;
+    } else {
+      historyCursor = Math.max(0, historyCursor - 1);
+    }
+
+    terminalInput = commandHistory[historyCursor] ?? "";
+  }
+
+  function showNextHistory() {
+    if (commandHistory.length === 0 || historyCursor === null || promptDisabled()) return;
+
+    if (historyCursor >= commandHistory.length - 1) {
+      historyCursor = null;
+      terminalInput = historyDraft;
+      historyDraft = "";
+      return;
+    }
+
+    historyCursor += 1;
+    terminalInput = commandHistory[historyCursor] ?? "";
+  }
+
+  async function focusPrompt() {
+    await tick();
+    if (!promptDisabled()) {
+      promptElement?.focus();
+    }
   }
 
   function promptDisabled() {
@@ -151,6 +215,7 @@
       {terminalSnapshot?.cwd ?? "/"}
     </span>
     <input
+      bind:this={promptElement}
       class="min-w-0 flex-1 bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
       aria-label="Terminal command"
       placeholder={runtimeSnapshot.status === "running" ? "输入命令后按 Enter" : "等待容器启动"}
