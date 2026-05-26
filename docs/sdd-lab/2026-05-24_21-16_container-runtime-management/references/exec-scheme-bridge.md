@@ -11,6 +11,7 @@
   - `src/main.js` 已使用 `BrowserPod.boot({ apiKey, storageKey })` 与 `pod.onPortal(...)`。
   - `src/cases/multipleTerminals.case.js` 已验证同一个 pod 可创建两个默认终端并分别绑定 `pod.run` 输出。
   - `src/cases/interactiveTerminal.case.js` 已记录默认 terminal 的部分 stdin 能力与 custom terminal 边界。
+  - `src/cases/customTerminal.case.js` 探测报告见 [`custom-terminal-probe-report.md`](./custom-terminal-probe-report.md)；运行时类型见 [`browserpod-sdk-runtime.types.md`](./browserpod-sdk-runtime.types.md)（`write` 在 `createCustomTerminal` 返回的 terminal 实例上）。
 
 ## 2. 库 API
 
@@ -22,7 +23,7 @@
     - `pod.run(command, args, { echo: true, terminal, cwd })`
     - `pod.onPortal(listener)`
     - `await pod.createDefaultTerminal(domElement)`
-    - `pod.createCustomTerminal(options)` 仅作为 demo 探测能力存在，本轮 runtime 管理不把它声明为稳定完整 stdin 能力。
+    - `pod.createCustomTerminal(options)`：`onOutput` 输出接管已验证；程序化 stdin（`write`）不可用，见 [`custom-terminal-probe-report.md`](./custom-terminal-probe-report.md)。不声明为稳定完整 stdin 能力。
   - 当前 web-claw 终端 adapter 的命令运行应继承 demo 证据：
     - shell 组合命令使用 `pod.run("sh", ["-c", script], { echo: true, terminal, cwd })`。
     - `terminal` 必须是 `createDefaultTerminal` resolve 后的 terminal handle，不能把未 await 的 Promise 传入 `pod.run`。

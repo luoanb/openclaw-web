@@ -4,6 +4,7 @@
   import * as Drawer from "$lib/components/ui/drawer";
   import { RuntimeManagerProvider } from "$lib/core/runtime";
   import * as Tabs from "$lib/components/ui/tabs";
+  import FilesPanel from "$lib/features/files/components/FilesPanel.svelte";
   import RuntimeStatusPanel from "$lib/features/runtime/components/RuntimeStatusPanel.svelte";
   import TerminalPanel from "$lib/features/terminal/components/TerminalPanel.svelte";
   import StatusBanner from "$lib/ui/components/StatusBanner.svelte";
@@ -113,8 +114,8 @@
           <TerminalPanel />
         </Tabs.Content>
 
-        <Tabs.Content value="files" class="p-4 text-muted-foreground">
-          Files tab placeholder.
+        <Tabs.Content value="files" class="flex min-h-0 flex-1 flex-col p-4">
+          <FilesPanel onOpenRuntime={() => (runtimeDrawerOpen = true)} />
         </Tabs.Content>
 
         <Tabs.Content value="preview" class="p-4 text-muted-foreground">
