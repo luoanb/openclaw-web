@@ -162,8 +162,8 @@ describe("BrowserPodFileService", () => {
     expect(snapshot.size).toBe(5);
   });
 
-  it("writes binary file bytes through a temporary base64 file", async () => {
-    const tempFile: BrowserPodFileLike = {
+  it("writes binary file bytes through BrowserPod binary file API", async () => {
+    const binaryFile: BrowserPodFileLike = {
       write: vi.fn(async () => 0),
       close: vi.fn(async () => undefined),
     };
@@ -175,10 +175,37 @@ describe("BrowserPodFileService", () => {
         return {};
       }),
       run: vi.fn(async () => {
-        onOutput?.(encoder.encode(""));
+        onOutput?.(encoder.encode("__OPENCLAW_PATH_MISSING__"));
         return { exitCode: 0 };
       }),
-      createFile: vi.fn(async () => tempFile),
+      createFile: vi.fn(async () => binaryFile),
+    };
+    const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
+    const runtimeSession = await runtimeManager.boot();
+    const service = new BrowserPodFileService(runtimeManager);
+    const content = new TextEncoder().encode("hello").buffer;
+
+    const result = await service.writeFileBytes(runtimeSession, "/home/user/file.bin", content);
+
+    expect(result).toEqual({ ok: true });
+    expect(pod.createFile).toHaveBeenCalledWith("/home/user/file.bin", "binary");
+    expect(binaryFile.write).toHaveBeenCalledWith(content);
+    expect(binaryFile.close).toHaveBeenCalled();
+  });
+
+  it("does not overwrite an existing binary file by default", async () => {
+    const encoder = new TextEncoder();
+    let onOutput: ((buffer: Uint8Array) => void) | null = null;
+    const pod: BrowserPodLike = {
+      createCustomTerminal: vi.fn(async (options) => {
+        onOutput = options.onOutput;
+        return {};
+      }),
+      run: vi.fn(async () => {
+        onOutput?.(encoder.encode("__OPENCLAW_PATH_EXISTS__"));
+        return { exitCode: 0 };
+      }),
+      createFile: vi.fn(),
     };
     const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
     const runtimeSession = await runtimeManager.boot();
@@ -186,13 +213,11 @@ describe("BrowserPodFileService", () => {
 
     const result = await service.writeFileBytes(runtimeSession, "/home/user/file.bin", new TextEncoder().encode("hello").buffer);
 
-    expect(result).toEqual({ ok: true });
-    expect(tempFile.write).toHaveBeenCalledWith("aGVsbG8=");
-    expect(pod.run).toHaveBeenCalledWith(
-      "sh",
-      [expect.stringContaining("-lc"), expect.stringContaining("base64 -d \"$tmp\" > \"$target\"")],
-      expect.objectContaining({ cwd: "/" }),
-    );
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "path-already-exists" },
+    });
+    expect(pod.createFile).not.toHaveBeenCalled();
   });
 
   it("copies paths through the BrowserPod command runner", async () => {
@@ -217,5 +242,19 @@ describe("BrowserPodFileService", () => {
 
     expect(result).toEqual({ ok: true });
     expect(pod.run).toHaveBeenCalled();
+  });
+
+  it("returns a failure when delete target is not removed", async () => {
+    const pod = createPodWithFile({}, "__OPENCLAW_DELETE_STILL_EXISTS__");
+    const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
+    const runtimeSession = await runtimeManager.boot();
+    const service = new BrowserPodFileService(runtimeManager);
+
+    const result = await service.delete(runtimeSession, "/home/user/stuck.txt");
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "delete-failed" },
+    });
   });
 });

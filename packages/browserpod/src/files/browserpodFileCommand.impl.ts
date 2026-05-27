@@ -1,4 +1,4 @@
-import { FileContractError, type DirectorySnapshot, type FileEntry } from "os-core";
+import { DebugLogger, FileContractError, type DirectorySnapshot, type FileEntry, type FileErrorCode } from "os-core";
 import type { BrowserPodLike } from "../runtime";
 import { CustomTerminalCommandRunner } from "../command";
 import { BrowserPodFilePath } from "./browserpodFilePath.impl";
@@ -9,10 +9,16 @@ const FILE_BASE64_START_SENTINEL = "__OPENCLAW_FILE_BASE64_START__";
 const FILE_BASE64_END_SENTINEL = "__OPENCLAW_FILE_BASE64_END__";
 const PATH_EXISTS_SENTINEL = "__OPENCLAW_PATH_EXISTS__";
 const PATH_MISSING_SENTINEL = "__OPENCLAW_PATH_MISSING__";
+const DELETE_SUCCESS_SENTINEL = "__OPENCLAW_DELETE_SUCCESS__";
+const DELETE_MISSING_SENTINEL = "__OPENCLAW_DELETE_MISSING__";
+const DELETE_TYPE_MISMATCH_SENTINEL = "__OPENCLAW_DELETE_TYPE_MISMATCH__";
+const DELETE_FAILED_SENTINEL = "__OPENCLAW_DELETE_FAILED__";
+const DELETE_STILL_EXISTS_SENTINEL = "__OPENCLAW_DELETE_STILL_EXISTS__";
 const MAX_COPY_TARGET_ATTEMPTS = 100;
 
 export class BrowserPodFileCommandRunner {
   private readonly commandRunner = new CustomTerminalCommandRunner();
+  private readonly logger = new DebugLogger("browserpod.file.command");
 
   async listDirectory(pod: BrowserPodLike, path: string): Promise<DirectorySnapshot> {
     const normalizedPath = BrowserPodFilePath.normalize(path);
@@ -87,8 +93,12 @@ export class BrowserPodFileCommandRunner {
     );
 
     const output = stripAnsi(result.output);
-    if (output.includes(PATH_EXISTS_SENTINEL)) return true;
-    if (output.includes(PATH_MISSING_SENTINEL)) return false;
+    if (output.includes(PATH_EXISTS_SENTINEL)) {
+      return true;
+    }
+    if (output.includes(PATH_MISSING_SENTINEL)) {
+      return false;
+    }
     throw new FileContractError({
       code: "path-invalid",
       message: `Failed to check path ${normalizedPath}.`,
@@ -97,9 +107,86 @@ export class BrowserPodFileCommandRunner {
     });
   }
 
+  async deletePath(
+    pod: BrowserPodLike,
+    path: string,
+    options: { readonly recursive?: boolean } = {},
+  ): Promise<void> {
+    const normalizedPath = BrowserPodFilePath.normalize(path);
+    const recursive = Boolean(options.recursive);
+    const startedAt = this.logger.start("deletePath", {
+      path: normalizedPath,
+      recursive,
+    });
+    const shellPath = BrowserPodFilePath.shellQuote(normalizedPath);
+    const typeCheck = recursive
+      ? `if [ ! -d "$target" ]; then printf '${DELETE_TYPE_MISMATCH_SENTINEL}'; exit 0; fi`
+      : `if [ -d "$target" ]; then printf '${DELETE_TYPE_MISMATCH_SENTINEL}'; exit 0; fi`;
+    const removeCommand = recursive ? `rm -rf "$target"` : `rm -- "$target"`;
+    const script = [
+      `target=${shellPath}`,
+      `if [ ! -e "$target" ]; then printf '${DELETE_MISSING_SENTINEL}'; exit 0; fi`,
+      typeCheck,
+      removeCommand,
+      `status=$?`,
+      `if [ "$status" -ne 0 ]; then printf '${DELETE_FAILED_SENTINEL}'; exit 0; fi`,
+      `if [ -e "$target" ]; then printf '${DELETE_STILL_EXISTS_SENTINEL}'; else printf '${DELETE_SUCCESS_SENTINEL}'; fi`,
+    ].join("; ");
+    const result = await this.commandRunner.run(pod, "sh", ["-lc", script], {
+      cwd: "/",
+      timeoutMs: 15_000,
+    });
+    const output = stripAnsi(result.output);
+
+    if (output.includes(DELETE_SUCCESS_SENTINEL)) {
+      this.logger.success("deletePath", startedAt, {
+        path: normalizedPath,
+        recursive,
+      });
+      return;
+    }
+
+    const errorCode: FileErrorCode = output.includes(DELETE_MISSING_SENTINEL)
+      ? "path-not-found"
+      : output.includes(DELETE_TYPE_MISMATCH_SENTINEL)
+        ? "path-invalid"
+        : "delete-failed";
+    const reason = output.includes(DELETE_MISSING_SENTINEL)
+      ? "path-not-found"
+      : output.includes(DELETE_TYPE_MISMATCH_SENTINEL)
+        ? "type-mismatch"
+        : output.includes(DELETE_STILL_EXISTS_SENTINEL)
+          ? "path-still-exists"
+          : output.includes(DELETE_FAILED_SENTINEL)
+            ? "rm-failed"
+            : "invalid-delete-sentinel";
+    this.logger.error("deletePath", reason, startedAt, {
+      path: normalizedPath,
+      recursive,
+      errorCode,
+      reason,
+      commandOk: result.ok,
+      commandCode: result.code,
+      outputLength: output.length,
+    });
+    throw new FileContractError({
+      code: errorCode,
+      message: `Failed to delete ${normalizedPath}.`,
+      recoverable: true,
+      cause: {
+        ...result,
+        deleteReason: reason,
+      },
+    });
+  }
+
   async readFileBase64(pod: BrowserPodLike, path: string, maxBytes: number): Promise<string> {
     const normalizedPath = BrowserPodFilePath.normalize(path);
     const shellPath = BrowserPodFilePath.shellQuote(normalizedPath);
+    const startedAt = this.logger.start("readFileBase64", {
+      path: normalizedPath,
+      maxBytes,
+    });
     const script = [
       `p=${shellPath}`,
       `if [ ! -f "$p" ]; then exit 2; fi`,
@@ -115,6 +202,12 @@ export class BrowserPodFileCommandRunner {
     });
 
     if (!result.ok) {
+      this.logger.error("readFileBase64", result, startedAt, {
+        path: normalizedPath,
+        maxBytes,
+        exitCode: result.code,
+        outputLength: result.output.length,
+      });
       throw new FileContractError({
         code: result.code === 2 ? "path-not-found" : result.code === 3 ? "file-too-large" : "file-read-failed",
         message:
@@ -130,6 +223,11 @@ export class BrowserPodFileCommandRunner {
     const start = output.indexOf(FILE_BASE64_START_SENTINEL);
     const end = output.indexOf(FILE_BASE64_END_SENTINEL);
     if (start < 0 || end < 0 || end <= start) {
+      this.logger.error("readFileBase64", "invalid-base64-sentinel", startedAt, {
+        path: normalizedPath,
+        sentinelMatched: false,
+        outputLength: output.length,
+      });
       throw new FileContractError({
         code: "file-read-failed",
         message: `BrowserPod returned invalid base64 data for ${normalizedPath}.`,
@@ -138,9 +236,15 @@ export class BrowserPodFileCommandRunner {
       });
     }
 
-    return output
+    const base64 = output
       .slice(start + FILE_BASE64_START_SENTINEL.length, end)
       .replace(/\s+/g, "");
+    this.logger.success("readFileBase64", startedAt, {
+      path: normalizedPath,
+      payloadLength: base64.length,
+      sentinelMatched: true,
+    });
+    return base64;
   }
 
   async writeFileBase64(
@@ -151,6 +255,11 @@ export class BrowserPodFileCommandRunner {
   ): Promise<void> {
     const normalizedTargetPath = BrowserPodFilePath.normalize(targetPath);
     const normalizedTempPath = BrowserPodFilePath.normalize(tempBase64Path);
+    const startedAt = this.logger.start("writeFileBase64", {
+      targetPath: normalizedTargetPath,
+      tempPath: normalizedTempPath,
+      overwrite: Boolean(options.overwrite),
+    });
     const overwriteCheck = options.overwrite
       ? ""
       : `if [ -e "$target" ]; then rm -f "$tmp"; exit 4; fi;`;
@@ -171,6 +280,11 @@ export class BrowserPodFileCommandRunner {
     });
 
     if (!result.ok) {
+      this.logger.error("writeFileBase64", result, startedAt, {
+        targetPath: normalizedTargetPath,
+        exitCode: result.code,
+        outputLength: result.output.length,
+      });
       throw new FileContractError({
         code: result.code === 4 ? "path-already-exists" : "file-write-failed",
         message:
@@ -181,6 +295,10 @@ export class BrowserPodFileCommandRunner {
         cause: result,
       });
     }
+    this.logger.success("writeFileBase64", startedAt, {
+      targetPath: normalizedTargetPath,
+      outputLength: result.output.length,
+    });
   }
 
   async copyPath(
@@ -192,7 +310,18 @@ export class BrowserPodFileCommandRunner {
   ): Promise<{ readonly targetPath: string }> {
     const normalizedFrom = BrowserPodFilePath.normalize(fromPath);
     const normalizedTo = BrowserPodFilePath.normalize(toPath);
+    const startedAt = this.logger.start("copyPath", {
+      sourcePath: normalizedFrom,
+      targetPath: normalizedTo,
+      kind,
+      overwrite: Boolean(options.overwrite),
+    });
     if (kind === "directory" && normalizedTo.startsWith(`${normalizedFrom}/`)) {
+      this.logger.blocked("copyPath", "copy-directory-into-itself", {
+        sourcePath: normalizedFrom,
+        targetPath: normalizedTo,
+        kind,
+      });
       throw new FileContractError({
         code: "path-invalid",
         message: `Cannot copy a directory into itself: ${normalizedFrom}`,
@@ -216,6 +345,12 @@ export class BrowserPodFileCommandRunner {
     });
 
     if (!result.ok) {
+      this.logger.error("copyPath", result, startedAt, {
+        sourcePath: normalizedFrom,
+        targetPath,
+        kind,
+        exitCode: result.code,
+      });
       throw new FileContractError({
         code: result.code === 2 ? "path-not-found" : "copy-failed",
         message: `Failed to copy ${normalizedFrom} to ${targetPath}.`,
@@ -224,6 +359,11 @@ export class BrowserPodFileCommandRunner {
       });
     }
 
+    this.logger.success("copyPath", startedAt, {
+      sourcePath: normalizedFrom,
+      targetPath,
+      kind,
+    });
     return { targetPath };
   }
 
@@ -232,16 +372,41 @@ export class BrowserPodFileCommandRunner {
     normalizedTo: string,
     options: { readonly overwrite?: boolean },
   ): Promise<string> {
-    if (options.overwrite) return normalizedTo;
-    if (!(await this.pathExists(pod, normalizedTo))) return normalizedTo;
+    const startedAt = this.logger.start("resolveCopyTarget", {
+      targetPath: normalizedTo,
+      overwrite: Boolean(options.overwrite),
+    });
+    if (options.overwrite) {
+      this.logger.success("resolveCopyTarget", startedAt, {
+        targetPath: normalizedTo,
+        attempts: 0,
+        overwrite: true,
+      });
+      return normalizedTo;
+    }
+    if (!(await this.pathExists(pod, normalizedTo))) {
+      this.logger.success("resolveCopyTarget", startedAt, {
+        targetPath: normalizedTo,
+        attempts: 1,
+      });
+      return normalizedTo;
+    }
 
     for (let index = 1; index <= MAX_COPY_TARGET_ATTEMPTS; index += 1) {
       const candidate = BrowserPodFilePath.copyName(normalizedTo, index);
       if (!(await this.pathExists(pod, candidate))) {
+        this.logger.success("resolveCopyTarget", startedAt, {
+          targetPath: candidate,
+          attempts: index + 1,
+        });
         return candidate;
       }
     }
 
+    this.logger.error("resolveCopyTarget", "copy-target-exhausted", startedAt, {
+      targetPath: normalizedTo,
+      attempts: MAX_COPY_TARGET_ATTEMPTS,
+    });
     throw new FileContractError({
       code: "path-already-exists",
       message: `No available copy target for ${normalizedTo}.`,
@@ -265,13 +430,6 @@ export class BrowserPodFileCommandRunner {
       cwd: "/",
       timeoutMs: 15_000,
     });
-    console.debug("[BrowserPodFileCommandRunner]", "isTextFile:result", {
-      path: normalizedPath,
-      ok: result.ok,
-      code: result.code,
-      output: stripAnsi(result.output).slice(0, 500),
-    });
-
     if (!result.ok) {
       throw new FileContractError({
         code: result.code === 2 ? "path-not-found" : "file-read-failed",
@@ -282,8 +440,12 @@ export class BrowserPodFileCommandRunner {
     }
 
     const output = stripAnsi(result.output);
-    if (output.includes(TEXT_FILE_SENTINEL)) return true;
-    if (output.includes(BINARY_FILE_SENTINEL)) return false;
+    if (output.includes(TEXT_FILE_SENTINEL)) {
+      return true;
+    }
+    if (output.includes(BINARY_FILE_SENTINEL)) {
+      return false;
+    }
     throw new FileContractError({
       code: "file-read-failed",
       message: `BrowserPod returned invalid file inspection data for ${normalizedPath}.`,

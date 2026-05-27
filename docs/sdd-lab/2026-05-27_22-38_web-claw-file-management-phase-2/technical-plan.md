@@ -44,8 +44,8 @@
   - `FilesPanel.svelte` 目前将 ContextMenu 绑定在每个目录树 row 上；目录树容器空白区域没有 ContextMenu trigger。
   - `FilesPanel.svelte` 目前新增、改名、删除使用原生 `window.prompt` / `window.confirm`；二期可沿用最小实现，但同名冲突需明确确认，不得静默覆盖。
 - 当前约束与风险：
-  - BrowserPod SDK 二进制文件 mode 尚未在当前代码中验证；真实实现前必须 probe `openFile/createFile` 的二进制读写方式。
-  - 自定义 terminal 输出不适合直接承载原始二进制；若走命令降级，必须使用 base64 文本传输。
+  - BrowserPod 官方文档确认 `createFile(path, "binary")` / `openFile(path, "binary")` 返回 `BinaryFile`，可直接读写 `ArrayBuffer`；`"utf-8"` 仅用于文本字符串。
+  - 自定义 terminal 输出不适合直接承载原始二进制；只有在 BinaryFile API 不可用或真实运行不稳定时，命令降级才使用 base64 文本传输。
   - 浏览器下载需要在 app 层创建 `Blob` 和临时 object URL；不能把 BrowserPod SDK 文件句柄泄漏到 app。
 
 ## Proposed Solution / 拟定方案
@@ -62,6 +62,7 @@
 - 为什么选择该方案：
   - 契约先行，继续保持 app / `os-core` / `browserpod` 分层。
   - 上传下载需要字节能力，不能复用只面向文本编辑的 `readTextFile/writeTextFile`。
+  - 上传和下载的主路径使用 BrowserPod BinaryFile API 直接传输 `ArrayBuffer`，不解释文件格式、不依赖文件扩展名或 MIME。
   - 同容器复制用 `cp` / `cp -r` 比“读到浏览器再写回容器”更少传输、更符合文件管理语义。
   - 菜单目标由显式 state 决定，避免空白区域误用最近选中项。
 - 不采用的方案：
@@ -114,6 +115,8 @@
 约束：
 
 - `readTextFile/writeTextFile` 继续服务文本编辑。
+- 文件预览打开前必须先调用 `inspectTextFile` 做文本类型探测；探测失败时展示不支持文本预览，不得继续调用 `readTextFile` 或应用文本预览大小策略。
+- 文本类型探测通过后，才能应用 `FileTextPolicy` 的文本预览大小限制。
 - `readFileBytes/writeFileBytes` 服务上传下载，不做文本检测。
 - `copyPath` 承诺文件与目录复制；目录复制只支持同容器递归复制，不处理目录下载或系统剪贴板。
 
@@ -127,9 +130,10 @@
 
 - 保持 `BrowserPodFileLike.read(length): Promise<string | ArrayBuffer>`。
 - 保持 `BrowserPodFileLike.write(data: string | ArrayBuffer): Promise<number>`。
-- 执行阶段先用真实 BrowserPod probe 确认二进制文件打开 / 创建 mode：
-  - 优先尝试 SDK 文档或 runtime 行为支持的 binary mode。
-  - 若真实 SDK 只稳定支持 `"utf-8"`，则二进制上传下载走 base64 命令降级，不把 `"utf-8"` 当成二进制通道。
+- BrowserPod 文件 mode 契约：
+  - 文本读写使用 `"utf-8"`，参数和返回值为字符串语义。
+  - 字节读写使用 `"binary"`，参数和返回值为 `ArrayBuffer` 语义。
+  - 不把 `"utf-8"` 当成二进制通道；不为了上传图片、zip、pdf 等二进制文件做内容格式探测。
 
 ### `packages/browserpod/src/files`
 
@@ -144,13 +148,14 @@
 实现策略：
 
 - `readFileBytes`：
-  - 优先路径：使用 BrowserPod SDK 打开二进制文件，读取 size 后返回 `ArrayBuffer`。
-  - 降级路径：通过 `base64 <file>` 输出文本，在 adapter 中解码为 `ArrayBuffer`。
+  - 主路径：使用 BrowserPod SDK `openFile(path, "binary")` 打开二进制文件，读取 size 后返回 `ArrayBuffer`。
+  - 降级路径：仅当 BinaryFile API 不可用或真实运行不稳定时，通过 `base64 <file>` 输出文本，在 adapter 中解码为 `ArrayBuffer`。
   - 加大小上限，建议二期先设为 `5 MiB`，避免 base64 输出和浏览器内存压力过大。
 - `writeFileBytes`：
-  - 优先路径：使用 BrowserPod SDK 创建 / 打开二进制文件并写入 `ArrayBuffer`。
-  - 降级路径：将 `ArrayBuffer` 转 base64，使用 shell `base64 -d > target` 写入。
+  - 主路径：使用 BrowserPod SDK `createFile(path, "binary")` 或 `openFile(path, "binary")` 写入 `ArrayBuffer`。
+  - 降级路径：仅当 BinaryFile API 不可用或真实运行不稳定时，将 `ArrayBuffer` 转 base64，使用 shell `base64 -d > target` 写入。
   - `overwrite` 为 false 且目标存在时返回 `path-already-exists`，不覆盖。
+  - `overwrite` 为 true 时允许覆盖目标；若 SDK 对已存在目标的 `createFile(path, "binary")` 语义不稳定，adapter 可先删除目标或改用 `openFile(path, "binary")`，但不能改变上层契约。
 - `copyPath`：
   - 文件复制：源必须为普通文件；`overwrite` 为 false 且目标存在时，自动按 `{name}_copy`、`{name}_copy_2`、`{name}_copy_3` 顺序探测，选择第一个不存在的同级目标文件名。
   - 文件复制显式覆盖：仅当调用方传入 `overwrite: true` 时执行 `cp -f "$source" "$target"`；Files UI 粘贴不触发该路径。
@@ -293,6 +298,7 @@
   - `packages/browserpod/src/files/browserpodFileCommand.impl.ts`
   - `packages/browserpod/src/files/browserpodFilePath.impl.ts`
   - `packages/browserpod/src/files/*.test.ts`
+  - `packages/os-core/src/debug/*`
   - `apps/web-claw/src/lib/core/files/fileWorkspaceState.ts`
   - `apps/web-claw/src/lib/features/files/components/FilesPanel.svelte`
 - 接口/类型：
@@ -311,11 +317,128 @@
   - `browserpod` adapter 单测覆盖字节读写降级、文件/目录 copy 命令、冲突错误。
   - `web-claw` svelte-check 覆盖 UI 类型。
 
+## Debug Logging / 可观测性
+
+### 当前缺口
+
+- `FilesPanel.svelte` 目前通过局部 `debugFiles(...)` 和裸 `console.log(error)` 输出调试信息，字段不统一，无法稳定串联一次用户操作。
+- `BrowserPodFileService` 和 `BrowserPodFileCommandRunner` 中已有零散 `console.debug(...)`，但缺少统一 scope、耗时、错误码、恢复性和脱敏规则。
+- 上传、下载、复制、粘贴、同名副本探测、base64 读写等关键链路缺少完整 start / success / error / cancelled 日志，真实 BrowserPod 页面排查时证据不足。
+- 日志补强必须遵守 `.cursor/rules/logging-observability.mdc`：只在关键节点记录，不做通篇函数级流水账。
+
+### 日志契约
+
+- 日志范围：
+  - `files.panel`：用户触发、菜单目标、上传下载、复制粘贴、保存、重命名、删除和可见反馈。
+  - `browserpod.file`：文件服务契约层，包括文本读写、字节读写、创建、复制、删除、重命名。
+  - `browserpod.file.command`：命令通道层，包括 `pathExists`、base64 读写、`cp` / `cp -r`、副本名候选探测。
+  - `runtime.manager`：后续可扩展，用于 runtime check / boot / stop / session 状态变化。
+- 记录边界：
+  - 必须记录：用户显式触发的文件预览、上传、下载、复制、粘贴；base64 读写；复制目标自动探测；外部命令失败；阻塞、取消和降级路径。
+  - 文件预览被大小限制或文本类型探测阻塞时，必须输出 `operation:blocked`，并包含 `path`、`size`、`errorCode` 或 `reason`。
+  - 不应记录：每个普通函数入口、目录展开/折叠、纯 UI state 同步、可由上层日志推断的内部中间步骤。
+  - 一次用户操作最多保留少量可串联日志：入口、关键外部调用、最终成功或失败。
+- 事件命名：
+  - `operation:start`
+  - `operation:success`
+  - `operation:error`
+  - `operation:blocked`
+  - `operation:cancelled`
+  - 具体操作名放在 `operation` 字段，例如 `uploadFile`、`downloadFile`、`copyPath`、`resolveCopyTarget`。
+- 标准字段：
+  - `scope`
+  - `event`
+  - `operation`
+  - `operationId`
+  - `path`
+  - `targetPath`
+  - `sourcePath`
+  - `kind`
+  - `size`
+  - `durationMs`
+  - `resultOk`
+  - `errorCode`
+  - `recoverable`
+  - `reason`
+- `operationId` 由 UI 发起操作时创建，并在 app -> service -> command 链路中尽量透传；若当前接口暂不传上下文，service / command 可生成局部 `operationId`，但技术债需要记录为后续契约优化项。
+
+### 输出策略
+
+- 开发环境默认输出 `debug` / `info` / `warn` / `error`。
+- 生产环境默认不输出 `debug`，最多保留 `warn` / `error`，避免制造噪音。
+- 首轮实现不引入外部依赖；在共同依赖包 `os-core` 中提供轻量 `DebugLogger` 类封装 `console`，供 `web-claw` 与 `browserpod` 复用。
+- 后续可支持 `localStorage.debug = "web-claw:*"` 或 Vite env 控制详细日志，不作为二期强制要求。
+
+### 脱敏与截断
+
+- 禁止打印文件正文、base64 payload、用户上传文件内容、token、凭证、完整环境变量。
+- 命令输出默认只记录长度、exit code、sentinel 是否命中；需要输出片段时必须截断，例如最多 500 字符。
+- 错误对象应格式化为 `name`、`message`、`code`、`recoverable`、必要的 `cause` 摘要，不直接 dump 不受控对象。
+- `FileActionResult.error` / `FileError` 是普通对象而不是 `Error` 实例；logger 必须识别其 `code`、`message`、`recoverable` 和有限 `cause` 摘要，避免输出 `[object Object]`。
+- 路径可用于开发排查，但不应包含本机绝对路径以外的隐私信息；若后续接入远程日志，需要重新定义路径脱敏规则。
+
+### DevTools 输出样例
+
+上传文件成功：
+
+```ts
+console.debug("[web-claw:files.panel] operation:success", {
+  operation: "uploadFile",
+  targetPath: "/home/user/demo.png",
+  size: 18422,
+  durationMs: 238,
+  resultOk: true,
+});
+```
+
+base64 读取成功：
+
+```ts
+console.debug("[web-claw:browserpod.file.command] operation:success", {
+  operation: "readFileBase64",
+  path: "/home/user/image.png",
+  payloadLength: 56252,
+  sentinelMatched: true,
+  durationMs: 146,
+  resultOk: true,
+});
+```
+
+复制目标自动探测成功：
+
+```ts
+console.debug("[web-claw:browserpod.file.command] operation:success", {
+  operation: "resolveCopyTarget",
+  targetPath: "/home/user/a_copy_2",
+  attempts: 3,
+  durationMs: 86,
+  resultOk: true,
+});
+```
+
+失败日志：
+
+```ts
+console.error("[web-claw:browserpod.file] operation:error", {
+  operation: "writeFileBytes",
+  targetPath: "/home/user/demo.png",
+  durationMs: 512,
+  resultOk: false,
+  errorCode: "path-already-exists",
+  error: {
+    name: "FileContractError",
+    message: "Path already exists: /home/user/demo.png",
+    errorCode: "path-already-exists",
+    recoverable: true,
+  },
+});
+```
+
 ## Execution Steps / 执行步骤
 
-1. **步骤 1：BrowserPod 二进制读写 probe**
-   - 用真实 BrowserPod 或最小 demo 验证 `openFile/createFile` 二进制 mode。
-   - 记录可用 mode；若不可用，执行 base64 降级方案。
+1. **步骤 1：BrowserPod 字节读写契约确认**
+   - 以官方 BrowserPod 文档为准：`createFile/openFile` 的二进制 mode 为 `"binary"`，对应 `ArrayBuffer` 读写。
+   - 在真实 BrowserPod runtime 中验证 `"binary"` 主路径；若不可用或运行不稳定，再启用 base64 命令降级方案。
 2. **步骤 2：文件契约扩展**
    - 扩展 `FileService` 类型。
    - 增加 `path-already-exists`、`copy-failed` 等错误码。
@@ -330,15 +453,22 @@
    - 让目录树容器空白区域可打开 workspace 菜单。
    - 接入上传、下载、复制、粘贴。
    - 操作完成后刷新受影响目录。
-6. **步骤 6：验证与回写**
+6. **步骤 6：开发者工具日志补强**
+   - 在 `packages/os-core/src/debug` 新增通用轻量 `DebugLogger` 类，统一 scope、事件字段、错误格式化和环境输出策略。
+   - 删除 `FilesPanel.svelte` 中的 `debugFiles(...)` 与裸 `console.log(error)`。
+   - 只为上传、下载、复制、粘贴补齐关键节点日志；普通打开、保存、目录展开、重命名、删除不做通篇日志，除非后续真实问题证明需要。
+   - `BrowserPodFileService` 只在字节读写、复制路径和关键失败分支记录日志。
+   - `BrowserPodFileCommandRunner` 只在 base64 读写、复制命令、复制目标探测和关键 sentinel 异常处记录日志，不输出 base64 payload。
+7. **步骤 7：验证与回写**
    - 跑类型检查、测试和 `web-claw` check。
    - 真实页面验证空白区域右键、上传、下载、复制粘贴。
+   - 在浏览器 DevTools Console 验证关键操作可按 `operationId` 和 `scope` 串联。
    - 回写 `lifecycle.md`。
 
 ## Risk And Mitigation / 风险与缓解
 
-- 风险：BrowserPod SDK 二进制 mode 不明确。
-  - 缓解方式：执行第一步先 probe；若不稳定，使用 base64 命令降级，并限制文件大小。
+- 风险：BrowserPod BinaryFile API 在真实 runtime 中与官方文档不一致。
+  - 缓解方式：主实现按 `"binary"` 契约直写 `ArrayBuffer`；真实验证若不稳定，再启用 base64 命令降级，并限制文件大小。
 - 风险：base64 输出混入 terminal 提示符或 ANSI。
   - 缓解方式：使用 sentinel 包裹 payload，只解析 sentinel 之间内容；解析前剥离 ANSI。
 - 风险：大文件上传下载导致内存或 terminal 输出压力过大。
@@ -355,6 +485,12 @@
   - 缓解方式：`copyPath` 返回 `path-not-found`，UI 展示错误并保留或清除剪贴板由用户下一步决定。
 - 风险：下载 Blob object URL 泄漏。
   - 缓解方式：触发下载后立即 `URL.revokeObjectURL`。
+- 风险：日志输出泄漏文件内容、base64 payload 或敏感信息。
+  - 缓解方式：Logger 层集中格式化和截断，默认只记录大小、路径、错误码、sentinel 命中状态，不记录内容。
+- 风险：过多 debug 日志影响生产体验或掩盖真实错误。
+  - 缓解方式：按环境和级别过滤；生产默认不输出 debug。
+- 风险：operationId 无法跨 app / service / command 全链路透传。
+  - 缓解方式：首轮先保证各层日志字段一致；后续如需要完整链路，再把 `operationId` 放入文件服务调用上下文契约。
 
 ## Validation Plan / 验证计划
 
@@ -364,9 +500,14 @@
   - `pnpm --filter web-claw check`
 - 单元/集成测试：
   - `pnpm --filter browserpod test`
+  - 如新增 `Logger` 纯 TS 类，增加最小单测覆盖：
+    - 级别过滤。
+    - scope 与标准字段序列化。
+    - error 对象格式化。
+    - 敏感字段和长输出截断。
   - BrowserPod file adapter tests：
-    - `writeFileBytes` 写入 `ArrayBuffer`。
-    - `readFileBytes` 返回 `ArrayBuffer`。
+    - `writeFileBytes` 通过 `createFile(path, "binary")` 写入 `ArrayBuffer`。
+    - `readFileBytes` 通过 `openFile(path, "binary")` 返回 `ArrayBuffer`。
     - base64 降级只解析 sentinel payload。
     - `pathExists` 不依赖 exit code，使用 sentinel 输出判断路径存在性。
     - `copyPath` 文件复制使用 `cp`，默认不覆盖，同名冲突时生成第一个不存在的副本目标名。
@@ -387,10 +528,16 @@
   - 复制目录到存在同名目录的目标目录时，自动生成第一个不存在的副本目标名。
   - 粘贴同名文件时不弹二次确认，自动生成第一个不存在的副本目标名。
   - runtime 非 running 时菜单操作不可执行或被阻塞态覆盖。
+  - DevTools Console 验证：
+    - 上传、下载、复制、粘贴均有 start / success 或 error 日志。
+    - 用户取消上传文件选择或取消 prompt / confirm 时有 cancelled 或 blocked 日志。
+    - base64 读写日志只显示大小、路径、耗时和 sentinel 状态，不显示 payload。
+    - 同名副本探测日志可看出候选路径尝试过程。
 - 验收证据：
   - 测试命令输出。
   - 浏览器手动验证记录。
-  - 如有 BrowserPod binary mode probe，记录结论到 `lifecycle.md`。
+  - DevTools Console 关键日志样例。
+  - BrowserPod `"binary"` 主路径真实上传 / 下载结论记录到 `lifecycle.md`。
 
 ## Execute Checkpoint / 执行检查点
 
@@ -407,7 +554,7 @@
   - 复制目标命名已确认使用自动探测策略；实现上限采用 100 次候选路径探测，超过后失败提示。
   - 是否暂不实现 `Ctrl+C` / `Ctrl+V` 快捷键。
 - 风险：
-  - BrowserPod SDK 二进制 mode 需要真实 probe；如果不可用，需要走 base64 降级并接受文件大小限制。
+  - BrowserPod BinaryFile API 需要真实页面验证；如果不可用，需要走 base64 降级并接受文件大小限制。
 - 验证方式：
   - 先跑包级类型检查与 adapter 单测，再跑 `web-claw` check/build，最后做真实页面手动验证。
 - Execution Approval: `Pending`

@@ -14,11 +14,12 @@
     type FileWorkspaceSnapshot,
   } from "$lib/core/files";
   import { RuntimeManagerProvider } from "$lib/core/runtime";
-  import type {
-    FileActionResult,
-    FileEntry,
-    RuntimeSnapshot,
-    Unsubscribe,
+  import {
+    DebugLogger,
+    type FileActionResult,
+    type FileEntry,
+    type RuntimeSnapshot,
+    type Unsubscribe,
   } from "os-core";
 
   type Props = {
@@ -34,6 +35,7 @@
 
   const runtimeManager = RuntimeManagerProvider.getRuntimeManager();
   const fileService = FileServiceProvider.getFileService();
+  const filesLogger = new DebugLogger("files.panel");
 
   let runtimeSnapshot: RuntimeSnapshot = $state(runtimeManager.getSnapshot());
   let workspace: FileWorkspaceState | null = null;
@@ -45,10 +47,6 @@
   let uploadTargetDirectory: string | null = $state(null);
   let fileInputElement: HTMLInputElement | null = null;
   let unsubscribe: Unsubscribe | null = null;
-
-  function debugFiles(event: string, details?: unknown) {
-    console.debug("[FilesPanel]", event, details ?? "");
-  }
 
   onMount(() => {
     unsubscribe = runtimeManager.onEvent(() => {
@@ -96,7 +94,6 @@
     options: { expand?: boolean; select?: boolean } = {}
   ) {
     if (!runtimeManager.currentSession || !workspace) return;
-    debugFiles("loadDirectory:start", { path, options });
     busyMessage = `Loading ${path}`;
     errorMessage = null;
     try {
@@ -104,19 +101,12 @@
         runtimeManager.currentSession,
         path
       );
-      debugFiles("loadDirectory:result", {
-        path: directory.path,
-        entries: directory.entries.length,
-        options,
-      });
       workspace.setDirectory(directory);
       if (options.expand) workspace.setExpanded(directory.path, true);
       if (options.select) workspace.selectPath(directory.path);
       syncSnapshot();
     } catch (error) {
-      console.log(error);
       errorMessage = formatError(error);
-      debugFiles("loadDirectory:error", { path, error });
     } finally {
       busyMessage = null;
     }
@@ -130,54 +120,70 @@
   }
 
   async function toggleDirectory(entry: FileEntry) {
-    debugFiles("toggleDirectory:start", entry);
     if (!workspace || !workspaceSnapshot) return;
     const cached = findDirectory(entry.path);
     if (cached?.expanded) {
       workspace.setExpanded(entry.path, false);
       workspace.selectPath(entry.path);
       syncSnapshot();
-      debugFiles("toggleDirectory:collapsed", { path: entry.path });
       return;
     }
 
     await loadDirectory(entry.path, { expand: true, select: true });
-    debugFiles("toggleDirectory:loaded", { path: entry.path });
   }
 
   async function openFile(entry: FileEntry) {
-    debugFiles("openFile:start", entry);
     if (!runtimeManager.currentSession || !workspace) return;
+    const startedAt = filesLogger.start("openTextFile", {
+      path: entry.path,
+      size: entry.size,
+    });
     workspace.selectPath(entry.path);
     syncSnapshot();
-    if (!FileTextPolicy.canReadSize(entry.size)) {
-      errorMessage =
-        "Only text files under the size limit are supported in this preview.";
-      debugFiles("openFile:blockedBySize", { path: entry.path, size: entry.size });
-      return;
-    }
 
     busyMessage = `Opening ${entry.path}`;
     errorMessage = null;
     try {
+      const inspection = await fileService.inspectTextFile(
+        runtimeManager.currentSession,
+        entry.path
+      );
+      if (!inspection.ok) {
+        errorMessage = inspection.message;
+        filesLogger.blocked("openTextFile", inspection.error?.code ?? inspection.reason, {
+          path: entry.path,
+          size: inspection.size ?? entry.size,
+          errorCode: inspection.error?.code,
+          reason: inspection.reason,
+        });
+        return;
+      }
+
+      if (!FileTextPolicy.canReadSize(inspection.size ?? entry.size)) {
+        errorMessage =
+          "Only text files under the size limit are supported in this preview.";
+        filesLogger.blocked("openTextFile", "file-too-large", {
+          path: entry.path,
+          size: inspection.size ?? entry.size,
+          maxSize: FileTextPolicy.maxEditableBytes,
+          errorCode: "file-too-large",
+        });
+        return;
+      }
+
       const file = await fileService.readTextFile(
         runtimeManager.currentSession,
         entry.path
       );
-      debugFiles("openFile:readTextFile", {
-        path: file.path,
-        size: file.size,
-        contentLength: file.content.length,
-      });
       workspace.openTextFile(file, FileLanguageResolver.getLabel(entry.path));
       syncSnapshot();
-      debugFiles("openFile:opened", {
+      filesLogger.success("openTextFile", startedAt, {
         path: file.path,
-        activeTabPath: workspace.getSnapshot().activeTabPath,
+        size: file.size,
       });
     } catch (error) {
       errorMessage = formatError(error);
-      debugFiles("openFile:error", error);
+      filesLogger.error("openTextFile", error, startedAt, { path: entry.path });
     } finally {
       busyMessage = null;
     }
@@ -203,7 +209,6 @@
   }
 
   async function createFile(parentPath: string) {
-    debugFiles("createFile:click", { parentPath });
     await createPath(parentPath, "file");
   }
 
@@ -245,19 +250,43 @@
 
   function startUpload(target = menuTarget) {
     const directory = menuTargetDirectory(target);
-    if (!directory || !fileInputElement) return;
+    if (!directory || !fileInputElement) {
+      filesLogger.blocked("uploadFile", "missing-upload-target", {
+        target,
+        hasFileInput: Boolean(fileInputElement),
+      });
+      return;
+    }
+    filesLogger.debug("operation:start", {
+      operation: "selectUploadFile",
+      targetPath: directory,
+      targetKind: target?.kind,
+    });
     uploadTargetDirectory = directory;
     fileInputElement.value = "";
     fileInputElement.click();
   }
 
   async function handleUploadChange(event: Event) {
-    if (!runtimeManager.currentSession || !workspace || !uploadTargetDirectory) return;
+    if (!runtimeManager.currentSession || !workspace || !uploadTargetDirectory) {
+      filesLogger.blocked("uploadFile", "runtime-or-target-unavailable");
+      return;
+    }
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
-    if (!file) return;
+    if (!file) {
+      filesLogger.cancelled("uploadFile", "file-selection-cancelled", {
+        targetPath: uploadTargetDirectory,
+      });
+      uploadTargetDirectory = null;
+      return;
+    }
     const targetDirectory = uploadTargetDirectory;
     const targetPath = joinPath(targetDirectory, file.name);
+    const startedAt = filesLogger.start("uploadFile", {
+      targetPath,
+      size: file.size,
+    });
     busyMessage = `Uploading ${file.name}`;
     errorMessage = null;
     try {
@@ -271,6 +300,10 @@
       if (isPathAlreadyExists(result)) {
         const confirmed = window.confirm(`Overwrite ${targetPath}?`);
         if (!confirmed) {
+          filesLogger.cancelled("uploadFile", "overwrite-cancelled", {
+            targetPath,
+            size: file.size,
+          });
           busyMessage = null;
           return;
         }
@@ -283,11 +316,20 @@
       }
       if (!result.ok) {
         errorMessage = result.message;
+        filesLogger.error("uploadFile", result.error ?? result.message, startedAt, {
+          targetPath,
+          errorCode: result.error?.code,
+        });
         return;
       }
       await loadDirectory(targetDirectory);
+      filesLogger.success("uploadFile", startedAt, {
+        targetPath,
+        size: file.size,
+      });
     } catch (error) {
       errorMessage = formatError(error);
+      filesLogger.error("uploadFile", error, startedAt, { targetPath, size: file.size });
     } finally {
       busyMessage = null;
       uploadTargetDirectory = null;
@@ -320,12 +362,16 @@
 
   async function deleteMenuTarget() {
     const target = menuTarget;
-    if (!target || target.kind === "workspace") return;
+    if (!target || target.kind === "workspace") {
+      filesLogger.blocked("deletePath", "invalid-delete-target", { target });
+      return;
+    }
     await deletePath(target.path, target.kind);
   }
 
   async function downloadPath(path: string) {
     if (!runtimeManager.currentSession) return;
+    const startedAt = filesLogger.start("downloadFile", { path });
     busyMessage = `Downloading ${path}`;
     errorMessage = null;
     try {
@@ -336,25 +382,51 @@
       anchor.download = basename(path);
       anchor.click();
       URL.revokeObjectURL(url);
+      filesLogger.success("downloadFile", startedAt, {
+        path,
+        size: file.size,
+      });
     } catch (error) {
       errorMessage = formatError(error);
+      filesLogger.error("downloadFile", error, startedAt, { path });
     } finally {
       busyMessage = null;
     }
   }
 
   function copyTarget(target = menuTarget) {
-    if (!workspace || !target || target.kind === "workspace") return;
+    if (!workspace || !target || target.kind === "workspace") {
+      filesLogger.blocked("copyPath", "invalid-copy-target", { target });
+      return;
+    }
     workspace.setCopiedPath(target.path, target.kind);
     syncSnapshot();
+    filesLogger.success("copyPath", filesLogger.start("copyPath", {
+      sourcePath: target.path,
+      kind: target.kind,
+    }), {
+      sourcePath: target.path,
+      kind: target.kind,
+    });
   }
 
   async function pasteIntoTarget(target = menuTarget) {
     if (!runtimeManager.currentSession || !workspace || !target) return;
     const clipboard = workspace.getClipboard();
     const targetDirectory = menuTargetDirectory(target);
-    if (!clipboard || !targetDirectory) return;
+    if (!clipboard || !targetDirectory) {
+      filesLogger.blocked("pastePath", "clipboard-or-target-unavailable", {
+        target,
+        hasClipboard: Boolean(clipboard),
+      });
+      return;
+    }
     const targetPath = joinPath(targetDirectory, clipboard.name);
+    const startedAt = filesLogger.start("pastePath", {
+      sourcePath: clipboard.sourcePath,
+      targetPath,
+      kind: clipboard.kind,
+    });
     busyMessage = `Pasting ${clipboard.name}`;
     errorMessage = null;
     try {
@@ -367,29 +439,44 @@
       );
       if (!result.ok) {
         errorMessage = result.message;
+        filesLogger.error("pastePath", result.error ?? result.message, startedAt, {
+          sourcePath: clipboard.sourcePath,
+          targetPath,
+          kind: clipboard.kind,
+          errorCode: result.error?.code,
+        });
         return;
       }
       await loadDirectory(targetDirectory);
+      filesLogger.success("pastePath", startedAt, {
+        sourcePath: clipboard.sourcePath,
+        targetPath,
+        kind: clipboard.kind,
+      });
     } catch (error) {
       errorMessage = formatError(error);
+      filesLogger.error("pastePath", error, startedAt, {
+        sourcePath: clipboard.sourcePath,
+        targetPath,
+        kind: clipboard.kind,
+      });
     } finally {
       busyMessage = null;
     }
   }
 
   async function createDirectory(parentPath: string) {
-    debugFiles("createDirectory:click", { parentPath });
     await createPath(parentPath, "directory");
   }
 
   async function createPath(parentPath: string, kind: "file" | "directory") {
-    debugFiles("createPath:start", { parentPath, kind });
     if (!runtimeManager.currentSession || !workspace) return;
     const name = window.prompt(
       kind === "file" ? "New file name" : "New folder name"
     );
-    debugFiles("createPath:promptResult", { parentPath, kind, name });
-    if (!name) return;
+    if (!name) {
+      return;
+    }
     const path = joinPath(parentPath, name);
     const result =
       kind === "file"
@@ -398,17 +485,14 @@
             runtimeManager.currentSession,
             path
           );
-    debugFiles("createPath:serviceResult", { path, kind, result });
     if (!result.ok) {
       errorMessage = result.message;
       return;
     }
     await loadDirectory(parentPath);
-    debugFiles("createPath:directoryReloaded", { parentPath, path, kind });
   }
 
   async function handleEntryClick(entry: FileEntry) {
-    debugFiles("entryClick", entry);
     if (entry.kind === "directory") {
       await toggleDirectory(entry);
       return;
@@ -419,7 +503,9 @@
   async function renamePath(path: string) {
     if (!runtimeManager.currentSession || !workspace) return;
     const nextName = window.prompt("Rename to", basename(path));
-    if (!nextName) return;
+    if (!nextName) {
+      return;
+    }
     const nextPath = joinPath(workspace.getParentDirectory(path), nextName);
     const result = await fileService.rename(
       runtimeManager.currentSession,
@@ -435,22 +521,68 @@
   }
 
   async function deletePath(path: string, kind: FileEntry["kind"]) {
-    if (!runtimeManager.currentSession || !workspace) return;
-    const confirmed = window.confirm(
-      `Delete ${path}${kind === "directory" ? " and its contents" : ""}?`
-    );
-    if (!confirmed) return;
-    const result = await fileService.delete(
-      runtimeManager.currentSession,
-      path,
-      { recursive: kind === "directory" }
-    );
-    if (!result.ok) {
-      errorMessage = result.message;
+    if (!runtimeManager.currentSession || !workspace) {
+      filesLogger.blocked("deletePath", "runtime-or-workspace-unavailable", {
+        path,
+        kind,
+        hasRuntimeSession: Boolean(runtimeManager.currentSession),
+        hasWorkspace: Boolean(workspace),
+      });
       return;
     }
-    workspace.removePathFromCache(path);
-    await loadDirectory(workspace.getParentDirectory(path));
+    const recursive = kind === "directory";
+    const parentPath = workspace.getParentDirectory(path);
+    const confirmed = window.confirm(
+      `Delete ${path}${recursive ? " and its contents" : ""}?`
+    );
+    if (!confirmed) {
+      filesLogger.cancelled("deletePath", "confirm-cancelled", {
+        path,
+        kind,
+        recursive,
+      });
+      return;
+    }
+    const startedAt = filesLogger.start("deletePath", {
+      path,
+      kind,
+      recursive,
+      parentPath,
+    });
+    busyMessage = `Deleting ${path}`;
+    errorMessage = null;
+    try {
+      const result = await fileService.delete(runtimeManager.currentSession, path, {
+        recursive,
+      });
+      if (!result.ok) {
+        errorMessage = result.message;
+        filesLogger.error("deletePath", result.error ?? result.message, startedAt, {
+          path,
+          kind,
+          recursive,
+          errorCode: result.error?.code,
+        });
+        return;
+      }
+      workspace.removePathFromCache(path);
+      await loadDirectory(parentPath);
+      filesLogger.success("deletePath", startedAt, {
+        path,
+        kind,
+        recursive,
+        parentPath,
+      });
+    } catch (error) {
+      errorMessage = formatError(error);
+      filesLogger.error("deletePath", error, startedAt, {
+        path,
+        kind,
+        recursive,
+      });
+    } finally {
+      busyMessage = null;
+    }
   }
 
   function activeTab() {

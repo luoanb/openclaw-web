@@ -1,4 +1,5 @@
 import {
+  DebugLogger,
   FileContractError,
   type BinaryFileSnapshot,
   type DirectorySnapshot,
@@ -23,9 +24,11 @@ const BROWSERPOD_DEFAULT_FILE_PATH = "/home/user";
 const DEFAULT_TEXT_FILE_LIMIT_BYTES = 1024 * 1024;
 const DEFAULT_BINARY_FILE_LIMIT_BYTES = 5 * 1024 * 1024;
 const BROWSERPOD_TEXT_FILE_MODE = "utf-8";
+const BROWSERPOD_BINARY_FILE_MODE = "binary";
 
 export class BrowserPodFileService implements FileService {
   private readonly fileCommandRunner = new BrowserPodFileCommandRunner();
+  private readonly logger = new DebugLogger("browserpod.file");
 
   constructor(private readonly runtimeManager: BrowserPodRuntimeManager) {}
 
@@ -40,7 +43,6 @@ export class BrowserPodFileService implements FileService {
   async inspectTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileInspectionResult> {
     const normalizedPath = BrowserPodFilePath.normalize(path);
     const pod = this.resolvePod(runtimeSession);
-    console.debug("[BrowserPodFileService]", "inspectTextFile:start", { path: normalizedPath });
     try {
       const file = await this.openReadableFile(pod, normalizedPath);
       let size: number;
@@ -51,10 +53,6 @@ export class BrowserPodFileService implements FileService {
       }
 
       if (size > DEFAULT_TEXT_FILE_LIMIT_BYTES) {
-        console.debug("[BrowserPodFileService]", "inspectTextFile:fileTooLarge", {
-          path: normalizedPath,
-          size,
-        });
         return {
           ok: false,
           path: normalizedPath,
@@ -70,11 +68,6 @@ export class BrowserPodFileService implements FileService {
       }
 
       const isText = await this.fileCommandRunner.isTextFile(pod, normalizedPath);
-      console.debug("[BrowserPodFileService]", "inspectTextFile:textProbe", {
-        path: normalizedPath,
-        size,
-        isText,
-      });
       if (!isText) {
         return {
           ok: false,
@@ -97,10 +90,6 @@ export class BrowserPodFileService implements FileService {
         size,
       };
     } catch (error) {
-      console.debug("[BrowserPodFileService]", "inspectTextFile:error", {
-        path: normalizedPath,
-        error,
-      });
       if (error instanceof FileContractError) {
         return {
           ok: false,
@@ -127,7 +116,6 @@ export class BrowserPodFileService implements FileService {
 
   async readTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileSnapshot> {
     const normalizedPath = BrowserPodFilePath.normalize(path);
-    console.debug("[BrowserPodFileService]", "readTextFile:start", { path: normalizedPath });
     const pod = this.resolvePod(runtimeSession);
     const file = await this.openReadableFile(pod, normalizedPath);
     try {
@@ -150,11 +138,6 @@ export class BrowserPodFileService implements FileService {
       }
 
       const content = await readFileContent(file, size);
-      console.debug("[BrowserPodFileService]", "readTextFile:content", {
-        path: normalizedPath,
-        size,
-        contentLength: content.length,
-      });
       return {
         path: normalizedPath,
         content,
@@ -170,14 +153,25 @@ export class BrowserPodFileService implements FileService {
   async readFileBytes(runtimeSession: RuntimeSession, path: string): Promise<BinaryFileSnapshot> {
     const pod = this.resolvePod(runtimeSession);
     const normalizedPath = BrowserPodFilePath.normalize(path);
-    const base64 = await this.fileCommandRunner.readFileBase64(pod, normalizedPath, DEFAULT_BINARY_FILE_LIMIT_BYTES);
-    const content = base64ToArrayBuffer(base64);
-    return {
-      path: normalizedPath,
-      content,
-      readAt: Date.now(),
-      size: content.byteLength,
-    };
+    const startedAt = this.logger.start("readFileBytes", { path: normalizedPath });
+    try {
+      const base64 = await this.fileCommandRunner.readFileBase64(pod, normalizedPath, DEFAULT_BINARY_FILE_LIMIT_BYTES);
+      const content = base64ToArrayBuffer(base64);
+      this.logger.success("readFileBytes", startedAt, {
+        path: normalizedPath,
+        size: content.byteLength,
+        payloadLength: base64.length,
+      });
+      return {
+        path: normalizedPath,
+        content,
+        readAt: Date.now(),
+        size: content.byteLength,
+      };
+    } catch (error) {
+      this.logger.error("readFileBytes", error, startedAt, { path: normalizedPath });
+      throw error;
+    }
   }
 
   async writeTextFile(
@@ -211,31 +205,45 @@ export class BrowserPodFileService implements FileService {
   ): Promise<FileActionResult> {
     const pod = this.resolvePod(runtimeSession);
     const normalizedPath = BrowserPodFilePath.normalize(path);
+    const startedAt = this.logger.start("writeFileBytes", {
+      targetPath: normalizedPath,
+      size: content.byteLength,
+      overwrite: Boolean(options.overwrite),
+    });
     if (content.byteLength > DEFAULT_BINARY_FILE_LIMIT_BYTES) {
+      this.logger.blocked("writeFileBytes", "file-too-large", {
+        targetPath: normalizedPath,
+        size: content.byteLength,
+      });
       return this.fail(
         "unsupported",
         "file-too-large",
         `File is larger than ${DEFAULT_BINARY_FILE_LIMIT_BYTES} bytes: ${normalizedPath}`,
       );
     }
-    if (!pod.createFile) {
-      return this.fail("unsupported", "file-create-failed", "BrowserPod createFile API is unavailable.");
-    }
-
-    const tempPath = `/tmp/openclaw-upload-${Date.now()}-${Math.random().toString(36).slice(2)}.b64`;
     try {
-      const tempFile = await pod.createFile(tempPath, BROWSERPOD_TEXT_FILE_MODE);
+      if (!options.overwrite && (await this.fileCommandRunner.pathExists(pod, normalizedPath))) {
+        this.logger.blocked("writeFileBytes", "path-already-exists", { targetPath: normalizedPath });
+        return this.fail("failed", "path-already-exists", `Path already exists: ${normalizedPath}`);
+      }
+
+      const file = await this.openWritableBinaryFile(pod, normalizedPath, options);
       try {
-        if (!tempFile.write) {
+        if (!file.write) {
           return this.fail("unsupported", "file-write-failed", "BrowserPod file write API is unavailable.");
         }
-        await tempFile.write(arrayBufferToBase64(content));
+        await file.write(content);
       } finally {
-        await closeFile(tempFile);
+        await closeFile(file);
       }
-      await this.fileCommandRunner.writeFileBase64(pod, normalizedPath, tempPath, options);
+      this.logger.success("writeFileBytes", startedAt, {
+        targetPath: normalizedPath,
+        size: content.byteLength,
+        mode: BROWSERPOD_BINARY_FILE_MODE,
+      });
       return { ok: true };
     } catch (error) {
+      this.logger.error("writeFileBytes", error, startedAt, { targetPath: normalizedPath });
       if (error instanceof FileContractError) {
         return this.fail("failed", error.fileError.code, error.message, error);
       }
@@ -246,11 +254,6 @@ export class BrowserPodFileService implements FileService {
   async createFile(runtimeSession: RuntimeSession, path: string, content = ""): Promise<FileActionResult> {
     const pod = this.resolvePod(runtimeSession);
     const normalizedPath = BrowserPodFilePath.normalize(path);
-    console.debug("[BrowserPodFileService]", "createFile:start", {
-      path: normalizedPath,
-      contentLength: content.length,
-      hasCreateFile: Boolean(pod.createFile),
-    });
     if (!pod.createFile) {
       return this.fail("unsupported", "file-create-failed", "BrowserPod createFile API is unavailable.");
     }
@@ -261,16 +264,11 @@ export class BrowserPodFileService implements FileService {
         if (content && file.write) {
           await file.write(content);
         }
-        console.debug("[BrowserPodFileService]", "createFile:ok", { path: normalizedPath });
         return { ok: true };
       } finally {
         await closeFile(file);
       }
     } catch (error) {
-      console.debug("[BrowserPodFileService]", "createFile:error", {
-        path: normalizedPath,
-        error,
-      });
       return this.fail("failed", "file-create-failed", `Failed to create ${normalizedPath}.`, error);
     }
   }
@@ -278,10 +276,6 @@ export class BrowserPodFileService implements FileService {
   async createDirectory(runtimeSession: RuntimeSession, path: string): Promise<FileActionResult> {
     const pod = this.resolvePod(runtimeSession);
     const normalizedPath = BrowserPodFilePath.normalize(path);
-    console.debug("[BrowserPodFileService]", "createDirectory:start", {
-      path: normalizedPath,
-      hasCreateDirectory: Boolean(pod.createDirectory),
-    });
     try {
       if (pod.createDirectory) {
         await pod.createDirectory(normalizedPath, { recursive: true });
@@ -294,13 +288,8 @@ export class BrowserPodFileService implements FileService {
           "Failed to create directory",
         );
       }
-      console.debug("[BrowserPodFileService]", "createDirectory:ok", { path: normalizedPath });
       return { ok: true };
     } catch (error) {
-      console.debug("[BrowserPodFileService]", "createDirectory:error", {
-        path: normalizedPath,
-        error,
-      });
       return this.fail("failed", "directory-create-failed", `Failed to create directory ${normalizedPath}.`, error);
     }
   }
@@ -315,10 +304,26 @@ export class BrowserPodFileService implements FileService {
     const pod = this.resolvePod(runtimeSession);
     const normalizedFrom = BrowserPodFilePath.normalize(fromPath);
     const normalizedTo = BrowserPodFilePath.normalize(toPath);
+    const startedAt = this.logger.start("copyPath", {
+      sourcePath: normalizedFrom,
+      targetPath: normalizedTo,
+      kind,
+      overwrite: Boolean(options.overwrite),
+    });
     try {
       await this.fileCommandRunner.copyPath(pod, normalizedFrom, normalizedTo, kind, options);
+      this.logger.success("copyPath", startedAt, {
+        sourcePath: normalizedFrom,
+        targetPath: normalizedTo,
+        kind,
+      });
       return { ok: true };
     } catch (error) {
+      this.logger.error("copyPath", error, startedAt, {
+        sourcePath: normalizedFrom,
+        targetPath: normalizedTo,
+        kind,
+      });
       if (error instanceof FileContractError) {
         return this.fail("failed", error.fileError.code, error.message, error);
       }
@@ -347,17 +352,25 @@ export class BrowserPodFileService implements FileService {
   async delete(runtimeSession: RuntimeSession, path: string, options: FileDeleteOptions = {}): Promise<FileActionResult> {
     const pod = this.resolvePod(runtimeSession);
     const normalizedPath = BrowserPodFilePath.normalize(path);
-    const args = options.recursive ? ["-rf", normalizedPath] : ["-f", normalizedPath];
+    const startedAt = this.logger.start("deletePath", {
+      path: normalizedPath,
+      recursive: Boolean(options.recursive),
+    });
     try {
-      await this.fileCommandRunner.runFileAction(
-        pod,
-        "rm",
-        args,
-        normalizedPath,
-        "Failed to delete path",
-      );
+      await this.fileCommandRunner.deletePath(pod, normalizedPath, options);
+      this.logger.success("deletePath", startedAt, {
+        path: normalizedPath,
+        recursive: Boolean(options.recursive),
+      });
       return { ok: true };
     } catch (error) {
+      this.logger.error("deletePath", error, startedAt, {
+        path: normalizedPath,
+        recursive: Boolean(options.recursive),
+      });
+      if (error instanceof FileContractError) {
+        return this.fail("failed", error.fileError.code, error.message, error);
+      }
       return this.fail("failed", "delete-failed", `Failed to delete ${normalizedPath}.`, error);
     }
   }
@@ -395,6 +408,24 @@ export class BrowserPodFileService implements FileService {
     throw new FileContractError({
       code: "file-write-failed",
       message: "BrowserPod writable file API is unavailable.",
+      recoverable: true,
+    });
+  }
+
+  private async openWritableBinaryFile(
+    pod: BrowserPodLike,
+    path: string,
+    options: FileBytesWriteOptions,
+  ): Promise<BrowserPodFileLike> {
+    if (options.overwrite && pod.openFile) {
+      return pod.openFile(path, BROWSERPOD_BINARY_FILE_MODE);
+    }
+    if (pod.createFile) {
+      return pod.createFile(path, BROWSERPOD_BINARY_FILE_MODE);
+    }
+    throw new FileContractError({
+      code: "file-create-failed",
+      message: "BrowserPod binary file create API is unavailable.",
       recoverable: true,
     });
   }
@@ -438,16 +469,6 @@ async function closeFile(file: BrowserPodFileLike): Promise<void> {
   } catch {
     // BrowserPod file close is best-effort for adapter cleanup.
   }
-}
-
-function arrayBufferToBase64(content: ArrayBuffer): string {
-  const bytes = new Uint8Array(content);
-  const chunkSize = 0x8000;
-  let binary = "";
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
-  }
-  return btoa(binary);
 }
 
 function base64ToArrayBuffer(content: string): ArrayBuffer {

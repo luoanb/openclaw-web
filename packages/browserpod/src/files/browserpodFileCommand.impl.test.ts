@@ -109,6 +109,52 @@ describe("BrowserPodFileCommandRunner", () => {
     await expect(runner.isTextFile(pod, "/home/user/image.txt")).resolves.toBe(false);
   });
 
+  it("deletes files through a verified shell command", async () => {
+    const pod = createPodWithOutput("__OPENCLAW_DELETE_SUCCESS__");
+    const runner = new BrowserPodFileCommandRunner();
+
+    await runner.deletePath(pod, "/home/user/a file.txt");
+
+    expect(pod.run).toHaveBeenCalledWith(
+      "sh",
+      [
+        "-lc",
+        [
+          "target='/home/user/a file.txt'",
+          "if [ ! -e \"$target\" ]; then printf '__OPENCLAW_DELETE_MISSING__'; exit 0; fi",
+          "if [ -d \"$target\" ]; then printf '__OPENCLAW_DELETE_TYPE_MISMATCH__'; exit 0; fi",
+          "rm -- \"$target\"",
+          "status=$?",
+          "if [ \"$status\" -ne 0 ]; then printf '__OPENCLAW_DELETE_FAILED__'; exit 0; fi",
+          "if [ -e \"$target\" ]; then printf '__OPENCLAW_DELETE_STILL_EXISTS__'; else printf '__OPENCLAW_DELETE_SUCCESS__'; fi",
+        ].join("; "),
+      ],
+      {
+        terminal: expect.any(Object),
+        cwd: "/",
+        echo: false,
+      },
+    );
+  });
+
+  it("does not treat a missing delete target as success", async () => {
+    const pod = createPodWithOutput("__OPENCLAW_DELETE_MISSING__");
+    const runner = new BrowserPodFileCommandRunner();
+
+    await expect(runner.deletePath(pod, "/home/user/missing.txt")).rejects.toMatchObject({
+      fileError: { code: "path-not-found" },
+    });
+  });
+
+  it("does not treat a still-existing delete target as success", async () => {
+    const pod = createPodWithOutput("__OPENCLAW_DELETE_STILL_EXISTS__");
+    const runner = new BrowserPodFileCommandRunner();
+
+    await expect(runner.deletePath(pod, "/home/user/stuck.txt")).rejects.toMatchObject({
+      fileError: { code: "delete-failed" },
+    });
+  });
+
   it("reads base64 file payload between sentinels", async () => {
     const pod = createPodWithOutput("noise\n__OPENCLAW_FILE_BASE64_START__\naGVsbG8=\n__OPENCLAW_FILE_BASE64_END__\n$ ");
     const runner = new BrowserPodFileCommandRunner();
