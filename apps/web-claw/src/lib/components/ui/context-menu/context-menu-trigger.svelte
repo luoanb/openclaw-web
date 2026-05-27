@@ -5,6 +5,7 @@
 	let {
 		ref = $bindable(null),
 		class: className,
+		children,
 		...restProps
 	}: ContextMenuPrimitive.TriggerProps = $props();
 </script>
@@ -14,4 +15,6 @@
 	data-slot="context-menu-trigger"
 	class={cn("cn-context-menu-trigger select-none", className)}
 	{...restProps}
-/>
+>
+	{@render children?.()}
+</ContextMenuPrimitive.Trigger>

@@ -25,6 +25,14 @@ export type TextFileSnapshot = {
   readonly size?: number;
 };
 
+export type BinaryFileSnapshot = {
+  readonly path: string;
+  readonly content: ArrayBuffer;
+  readonly readAt: number;
+  readonly size?: number;
+  readonly mimeType?: string;
+};
+
 export type TextFileInspectionResult =
   | {
       readonly ok: true;
@@ -45,8 +53,18 @@ export type FileWriteOptions = {
   readonly overwrite?: boolean;
 };
 
+export type FileBytesWriteOptions = {
+  readonly overwrite?: boolean;
+};
+
 export type FileDeleteOptions = {
   readonly recursive?: boolean;
+};
+
+export type FileCopyKind = "file" | "directory";
+
+export type FileCopyOptions = {
+  readonly overwrite?: boolean;
 };
 
 export type FileActionFailureReason = "blocked" | "unsupported" | "failed";
@@ -65,14 +83,28 @@ export interface FileService {
   listDirectory(runtimeSession: RuntimeSession, path: string): Promise<DirectorySnapshot>;
   inspectTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileInspectionResult>;
   readTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileSnapshot>;
+  readFileBytes(runtimeSession: RuntimeSession, path: string): Promise<BinaryFileSnapshot>;
   writeTextFile(
     runtimeSession: RuntimeSession,
     path: string,
     content: string,
     options?: FileWriteOptions,
   ): Promise<FileActionResult>;
+  writeFileBytes(
+    runtimeSession: RuntimeSession,
+    path: string,
+    content: ArrayBuffer,
+    options?: FileBytesWriteOptions,
+  ): Promise<FileActionResult>;
   createFile(runtimeSession: RuntimeSession, path: string, content?: string): Promise<FileActionResult>;
   createDirectory(runtimeSession: RuntimeSession, path: string): Promise<FileActionResult>;
+  copyPath(
+    runtimeSession: RuntimeSession,
+    fromPath: string,
+    toPath: string,
+    kind: FileCopyKind,
+    options?: FileCopyOptions,
+  ): Promise<FileActionResult>;
   rename(runtimeSession: RuntimeSession, fromPath: string, toPath: string): Promise<FileActionResult>;
   delete(runtimeSession: RuntimeSession, path: string, options?: FileDeleteOptions): Promise<FileActionResult>;
 }

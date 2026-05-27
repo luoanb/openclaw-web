@@ -6,6 +6,8 @@ export type FileErrorCode =
   | "file-read-failed"
   | "file-write-failed"
   | "file-create-failed"
+  | "copy-failed"
+  | "path-already-exists"
   | "directory-create-failed"
   | "rename-failed"
   | "delete-failed"

@@ -17,12 +17,20 @@ export type CachedDirectorySnapshot = {
   readonly expanded: boolean;
 };
 
+export type FileClipboardSnapshot = {
+  readonly kind: "file" | "directory";
+  readonly sourcePath: string;
+  readonly name: string;
+  readonly copiedAt: number;
+};
+
 export type FileWorkspaceSnapshot = {
   readonly rootPath: string;
   readonly selectedPath: string | null;
   readonly activeTabPath: string | null;
   readonly directories: readonly CachedDirectorySnapshot[];
   readonly tabs: readonly FileTabSnapshot[];
+  readonly clipboard: FileClipboardSnapshot | null;
 };
 
 type FileTabState = FileTabSnapshot;
@@ -34,6 +42,7 @@ export class FileWorkspaceState {
   private readonly directories = new Map<string, DirectorySnapshot>();
   private readonly expandedPaths = new Set<string>();
   private readonly tabs = new Map<string, FileTabState>();
+  private clipboard: FileClipboardSnapshot | null = null;
 
   constructor(rootPath: string) {
     this.rootPath = rootPath;
@@ -126,6 +135,23 @@ export class FileWorkspaceState {
     }
   }
 
+  setCopiedPath(path: string, kind: "file" | "directory"): void {
+    this.clipboard = {
+      kind,
+      sourcePath: path,
+      name: FileWorkspaceState.basename(path),
+      copiedAt: Date.now(),
+    };
+  }
+
+  clearClipboard(): void {
+    this.clipboard = null;
+  }
+
+  getClipboard(): FileClipboardSnapshot | null {
+    return this.clipboard;
+  }
+
   getExpandedDirectoryPaths(): readonly string[] {
     return [...this.expandedPaths];
   }
@@ -146,6 +172,7 @@ export class FileWorkspaceState {
         expanded: this.expandedPaths.has(directory.path),
       })),
       tabs: [...this.tabs.values()],
+      clipboard: this.clipboard,
     };
   }
 

@@ -18,6 +18,25 @@ function createPodWithOutput(output: string, exitCode = 0): BrowserPodLike {
   };
 }
 
+function createPodWithOutputs(results: Array<{ readonly output: string; readonly exitCode?: number }>): BrowserPodLike {
+  const encoder = new TextEncoder();
+  let onOutput: ((buffer: Uint8Array) => void) | null = null;
+  let runIndex = 0;
+
+  return {
+    createCustomTerminal: vi.fn(async (options) => {
+      onOutput = options.onOutput;
+      return {};
+    }),
+    run: vi.fn(async () => {
+      const result = results[runIndex] ?? { output: "", exitCode: 0 };
+      runIndex += 1;
+      onOutput?.(encoder.encode(result.output));
+      return { exitCode: result.exitCode ?? 0 };
+    }),
+  };
+}
+
 describe("BrowserPodFileCommandRunner", () => {
   it("parses ls -l output into directory entries", async () => {
     const pod = createPodWithOutput(
@@ -88,5 +107,92 @@ describe("BrowserPodFileCommandRunner", () => {
     const runner = new BrowserPodFileCommandRunner();
 
     await expect(runner.isTextFile(pod, "/home/user/image.txt")).resolves.toBe(false);
+  });
+
+  it("reads base64 file payload between sentinels", async () => {
+    const pod = createPodWithOutput("noise\n__OPENCLAW_FILE_BASE64_START__\naGVsbG8=\n__OPENCLAW_FILE_BASE64_END__\n$ ");
+    const runner = new BrowserPodFileCommandRunner();
+
+    await expect(runner.readFileBase64(pod, "/home/user/file.bin", 1024)).resolves.toBe("aGVsbG8=");
+  });
+
+  it("copies files without overwriting by default", async () => {
+    const pod = createPodWithOutputs([
+      { output: "__OPENCLAW_PATH_MISSING__" },
+      { output: "", exitCode: 0 },
+    ]);
+    const runner = new BrowserPodFileCommandRunner();
+
+    await runner.copyPath(pod, "/home/user/a.txt", "/home/user/b.txt", "file");
+
+    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], {
+      terminal: expect.any(Object),
+      cwd: "/",
+      echo: false,
+    });
+  });
+
+  it("copies colliding files to a copy target without confirmation", async () => {
+    const pod = createPodWithOutputs([
+      { output: "__OPENCLAW_PATH_EXISTS__" },
+      { output: "__OPENCLAW_PATH_MISSING__" },
+      { output: "", exitCode: 0 },
+    ]);
+    const runner = new BrowserPodFileCommandRunner();
+
+    const result = await runner.copyPath(pod, "/home/user/a.txt", "/home/user/b.txt", "file");
+
+    expect(result).toEqual({ targetPath: "/home/user/b.txt_copy" });
+    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt_copy'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], {
+      terminal: expect.any(Object),
+      cwd: "/",
+      echo: false,
+    });
+  });
+
+  it("keeps probing copy targets until one is available", async () => {
+    const pod = createPodWithOutputs([
+      { output: "__OPENCLAW_PATH_EXISTS__" },
+      { output: "__OPENCLAW_PATH_EXISTS__" },
+      { output: "__OPENCLAW_PATH_MISSING__" },
+      { output: "", exitCode: 0 },
+    ]);
+    const runner = new BrowserPodFileCommandRunner();
+
+    const result = await runner.copyPath(pod, "/home/user/a.txt", "/home/user/b.txt", "file");
+
+    expect(result).toEqual({ targetPath: "/home/user/b.txt_copy_2" });
+    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt_copy_2'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], {
+      terminal: expect.any(Object),
+      cwd: "/",
+      echo: false,
+    });
+  });
+
+  it("copies colliding directories to a copy target", async () => {
+    const pod = createPodWithOutputs([
+      { output: "__OPENCLAW_PATH_EXISTS__" },
+      { output: "__OPENCLAW_PATH_MISSING__" },
+      { output: "", exitCode: 0 },
+    ]);
+    const runner = new BrowserPodFileCommandRunner();
+
+    const result = await runner.copyPath(pod, "/home/user/src", "/home/user/src", "directory");
+
+    expect(result).toEqual({ targetPath: "/home/user/src_copy" });
+    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/src'; target='/home/user/src_copy'; if [ ! -d \"$src\" ]; then exit 2; fi; cp -r \"$src\" \"$target\""], {
+      terminal: expect.any(Object),
+      cwd: "/",
+      echo: false,
+    });
+  });
+
+  it("rejects copying a directory into itself", async () => {
+    const pod = createPodWithOutput("");
+    const runner = new BrowserPodFileCommandRunner();
+
+    await expect(runner.copyPath(pod, "/home/user/src", "/home/user/src/nested", "directory")).rejects.toMatchObject({
+      fileError: { code: "path-invalid" },
+    });
   });
 });

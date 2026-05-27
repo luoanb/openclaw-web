@@ -14,11 +14,21 @@
     type FileWorkspaceSnapshot,
   } from "$lib/core/files";
   import { RuntimeManagerProvider } from "$lib/core/runtime";
-  import type { FileEntry, RuntimeSnapshot, Unsubscribe } from "os-core";
+  import type {
+    FileActionResult,
+    FileEntry,
+    RuntimeSnapshot,
+    Unsubscribe,
+  } from "os-core";
 
   type Props = {
     onOpenRuntime?: () => void;
   };
+
+  type FileMenuTarget =
+    | { kind: "workspace"; path: string; name: string }
+    | { kind: "directory"; path: string; name: string }
+    | { kind: "file"; path: string; name: string };
 
   let { onOpenRuntime }: Props = $props();
 
@@ -31,6 +41,9 @@
   let pathInput = $state("");
   let busyMessage: string | null = $state(null);
   let errorMessage: string | null = $state(null);
+  let menuTarget: FileMenuTarget | null = $state(null);
+  let uploadTargetDirectory: string | null = $state(null);
+  let fileInputElement: HTMLInputElement | null = null;
   let unsubscribe: Unsubscribe | null = null;
 
   function debugFiles(event: string, details?: unknown) {
@@ -194,6 +207,176 @@
     await createPath(parentPath, "file");
   }
 
+  function setWorkspaceMenuTarget() {
+    if (!workspaceSnapshot) return;
+    menuTarget = {
+      kind: "workspace",
+      path: workspaceSnapshot.rootPath,
+      name: basename(workspaceSnapshot.rootPath),
+    };
+  }
+
+  function handleTreeContextMenu(event: MouseEvent) {
+    const target = event.target;
+    if (target instanceof Element && target.closest("[data-file-tree-row]")) {
+      return;
+    }
+    setWorkspaceMenuTarget();
+  }
+
+  function setEntryMenuTarget(entry: FileEntry) {
+    if (entry.kind !== "file" && entry.kind !== "directory") return;
+    menuTarget = {
+      kind: entry.kind,
+      path: entry.path,
+      name: entry.name,
+    };
+  }
+
+  function menuTargetDirectory(target = menuTarget) {
+    if (!workspace || !target) return null;
+    if (target.kind === "file") return workspace.getParentDirectory(target.path);
+    return target.path;
+  }
+
+  function canPasteIntoTarget(target = menuTarget) {
+    return Boolean(workspaceSnapshot?.clipboard && target && target.kind !== "file");
+  }
+
+  function startUpload(target = menuTarget) {
+    const directory = menuTargetDirectory(target);
+    if (!directory || !fileInputElement) return;
+    uploadTargetDirectory = directory;
+    fileInputElement.value = "";
+    fileInputElement.click();
+  }
+
+  async function handleUploadChange(event: Event) {
+    if (!runtimeManager.currentSession || !workspace || !uploadTargetDirectory) return;
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const targetDirectory = uploadTargetDirectory;
+    const targetPath = joinPath(targetDirectory, file.name);
+    busyMessage = `Uploading ${file.name}`;
+    errorMessage = null;
+    try {
+      const content = await file.arrayBuffer();
+      let result = await fileService.writeFileBytes(
+        runtimeManager.currentSession,
+        targetPath,
+        content,
+        { overwrite: false },
+      );
+      if (isPathAlreadyExists(result)) {
+        const confirmed = window.confirm(`Overwrite ${targetPath}?`);
+        if (!confirmed) {
+          busyMessage = null;
+          return;
+        }
+        result = await fileService.writeFileBytes(
+          runtimeManager.currentSession,
+          targetPath,
+          content,
+          { overwrite: true },
+        );
+      }
+      if (!result.ok) {
+        errorMessage = result.message;
+        return;
+      }
+      await loadDirectory(targetDirectory);
+    } catch (error) {
+      errorMessage = formatError(error);
+    } finally {
+      busyMessage = null;
+      uploadTargetDirectory = null;
+    }
+  }
+
+  async function createFileFromMenuTarget() {
+    const directory = menuTargetDirectory();
+    if (!directory) return;
+    await createFile(directory);
+  }
+
+  async function createDirectoryFromMenuTarget() {
+    const directory = menuTargetDirectory();
+    if (!directory) return;
+    await createDirectory(directory);
+  }
+
+  async function downloadMenuTarget() {
+    const target = menuTarget;
+    if (!target || target.kind !== "file") return;
+    await downloadPath(target.path);
+  }
+
+  async function renameMenuTarget() {
+    const target = menuTarget;
+    if (!target || target.kind === "workspace") return;
+    await renamePath(target.path);
+  }
+
+  async function deleteMenuTarget() {
+    const target = menuTarget;
+    if (!target || target.kind === "workspace") return;
+    await deletePath(target.path, target.kind);
+  }
+
+  async function downloadPath(path: string) {
+    if (!runtimeManager.currentSession) return;
+    busyMessage = `Downloading ${path}`;
+    errorMessage = null;
+    try {
+      const file = await fileService.readFileBytes(runtimeManager.currentSession, path);
+      const url = URL.createObjectURL(new Blob([file.content]));
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = basename(path);
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      errorMessage = formatError(error);
+    } finally {
+      busyMessage = null;
+    }
+  }
+
+  function copyTarget(target = menuTarget) {
+    if (!workspace || !target || target.kind === "workspace") return;
+    workspace.setCopiedPath(target.path, target.kind);
+    syncSnapshot();
+  }
+
+  async function pasteIntoTarget(target = menuTarget) {
+    if (!runtimeManager.currentSession || !workspace || !target) return;
+    const clipboard = workspace.getClipboard();
+    const targetDirectory = menuTargetDirectory(target);
+    if (!clipboard || !targetDirectory) return;
+    const targetPath = joinPath(targetDirectory, clipboard.name);
+    busyMessage = `Pasting ${clipboard.name}`;
+    errorMessage = null;
+    try {
+      const result = await fileService.copyPath(
+        runtimeManager.currentSession,
+        clipboard.sourcePath,
+        targetPath,
+        clipboard.kind,
+        { overwrite: false },
+      );
+      if (!result.ok) {
+        errorMessage = result.message;
+        return;
+      }
+      await loadDirectory(targetDirectory);
+    } catch (error) {
+      errorMessage = formatError(error);
+    } finally {
+      busyMessage = null;
+    }
+  }
+
   async function createDirectory(parentPath: string) {
     debugFiles("createDirectory:click", { parentPath });
     await createPath(parentPath, "directory");
@@ -335,6 +518,10 @@
   function formatError(error: unknown) {
     return error instanceof Error ? error.message : String(error);
   }
+
+  function isPathAlreadyExists(result: FileActionResult) {
+    return !result.ok && result.error?.code === "path-already-exists";
+  }
 </script>
 
 {#if runtimeSnapshot.status !== "running"}
@@ -394,22 +581,30 @@
             </div>
           </div>
 
-          <div class="min-h-0 flex-1 overflow-auto p-1 text-xs">
-            {#if !workspaceSnapshot}
-              <div class="p-3 text-muted-foreground">Preparing files...</div>
-            {:else if visibleRows().length === 0}
-              <div class="p-3 text-muted-foreground">
-                No files in this directory.
-              </div>
-            {:else}
-              {#each visibleRows() as row (row.entry.path)}
-                <ContextMenu.Root>
-                  <ContextMenu.Trigger>
+          <ContextMenu.Root>
+            <ContextMenu.Trigger class="min-h-0 flex flex-1">
+              <div
+                class="min-h-0 flex-1 overflow-auto p-1 text-xs"
+                role="tree"
+                aria-label="Files explorer"
+                tabindex="0"
+                oncontextmenu={handleTreeContextMenu}
+              >
+                {#if !workspaceSnapshot}
+                  <div class="p-3 text-muted-foreground">Preparing files...</div>
+                {:else if visibleRows().length === 0}
+                  <div class="p-3 text-muted-foreground">
+                    No files in this directory.
+                  </div>
+                {:else}
+                  {#each visibleRows() as row (row.entry.path)}
                     <button
                       type="button"
+                      data-file-tree-row
                       class={`flex h-7 w-full items-center gap-1 rounded px-2 text-left hover:bg-muted ${workspaceSnapshot.selectedPath === row.entry.path ? "bg-muted text-foreground" : "text-muted-foreground"}`}
                       style={`padding-left: ${row.depth * 0.875 + 0.5}rem`}
                       onclick={() => void handleEntryClick(row.entry)}
+                      oncontextmenu={() => setEntryMenuTarget(row.entry)}
                     >
                       {#if row.entry.kind === "directory"}
                         <Icon
@@ -426,41 +621,75 @@
                       {/if}
                       <span class="truncate">{row.entry.name}</span>
                     </button>
-                  </ContextMenu.Trigger>
-                  <ContextMenu.Content>
-                    {#if row.entry.kind === "directory"}
-                      <ContextMenu.Item
-                        onclick={() => void createFile(row.entry.path)}
-                      >
-                        <Icon name="file" class="mr-2 size-3.5" />
-                        New file
-                      </ContextMenu.Item>
-                      <ContextMenu.Item
-                        onclick={() => void createDirectory(row.entry.path)}
-                      >
-                        <Icon name="folder" class="mr-2 size-3.5" />
-                        New folder
-                      </ContextMenu.Item>
-                      <ContextMenu.Separator />
-                    {/if}
-                    <ContextMenu.Item
-                      onclick={() => void renamePath(row.entry.path)}
-                    >
-                      <Icon name="edit" class="mr-2 size-3.5" />
-                      Rename
-                    </ContextMenu.Item>
-                    <ContextMenu.Item
-                      onclick={() =>
-                        void deletePath(row.entry.path, row.entry.kind)}
-                    >
-                      <Icon name="delete" class="mr-2 size-3.5" />
-                      Delete
-                    </ContextMenu.Item>
-                  </ContextMenu.Content>
-                </ContextMenu.Root>
-              {/each}
-            {/if}
-          </div>
+                  {/each}
+                {/if}
+              </div>
+            </ContextMenu.Trigger>
+            <ContextMenu.Content>
+              {#if menuTarget}
+                {#if menuTarget.kind !== "file"}
+                  <ContextMenu.Item
+                    onclick={() => void createFileFromMenuTarget()}
+                  >
+                    <Icon name="file" class="mr-2 size-3.5" />
+                    New file
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    onclick={() => void createDirectoryFromMenuTarget()}
+                  >
+                    <Icon name="folder" class="mr-2 size-3.5" />
+                    New folder
+                  </ContextMenu.Item>
+                  <ContextMenu.Item onclick={() => startUpload()}>
+                    <Icon name="add" class="mr-2 size-3.5" />
+                    Upload file
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    disabled={!canPasteIntoTarget()}
+                    onclick={() => void pasteIntoTarget()}
+                  >
+                    <Icon name="file" class="mr-2 size-3.5" />
+                    Paste
+                  </ContextMenu.Item>
+                  <ContextMenu.Separator />
+                {:else}
+                  <ContextMenu.Item onclick={() => void downloadMenuTarget()}>
+                    <Icon name="file" class="mr-2 size-3.5" />
+                    Download
+                  </ContextMenu.Item>
+                  <ContextMenu.Item onclick={() => startUpload()}>
+                    <Icon name="add" class="mr-2 size-3.5" />
+                    Upload file to parent
+                  </ContextMenu.Item>
+                  <ContextMenu.Separator />
+                {/if}
+
+                {#if menuTarget.kind !== "workspace"}
+                  <ContextMenu.Item onclick={() => copyTarget()}>
+                    <Icon name={menuTarget.kind === "directory" ? "folder" : "file"} class="mr-2 size-3.5" />
+                    Copy
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    onclick={() => void renameMenuTarget()}
+                  >
+                    <Icon name="edit" class="mr-2 size-3.5" />
+                    Rename
+                  </ContextMenu.Item>
+                  <ContextMenu.Item
+                    onclick={() => void deleteMenuTarget()}
+                  >
+                    <Icon name="delete" class="mr-2 size-3.5" />
+                    Delete
+                  </ContextMenu.Item>
+                {:else}
+                  <ContextMenu.Item onclick={() => void refreshOpenedDirectories()}>
+                    <Icon name="refresh" class="mr-2 size-3.5" />
+                    Refresh
+                  </ContextMenu.Item>
+                {/if}
+              {/if}
+            </ContextMenu.Content>
+          </ContextMenu.Root>
         </div>
       </Resizable.Pane>
 
@@ -558,3 +787,10 @@
     {/if}
   </section>
 {/if}
+
+<input
+  bind:this={fileInputElement}
+  type="file"
+  class="hidden"
+  onchange={(event) => void handleUploadChange(event)}
+/>

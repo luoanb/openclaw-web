@@ -1,8 +1,12 @@
 import {
   FileContractError,
+  type BinaryFileSnapshot,
   type DirectorySnapshot,
   type FileActionFailureReason,
   type FileActionResult,
+  type FileBytesWriteOptions,
+  type FileCopyKind,
+  type FileCopyOptions,
   type FileDeleteOptions,
   type FileErrorCode,
   type FileService,
@@ -17,6 +21,7 @@ import { BrowserPodFilePath } from "./browserpodFilePath.impl";
 
 const BROWSERPOD_DEFAULT_FILE_PATH = "/home/user";
 const DEFAULT_TEXT_FILE_LIMIT_BYTES = 1024 * 1024;
+const DEFAULT_BINARY_FILE_LIMIT_BYTES = 5 * 1024 * 1024;
 const BROWSERPOD_TEXT_FILE_MODE = "utf-8";
 
 export class BrowserPodFileService implements FileService {
@@ -162,6 +167,19 @@ export class BrowserPodFileService implements FileService {
     }
   }
 
+  async readFileBytes(runtimeSession: RuntimeSession, path: string): Promise<BinaryFileSnapshot> {
+    const pod = this.resolvePod(runtimeSession);
+    const normalizedPath = BrowserPodFilePath.normalize(path);
+    const base64 = await this.fileCommandRunner.readFileBase64(pod, normalizedPath, DEFAULT_BINARY_FILE_LIMIT_BYTES);
+    const content = base64ToArrayBuffer(base64);
+    return {
+      path: normalizedPath,
+      content,
+      readAt: Date.now(),
+      size: content.byteLength,
+    };
+  }
+
   async writeTextFile(
     runtimeSession: RuntimeSession,
     path: string,
@@ -181,6 +199,46 @@ export class BrowserPodFileService implements FileService {
         await closeFile(file);
       }
     } catch (error) {
+      return this.fail("failed", "file-write-failed", `Failed to write ${normalizedPath}.`, error);
+    }
+  }
+
+  async writeFileBytes(
+    runtimeSession: RuntimeSession,
+    path: string,
+    content: ArrayBuffer,
+    options: FileBytesWriteOptions = {},
+  ): Promise<FileActionResult> {
+    const pod = this.resolvePod(runtimeSession);
+    const normalizedPath = BrowserPodFilePath.normalize(path);
+    if (content.byteLength > DEFAULT_BINARY_FILE_LIMIT_BYTES) {
+      return this.fail(
+        "unsupported",
+        "file-too-large",
+        `File is larger than ${DEFAULT_BINARY_FILE_LIMIT_BYTES} bytes: ${normalizedPath}`,
+      );
+    }
+    if (!pod.createFile) {
+      return this.fail("unsupported", "file-create-failed", "BrowserPod createFile API is unavailable.");
+    }
+
+    const tempPath = `/tmp/openclaw-upload-${Date.now()}-${Math.random().toString(36).slice(2)}.b64`;
+    try {
+      const tempFile = await pod.createFile(tempPath, BROWSERPOD_TEXT_FILE_MODE);
+      try {
+        if (!tempFile.write) {
+          return this.fail("unsupported", "file-write-failed", "BrowserPod file write API is unavailable.");
+        }
+        await tempFile.write(arrayBufferToBase64(content));
+      } finally {
+        await closeFile(tempFile);
+      }
+      await this.fileCommandRunner.writeFileBase64(pod, normalizedPath, tempPath, options);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof FileContractError) {
+        return this.fail("failed", error.fileError.code, error.message, error);
+      }
       return this.fail("failed", "file-write-failed", `Failed to write ${normalizedPath}.`, error);
     }
   }
@@ -244,6 +302,27 @@ export class BrowserPodFileService implements FileService {
         error,
       });
       return this.fail("failed", "directory-create-failed", `Failed to create directory ${normalizedPath}.`, error);
+    }
+  }
+
+  async copyPath(
+    runtimeSession: RuntimeSession,
+    fromPath: string,
+    toPath: string,
+    kind: FileCopyKind,
+    options: FileCopyOptions = {},
+  ): Promise<FileActionResult> {
+    const pod = this.resolvePod(runtimeSession);
+    const normalizedFrom = BrowserPodFilePath.normalize(fromPath);
+    const normalizedTo = BrowserPodFilePath.normalize(toPath);
+    try {
+      await this.fileCommandRunner.copyPath(pod, normalizedFrom, normalizedTo, kind, options);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof FileContractError) {
+        return this.fail("failed", error.fileError.code, error.message, error);
+      }
+      return this.fail("failed", "copy-failed", `Failed to copy ${normalizedFrom} to ${normalizedTo}.`, error);
     }
   }
 
@@ -359,4 +438,23 @@ async function closeFile(file: BrowserPodFileLike): Promise<void> {
   } catch {
     // BrowserPod file close is best-effort for adapter cleanup.
   }
+}
+
+function arrayBufferToBase64(content: ArrayBuffer): string {
+  const bytes = new Uint8Array(content);
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(content: string): ArrayBuffer {
+  const binary = atob(content);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes.buffer;
 }

@@ -34,6 +34,13 @@ export class BrowserPodFilePath {
     return BrowserPodFilePath.normalize(`${parent === "/" ? "" : parent}/${name}`);
   }
 
+  static copyName(path: string, index = 1): string {
+    const normalized = BrowserPodFilePath.normalize(path);
+    const suffix = index <= 1 ? "_copy" : `_copy_${index}`;
+    if (normalized === "/") return `/${suffix.slice(1)}`;
+    return BrowserPodFilePath.join(BrowserPodFilePath.dirname(normalized), `${BrowserPodFilePath.basename(normalized)}${suffix}`);
+  }
+
   static shellQuote(value: string): string {
     return `'${value.replaceAll("'", "'\\''")}'`;
   }

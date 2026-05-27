@@ -146,4 +146,76 @@ describe("BrowserPodFileService", () => {
     expect(pod.run).not.toHaveBeenCalled();
     expect(file.read).not.toHaveBeenCalled();
   });
+
+  it("reads binary file bytes through base64 command output", async () => {
+    const pod = createPodWithFile(
+      {},
+      "__OPENCLAW_FILE_BASE64_START__\naGVsbG8=\n__OPENCLAW_FILE_BASE64_END__",
+    );
+    const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
+    const runtimeSession = await runtimeManager.boot();
+    const service = new BrowserPodFileService(runtimeManager);
+
+    const snapshot = await service.readFileBytes(runtimeSession, "/home/user/file.bin");
+
+    expect(new TextDecoder().decode(snapshot.content)).toBe("hello");
+    expect(snapshot.size).toBe(5);
+  });
+
+  it("writes binary file bytes through a temporary base64 file", async () => {
+    const tempFile: BrowserPodFileLike = {
+      write: vi.fn(async () => 0),
+      close: vi.fn(async () => undefined),
+    };
+    const encoder = new TextEncoder();
+    let onOutput: ((buffer: Uint8Array) => void) | null = null;
+    const pod: BrowserPodLike = {
+      createCustomTerminal: vi.fn(async (options) => {
+        onOutput = options.onOutput;
+        return {};
+      }),
+      run: vi.fn(async () => {
+        onOutput?.(encoder.encode(""));
+        return { exitCode: 0 };
+      }),
+      createFile: vi.fn(async () => tempFile),
+    };
+    const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
+    const runtimeSession = await runtimeManager.boot();
+    const service = new BrowserPodFileService(runtimeManager);
+
+    const result = await service.writeFileBytes(runtimeSession, "/home/user/file.bin", new TextEncoder().encode("hello").buffer);
+
+    expect(result).toEqual({ ok: true });
+    expect(tempFile.write).toHaveBeenCalledWith("aGVsbG8=");
+    expect(pod.run).toHaveBeenCalledWith(
+      "sh",
+      [expect.stringContaining("-lc"), expect.stringContaining("base64 -d \"$tmp\" > \"$target\"")],
+      expect.objectContaining({ cwd: "/" }),
+    );
+  });
+
+  it("copies paths through the BrowserPod command runner", async () => {
+    const encoder = new TextEncoder();
+    let onOutput: ((buffer: Uint8Array) => void) | null = null;
+    const outputs = ["__OPENCLAW_PATH_MISSING__", ""];
+    const pod: BrowserPodLike = {
+      createCustomTerminal: vi.fn(async (options) => {
+        onOutput = options.onOutput;
+        return {};
+      }),
+      run: vi.fn(async () => {
+        onOutput?.(encoder.encode(outputs.shift() ?? ""));
+        return { exitCode: 0 };
+      }),
+    };
+    const runtimeManager = new BrowserPodRuntimeManager(createConfig(pod));
+    const runtimeSession = await runtimeManager.boot();
+    const service = new BrowserPodFileService(runtimeManager);
+
+    const result = await service.copyPath(runtimeSession, "/home/user/src", "/home/user/src_copy", "directory");
+
+    expect(result).toEqual({ ok: true });
+    expect(pod.run).toHaveBeenCalled();
+  });
 });
