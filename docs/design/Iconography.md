@@ -20,7 +20,7 @@
 - [x] Files panel: refresh, save, file tree expand/collapse/file/folder, tab close, context menu create/rename/delete.
 - [x] Terminal panel: title, status, cwd, run button, blocked runtime state, notices/errors.
 - [x] Runtime drawer: title, boot/stop actions, session and capability cards, warning/error states.
-- [ ] Preview panel: placeholder state, refresh/open-external actions when implemented.
+- [x] Preview panel: placeholder state, refresh/open-external actions when implemented.
 - [ ] Global UI primitives still importing Hugeicons directly should be migrated opportunistically when those primitives are touched.
 
 ## Done Contract

@@ -13,7 +13,7 @@ export type BrowserPodBootOptions = {
 
 export type BrowserPodLike = {
   readonly run?: BrowserPodRun;
-  readonly onPortal?: unknown;
+  readonly onPortal?: BrowserPodOnPortal;
   readonly createDirectory?: BrowserPodCreateDirectory;
   readonly createFile?: BrowserPodCreateFile;
   readonly openFile?: BrowserPodOpenFile;
@@ -32,6 +32,13 @@ export type BrowserPodRun = (
   args: string[],
   options: BrowserPodRunOptions,
 ) => unknown;
+
+export type BrowserPodPortalEvent = {
+  readonly url: string;
+  readonly port: number;
+};
+
+export type BrowserPodOnPortal = (callback: (event: BrowserPodPortalEvent) => void) => void;
 
 export type BrowserPodCreateDefaultTerminal = (element: HTMLElement) => BrowserPodTerminalLike | Promise<BrowserPodTerminalLike>;
 

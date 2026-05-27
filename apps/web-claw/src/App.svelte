@@ -6,6 +6,7 @@
   import { RuntimeManagerProvider } from "$lib/core/runtime";
   import * as Tabs from "$lib/components/ui/tabs";
   import FilesPanel from "$lib/features/files/components/FilesPanel.svelte";
+  import PreviewPanel from "$lib/features/preview/components/PreviewPanel.svelte";
   import RuntimeStatusPanel from "$lib/features/runtime/components/RuntimeStatusPanel.svelte";
   import TerminalPanel from "$lib/features/terminal/components/TerminalPanel.svelte";
   import StatusBanner from "$lib/ui/components/StatusBanner.svelte";
@@ -142,8 +143,8 @@
           <FilesPanel onOpenRuntime={() => (runtimeDrawerOpen = true)} />
         </Tabs.Content>
 
-        <Tabs.Content value="preview" class="p-4 text-muted-foreground">
-          Preview tab placeholder.
+        <Tabs.Content value="preview" class="flex min-h-0 flex-1 flex-col overflow-hidden p-2 sm:p-4">
+          <PreviewPanel onOpenRuntime={() => (runtimeDrawerOpen = true)} />
         </Tabs.Content>
       </Tabs.Root>
     </section>
