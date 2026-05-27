@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
   import { Button } from "$lib/components/ui/button";
+  import { Icon, type IconName } from "$lib/components/icon";
   import { RuntimeManagerProvider } from "$lib/core/runtime";
   import { TerminalServiceProvider } from "$lib/core/terminal";
   import type { RuntimeSnapshot, TerminalEvent, TerminalSession, TerminalSnapshot, Unsubscribe } from "os-core";
@@ -172,24 +173,36 @@
   function promptDisabled() {
     return busy || runtimeSnapshot.status !== "running" || !terminalSession || terminalSnapshot?.interactionStatus === "running";
   }
+
+  function interactionIconName(): IconName {
+    if (errorMessage) return "errorCircle";
+    if (busy || terminalSnapshot?.interactionStatus === "running") return "loading";
+    return terminalSnapshot?.interactionStatus === "ready" ? "checkCircle" : "info";
+  }
 </script>
 
-<section class="flex min-h-[18rem] flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-xs">
+<section class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-xs">
   <div class="flex h-10 shrink-0 items-center gap-2 border-b px-3">
+    <Icon name="terminal" class="size-3.5 text-muted-foreground" />
     <div class="min-w-0 flex-1">
       <div class="truncate text-xs font-medium">Terminal 1</div>
     </div>
-    <span class="rounded-md border bg-muted px-2 py-0.5 text-[0.625rem] text-muted-foreground">
+    <span class="inline-flex items-center gap-1 rounded-md border bg-muted px-2 py-0.5 text-[0.625rem] text-muted-foreground">
+      <Icon
+        name={interactionIconName()}
+        class={`size-3 ${busy || terminalSnapshot?.interactionStatus === "running" ? "animate-spin" : ""}`}
+      />
       {terminalSnapshot?.interactionStatus ?? (runtimeSnapshot.status === "running" ? "creating" : "waiting")}
     </span>
   </div>
 
   <div class="relative min-h-0 flex-1 bg-zinc-950 text-zinc-100">
-    <div bind:this={terminalElement} class="h-full min-h-[16rem] w-full overflow-auto font-mono text-sm"></div>
+    <div bind:this={terminalElement} class="h-full min-h-0 w-full overflow-auto font-mono text-sm"></div>
 
     {#if runtimeSnapshot.status !== "running"}
       <div class="absolute inset-0 flex items-center justify-center bg-card text-card-foreground">
         <div class="max-w-[28rem] px-6 text-center">
+          <Icon name="alert" class="mx-auto mb-3 size-5 text-muted-foreground" />
           <p class="text-sm font-medium">容器未运行</p>
           <p class="mt-2 text-xs/relaxed text-muted-foreground">
             启动容器后会在这里创建终端；终端不会自行 boot BrowserPod。
@@ -202,15 +215,22 @@
   {#if notices.length > 0 || errorMessage}
     <div class="space-y-1 border-t bg-muted/40 px-3 py-2 text-xs">
       {#if errorMessage}
-        <p class="text-red-700 dark:text-red-300">{errorMessage}</p>
+        <p class="flex items-center gap-1 text-red-700 dark:text-red-300">
+          <Icon name="errorCircle" class="size-3.5" />
+          {errorMessage}
+        </p>
       {/if}
       {#each notices as notice}
-        <p class="text-muted-foreground">{notice}</p>
+        <p class="flex items-center gap-1 text-muted-foreground">
+          <Icon name="info" class="size-3.5" />
+          {notice}
+        </p>
       {/each}
     </div>
   {/if}
 
   <div class="flex items-center gap-2 border-t px-3 py-2">
+    <Icon name="folder" class="size-3.5 text-muted-foreground" />
     <span class="max-w-[12rem] truncate font-mono text-xs text-muted-foreground">
       {terminalSnapshot?.cwd ?? "/"}
     </span>
@@ -223,6 +243,9 @@
       bind:value={terminalInput}
       onkeydown={handlePromptKeydown}
     />
-    <Button size="sm" disabled={promptDisabled() || !terminalInput.trim()} onclick={submitPrompt}>Run</Button>
+    <Button size="sm" disabled={promptDisabled() || !terminalInput.trim()} onclick={submitPrompt}>
+      <Icon name="play" class="size-3" />
+      Run
+    </Button>
   </div>
 </section>

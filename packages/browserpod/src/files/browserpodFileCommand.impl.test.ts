@@ -55,4 +55,38 @@ describe("BrowserPodFileCommandRunner", () => {
       echo: false,
     });
   });
+
+  it("detects text files through grep-compatible shell output", async () => {
+    const pod = createPodWithOutput("\u001b[32m__OPENCLAW_TEXT_FILE__\u001b[0m\n$ ");
+    const runner = new BrowserPodFileCommandRunner();
+
+    await expect(runner.isTextFile(pod, "/home/user/README")).resolves.toBe(true);
+    expect(pod.run).toHaveBeenCalledWith(
+      "sh",
+      [
+        "-lc",
+        [
+          "p='/home/user/README'",
+          'if [ ! -f "$p" ]; then exit 2; fi',
+          "if [ ! -s \"$p\" ]; then printf '__OPENCLAW_TEXT_FILE__'; exit 0; fi",
+          "if LC_ALL=C grep -Iq \"\" \"$p\"; then printf '__OPENCLAW_TEXT_FILE__'; exit 0; fi",
+          "status=$?",
+          "if [ \"$status\" -eq 1 ]; then printf '__OPENCLAW_BINARY_FILE__'; exit 0; fi",
+          'exit "$status"',
+        ].join("; "),
+      ],
+      {
+        terminal: expect.any(Object),
+        cwd: "/",
+        echo: false,
+      },
+    );
+  });
+
+  it("detects binary files through grep-compatible shell output", async () => {
+    const pod = createPodWithOutput("__OPENCLAW_BINARY_FILE__");
+    const runner = new BrowserPodFileCommandRunner();
+
+    await expect(runner.isTextFile(pod, "/home/user/image.txt")).resolves.toBe(false);
+  });
 });

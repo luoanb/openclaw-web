@@ -133,14 +133,26 @@
 
 - `browserpodCommand.interfaces.ts`
 - `browserpodCommand.impl.ts`
+- `asyncTaskQueue.impl.ts`
 - `index.ts`
 
 实现类：
 
+- `AsyncTaskQueue`
+  - 通用异步任务队列工具，支持构造时配置 `concurrency`。
+  - `enqueue(task)` 返回该任务自身的 Promise 结果，不要求调用方理解队列内部状态。
+  - FIFO 启动任务；单个任务失败只 reject 当前任务，不阻断后续任务继续执行。
+  - 队列本身不绑定 BrowserPod，供 command runner 或后续 adapter 复用。
 - `BrowserPodCommandRunner`
-  - 基于 `pod.createCustomTerminal({ onOutput })` 捕获输出 chunk。
+  - 基于 `pod.createCustomTerminal({ onOutput })` 捕获输出 chunk，但不得为每次命令新建 terminal。
+  - 同一个 `BrowserPodCommandRunner` 实例在同一 BrowserPod session 内最多 lazy 创建一个 custom terminal；该 terminal 创建后作为 runner 本地持有的资源存在，后续 `run()` 调用都复用它。
+  - `run()` 必须允许用户层面的并发调用，但内部使用 `AsyncTaskQueue({ concurrency: 1 })` 串行执行 `pod.run(...)`，保证同一 custom terminal 上不并发执行命令。
+  - 并发进入的多个 `run()` 调用必须按进入队列的顺序逐个启动、逐个 resolve / reject；每个调用返回自身命令结果，不得因后续命令覆盖前一个调用的 output 或状态。
+  - 每次 run 使用独立 output buffer；`onOutput` 只写入当前 active command buffer，避免连续命令输出串线。
   - 基于 `pod.run("sh", ["-lc", script], { terminal, cwd, echo: false })` 执行非交互式命令。
+  - 调用 BrowserPod SDK 方法时必须保留 `pod` 作为 receiver；不得将 `pod.run` 解构为裸函数后直接调用，否则真实 SDK 内部 `this` 绑定会丢失。
   - 不假设 `pod.run` 返回标准 Promise；adapter 需将 `Promise`、thenable、process-like `cosProcess` 与同步返回值归一化为内部完成 Promise。
+  - 提供 `dispose()` / `close()` 释放复用 terminal；释放是 adapter 主动动作，但 BrowserPod 2.8.0 是否立即回收 virtual terminal quota 仍需真实验证。
   - 返回轻量 `ShellRunResult`：
     - `ok: boolean`
     - `code?: number | string`
@@ -155,6 +167,8 @@
 - `custom-terminal` demo 已验证 `write` 不适合喂给 `pod.run` 前台 stdin。
 - `pod.run` 返回值先归一化为内部完成 Promise 后作为完成判据；超时由 command runner 映射为 `ok: false` 和固定 `code`。
 - 真实 Files Tab 堆栈已暴露：`waitForRunResult` 不得直接依赖 raw `.then(...)` 返回值进入 `Promise.race`，否则内部 `{ type }` 判别对象可能为 `undefined`。
+- 真实 Files Tab 点击文件时暴露 `Virtual terminals are exhausted`：当前一次命令一次 `createCustomTerminal` 的资源模型不可接受；custom terminal 必须视为稀缺资源，由队列和复用策略调度。
+- 当前方案的优先策略是“单 runner 单 custom terminal 复用 + 串行队列”。若真实 BrowserPod 不允许同一个 custom terminal 连续绑定多次 `pod.run`，则回退为“队列并发 1 + 每次命令创建 terminal”，但必须在文档中保留 quota 回收不可证明的风险，并提示 runtime 重启作为恢复手段。
 
 ### `packages/browserpod/src/files`
 
@@ -190,15 +204,18 @@
 结构操作建议：
 
 - `createDirectory`：优先 SDK `createDirectory(path, { recursive: true })`；若不可用再考虑 `mkdir -p` 降级。
-- `createFile`：优先 SDK `createFile(path, "w")` 或实现阶段确认后的等价 mode。
+- `createFile`：文本文件创建使用 SDK `createFile(path, "utf-8")`；真实 BrowserPod 会拒绝 `"w"` 等 POSIX 风格 mode。
 - `rename`：使用 `mv <from> <to>`。
 - `delete`：使用 `rm -f <path>` 或 `rm -rf <path>`；递归删除需由 UI 明确确认后传入。
 
 文本读写建议：
 
-- `readTextFile`：优先 SDK `openFile(path, "r")`，读取 `getSize()` 后按大小上限读取；暂按 UTF-8 文本处理。
-- `writeTextFile`：优先 SDK `openFile(path, "w")` 或 `createFile(path, "w")`；具体 mode 在执行阶段用最小 probe / 单测 mock 固化。
-- 非文本类型判断由 app 先根据扩展名和 size 进行前置限制，adapter 仍需返回 `unsupported-file-type` / `file-too-large` 防线。
+- `readTextFile`：优先 SDK `openFile(path, "utf-8")`，读取 `getSize()` 后按大小上限读取；暂按 UTF-8 文本处理。
+- `readTextFile` 自身负责大小检查、文本检测与内容读取；UI 打开文件时不得先 `inspectTextFile()` 再 `readTextFile()` 造成同一次点击重复检测。
+- `writeTextFile`：优先 SDK `openFile(path, "utf-8")` 或 `createFile(path, "utf-8")`；不得使用 `"r"` / `"w"` 等 BrowserPod 不支持的 mode。
+- 非文本类型判断以容器内文件内容检测为准，不以扩展名白名单作为最终依据；adapter 在读取前必须提供 `unsupported-file-type` / `file-too-large` 防线。
+- 文本检测语义：空文件视为文本；非空文件参考 `LC_ALL=C grep -Iq "" "$file"` 判断是否可作为文本读取；扩展名仅用于语言标签、图标等展示辅助。
+- 检测命令输出必须使用稳定 sentinel，并以包含 sentinel 的方式解析结果，避免 BrowserPod 自定义终端混入提示符、ANSI 控制字符或其他输出时把文本文件误判为非文本。
 
 ## App Architecture / 应用架构
 
@@ -224,7 +241,8 @@
   - 第一阶段只根据扩展名返回展示标签（如 `TypeScript`、`JSON`、`Markdown`），用于 Tab 或状态提示。
   - 不加载语言包；语法高亮作为后续增强项。
 - `FileTextPolicy`
-  - 判定是否为文本文件、大小是否允许、是否可编辑
+  - 判定大小是否允许、是否可编辑
+  - 不负责根据扩展名判断文件是否为文本；文本/非文本由 file service 基于内容检测
   - 技术方案默认建议：单文件读取/编辑上限 `1 MiB`，执行前需用户确认
 
 ### `apps/web-claw/src/lib/features/files/components`
@@ -403,6 +421,12 @@
   - 缓解方式：第一阶段按常规项目文件名处理；后续如需要支持极端文件名，再升级目录输出协议。
 - 风险：将 programmatic command 放入 terminal 契约导致 files 依赖 interactive terminal 语义。
   - 缓解方式：第一阶段只在 `packages/browserpod/src/command` 提供 adapter 内部 command runner；`os-core` 暂不新增公共 command/process 契约，除非后续服务预览等能力也需要共享。
+- 风险：BrowserPod custom terminal virtual quota 被重复创建耗尽。
+  - 缓解方式：新增 `AsyncTaskQueue` 控制命令并发；`CustomTerminalCommandRunner` 默认 `concurrency: 1`，同一 runner lazy 创建并复用一个 custom terminal，禁止文件命令并发创建 custom terminal。
+- 风险：复用 custom terminal 时连续 `pod.run` 输出串线。
+  - 缓解方式：每次 run 建立独立 output buffer；`onOutput` 只写入当前 active command；队列保证同一 custom terminal 上同一时刻只有一个 active command。
+- 风险：BrowserPod 2.8.0 的 terminal `close` 是否回收 virtual terminal quota 不可证明。
+  - 缓解方式：提供 `dispose()` / `close()` 主动释放；真实验证若发现 quota 长时间不回收，将该状态映射为可恢复错误，并提示用户重启 runtime 释放 BrowserPod 内部资源。
 - 风险：大目录刷新已展开路径时性能差。
   - 缓解方式：只刷新已展开目录；串行或限并发；为目录读取加 loading 状态。
 - 风险：Textarea 无语法高亮，编辑体验弱于 IDE。
@@ -421,8 +445,20 @@
 - 单元/集成测试：
   - `pnpm --filter os-core test`
   - `pnpm --filter browserpod test`
+  - BrowserPod command queue tests：
+    - `AsyncTaskQueue` 遵守配置并发数，FIFO 启动任务。
+    - 单个任务 reject 不阻塞后续任务。
+    - `enqueue(task)` resolve / reject 对应各自任务结果。
+  - BrowserPod command runner reuse tests：
+    - 并发多个 `run()` 时，最多只调用一次 `createCustomTerminal`。
+    - 多个命令经队列串行执行，且每个命令获得独立 output。
+    - `dispose()` 调用 terminal `close`，并在后续 run 时可重新 lazy create。
+  - Files open tests：
+    - 单次 UI 打开文件只调用一次 `readTextFile`，不得先独立 `inspectTextFile` 再读。
+    - `readTextFile` 内部失败仍映射为可读文件错误。
   - BrowserPod demo package probe：
     - `createCustomTerminal({ onOutput })` 捕获真实 `pod.run` 的 stdout/stderr。
+    - 同一个 custom terminal 能否连续执行多次 `pod.run`；若不支持，记录回退方案证据。
   - `pod.run("sh", ["-lc", script], { terminal, cwd: "/home/user", echo: false })` 可返回轻量 `ShellRunResult`。
   - 成功路径输出 `ok: true` 与 combined `output`。
   - timeout 路径输出 `ok: false`、固定 `code` 与 timeout 前捕获到的 `output`。
@@ -480,16 +516,16 @@
 - 当前理解：
   - 技术方案已覆盖文件契约、BrowserPod adapter、Files UI、Textarea 文本编辑器和验证路径。
 - 核心目标：
-  - 将 Files Tab 从占位推进到命令驱动目录树 + SDK 文本读写 + IDE 风格多 Tab 编辑。
+  - 将 Files Tab 从占位推进到命令驱动目录树 + SDK 文本读写 + IDE 风格多 Tab 编辑，并修复 BrowserPod custom terminal 资源调度问题。
 - 下一步动作：
-  - 用户已批准“调整好方案就开始执行”，文档调整后进入代码执行。
+  - 当前先完成方案落地；代码执行需用户再次明确批准。
 - 执行前仍需确认：
   - 文件大小上限是否采用 `1 MiB`。
   - 删除/覆盖/重命名确认策略是否采用本方案默认：删除必确认，重命名冲突必确认，保存当前已打开文件不额外确认。
   - 本地上传是否不纳入第一阶段。
   - 是否需要补写 `docs/prd/prd-web-claw-files-light.md`。
 - 风险：
-  - BrowserPod SDK 文件 API mode 与 custom terminal command runner 的完成判据需要实现阶段实证。
+  - BrowserPod SDK 文件 API mode、custom terminal command runner 完成判据、同一 custom terminal 连续执行多次 `pod.run` 的行为需要实现阶段实证。
 - 验证方式：
-  - 先跑包级类型检查和 adapter 单测，再跑 `web-claw` check/build，最后做 BrowserPod happy path 手动验证。
-- Execution Approval: `Approved`
+  - 先跑包级类型检查和 adapter 单测，再跑 `web-claw` check/build，最后做 BrowserPod happy path 与 custom terminal 复用手动验证。
+- Execution Approval: `Pending for command queue / custom terminal reuse fix`

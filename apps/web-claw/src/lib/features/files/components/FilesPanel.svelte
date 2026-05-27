@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Button } from "$lib/components/ui/button";
+  import { Icon } from "$lib/components/icon";
   import { Input } from "$lib/components/ui/input";
   import { Textarea } from "$lib/components/ui/textarea";
   import * as ContextMenu from "$lib/components/ui/context-menu";
@@ -31,6 +32,10 @@
   let busyMessage: string | null = $state(null);
   let errorMessage: string | null = $state(null);
   let unsubscribe: Unsubscribe | null = null;
+
+  function debugFiles(event: string, details?: unknown) {
+    console.debug("[FilesPanel]", event, details ?? "");
+  }
 
   onMount(() => {
     unsubscribe = runtimeManager.onEvent(() => {
@@ -78,6 +83,7 @@
     options: { expand?: boolean; select?: boolean } = {}
   ) {
     if (!runtimeManager.currentSession || !workspace) return;
+    debugFiles("loadDirectory:start", { path, options });
     busyMessage = `Loading ${path}`;
     errorMessage = null;
     try {
@@ -85,6 +91,11 @@
         runtimeManager.currentSession,
         path
       );
+      debugFiles("loadDirectory:result", {
+        path: directory.path,
+        entries: directory.entries.length,
+        options,
+      });
       workspace.setDirectory(directory);
       if (options.expand) workspace.setExpanded(directory.path, true);
       if (options.select) workspace.selectPath(directory.path);
@@ -92,6 +103,7 @@
     } catch (error) {
       console.log(error);
       errorMessage = formatError(error);
+      debugFiles("loadDirectory:error", { path, error });
     } finally {
       busyMessage = null;
     }
@@ -105,28 +117,30 @@
   }
 
   async function toggleDirectory(entry: FileEntry) {
+    debugFiles("toggleDirectory:start", entry);
     if (!workspace || !workspaceSnapshot) return;
     const cached = findDirectory(entry.path);
     if (cached?.expanded) {
       workspace.setExpanded(entry.path, false);
       workspace.selectPath(entry.path);
       syncSnapshot();
+      debugFiles("toggleDirectory:collapsed", { path: entry.path });
       return;
     }
 
     await loadDirectory(entry.path, { expand: true, select: true });
+    debugFiles("toggleDirectory:loaded", { path: entry.path });
   }
 
   async function openFile(entry: FileEntry) {
+    debugFiles("openFile:start", entry);
     if (!runtimeManager.currentSession || !workspace) return;
     workspace.selectPath(entry.path);
     syncSnapshot();
-    if (
-      !FileTextPolicy.isTextPath(entry.path) ||
-      !FileTextPolicy.canReadSize(entry.size)
-    ) {
+    if (!FileTextPolicy.canReadSize(entry.size)) {
       errorMessage =
         "Only text files under the size limit are supported in this preview.";
+      debugFiles("openFile:blockedBySize", { path: entry.path, size: entry.size });
       return;
     }
 
@@ -137,10 +151,20 @@
         runtimeManager.currentSession,
         entry.path
       );
+      debugFiles("openFile:readTextFile", {
+        path: file.path,
+        size: file.size,
+        contentLength: file.content.length,
+      });
       workspace.openTextFile(file, FileLanguageResolver.getLabel(entry.path));
       syncSnapshot();
+      debugFiles("openFile:opened", {
+        path: file.path,
+        activeTabPath: workspace.getSnapshot().activeTabPath,
+      });
     } catch (error) {
       errorMessage = formatError(error);
+      debugFiles("openFile:error", error);
     } finally {
       busyMessage = null;
     }
@@ -166,18 +190,22 @@
   }
 
   async function createFile(parentPath: string) {
+    debugFiles("createFile:click", { parentPath });
     await createPath(parentPath, "file");
   }
 
   async function createDirectory(parentPath: string) {
+    debugFiles("createDirectory:click", { parentPath });
     await createPath(parentPath, "directory");
   }
 
   async function createPath(parentPath: string, kind: "file" | "directory") {
+    debugFiles("createPath:start", { parentPath, kind });
     if (!runtimeManager.currentSession || !workspace) return;
     const name = window.prompt(
       kind === "file" ? "New file name" : "New folder name"
     );
+    debugFiles("createPath:promptResult", { parentPath, kind, name });
     if (!name) return;
     const path = joinPath(parentPath, name);
     const result =
@@ -187,11 +215,22 @@
             runtimeManager.currentSession,
             path
           );
+    debugFiles("createPath:serviceResult", { path, kind, result });
     if (!result.ok) {
       errorMessage = result.message;
       return;
     }
     await loadDirectory(parentPath);
+    debugFiles("createPath:directoryReloaded", { parentPath, path, kind });
+  }
+
+  async function handleEntryClick(entry: FileEntry) {
+    debugFiles("entryClick", entry);
+    if (entry.kind === "directory") {
+      await toggleDirectory(entry);
+      return;
+    }
+    await openFile(entry);
   }
 
   async function renamePath(path: string) {
@@ -302,6 +341,7 @@
   <section
     class="flex min-h-[20rem] flex-col items-center justify-center rounded-lg border bg-muted/30 p-6 text-center"
   >
+    <Icon name="folder" class="mb-3 size-5 text-muted-foreground" />
     <h2 class="text-sm font-semibold text-foreground">
       Files need a running container
     </h2>
@@ -335,7 +375,10 @@
                 bind:value={pathInput}
                 aria-label="Files path"
               />
-              <Button type="submit" size="sm" variant="outline">Go</Button>
+              <Button type="submit" size="sm" variant="outline">
+                <Icon name="chevronRight" class="size-3" />
+                Go
+              </Button>
             </form>
             <div class="mt-2 flex items-center justify-between">
               <div class="text-xs font-medium">Explorer</div>
@@ -345,6 +388,7 @@
                 class="h-7 px-2 text-xs"
                 onclick={() => void refreshOpenedDirectories()}
               >
+                <Icon name="refresh" class="size-3" />
                 Refresh
               </Button>
             </div>
@@ -365,18 +409,21 @@
                       type="button"
                       class={`flex h-7 w-full items-center gap-1 rounded px-2 text-left hover:bg-muted ${workspaceSnapshot.selectedPath === row.entry.path ? "bg-muted text-foreground" : "text-muted-foreground"}`}
                       style={`padding-left: ${row.depth * 0.875 + 0.5}rem`}
-                      onclick={() =>
-                        row.entry.kind === "directory"
-                          ? void toggleDirectory(row.entry)
-                          : void openFile(row.entry)}
+                      onclick={() => void handleEntryClick(row.entry)}
                     >
-                      <span class="w-4 shrink-0"
-                        >{row.entry.kind === "directory"
-                          ? findDirectory(row.entry.path)?.expanded
-                            ? "v"
-                            : ">"
-                          : "-"}</span
-                      >
+                      {#if row.entry.kind === "directory"}
+                        <Icon
+                          name={findDirectory(row.entry.path)?.expanded ? "chevronDown" : "chevronRight"}
+                          class="size-3 shrink-0"
+                        />
+                        <Icon
+                          name={findDirectory(row.entry.path)?.expanded ? "folderOpen" : "folder"}
+                          class="size-3.5 shrink-0"
+                        />
+                      {:else}
+                        <span class="size-3 shrink-0"></span>
+                        <Icon name="file" class="size-3.5 shrink-0" />
+                      {/if}
                       <span class="truncate">{row.entry.name}</span>
                     </button>
                   </ContextMenu.Trigger>
@@ -384,23 +431,31 @@
                     {#if row.entry.kind === "directory"}
                       <ContextMenu.Item
                         onclick={() => void createFile(row.entry.path)}
-                        >New file</ContextMenu.Item
                       >
+                        <Icon name="file" class="mr-2 size-3.5" />
+                        New file
+                      </ContextMenu.Item>
                       <ContextMenu.Item
                         onclick={() => void createDirectory(row.entry.path)}
-                        >New folder</ContextMenu.Item
                       >
+                        <Icon name="folder" class="mr-2 size-3.5" />
+                        New folder
+                      </ContextMenu.Item>
                       <ContextMenu.Separator />
                     {/if}
                     <ContextMenu.Item
                       onclick={() => void renamePath(row.entry.path)}
-                      >Rename</ContextMenu.Item
                     >
+                      <Icon name="edit" class="mr-2 size-3.5" />
+                      Rename
+                    </ContextMenu.Item>
                     <ContextMenu.Item
                       onclick={() =>
                         void deletePath(row.entry.path, row.entry.kind)}
-                      >Delete</ContextMenu.Item
                     >
+                      <Icon name="delete" class="mr-2 size-3.5" />
+                      Delete
+                    </ContextMenu.Item>
                   </ContextMenu.Content>
                 </ContextMenu.Root>
               {/each}
@@ -428,7 +483,8 @@
                     <span
                       role="button"
                       tabindex="0"
-                      class="rounded px-1 hover:bg-muted-foreground/10"
+                      aria-label={`Close ${tab.name}`}
+                      class="rounded p-0.5 hover:bg-muted-foreground/10"
                       onclick={(event) => {
                         event.stopPropagation();
                         closeTab(tab.path);
@@ -437,7 +493,7 @@
                         if (event.key === "Enter") closeTab(tab.path);
                       }}
                     >
-                      x
+                      <Icon name="close" class="size-3" />
                     </span>
                   </button>
                 {/each}
@@ -455,6 +511,7 @@
               aria-label="Save active file"
               onclick={() => void saveActiveTab()}
             >
+              <Icon name="save" class="size-3" />
               Save
             </Button>
           </div>
@@ -462,17 +519,21 @@
           <div class="min-h-0 flex-1 p-3">
             {#if activeTab()}
               <div
-                class="mb-2 flex items-center justify-between text-xs text-muted-foreground"
+                class="flex h-full min-h-0 flex-col"
               >
-                <span class="truncate">{activeTab()?.path}</span>
-                <span>{activeTab()?.language}</span>
+                <div
+                  class="mb-2 flex shrink-0 items-center justify-between text-xs text-muted-foreground"
+                >
+                  <span class="truncate">{activeTab()?.path}</span>
+                  <span>{activeTab()?.language}</span>
+                </div>
+                <Textarea
+                  class="min-h-0 flex-1 resize-none overflow-auto font-mono text-xs"
+                  value={activeTab()?.draft}
+                  oninput={(event) =>
+                    updateActiveDraft(event.currentTarget.value)}
+                />
               </div>
-              <Textarea
-                class="h-full min-h-[24rem] resize-none font-mono text-xs"
-                value={activeTab()?.draft}
-                oninput={(event) =>
-                  updateActiveDraft(event.currentTarget.value)}
-              />
             {:else}
               <div
                 class="flex h-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground"

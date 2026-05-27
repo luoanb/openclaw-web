@@ -3,6 +3,7 @@ import type {
   BrowserPodCommandRunResult,
   BrowserPodCommandRunner,
 } from "./browserpodCommand.interfaces";
+import { AsyncTaskQueue } from "./asyncTaskQueue.impl";
 import type { BrowserPodLike, BrowserPodTerminalLike } from "../runtime";
 
 const DEFAULT_COMMAND_CWD = "/home/user";
@@ -14,6 +15,11 @@ type RunSettlement =
   | { readonly type: "timeout" };
 
 export class CustomTerminalCommandRunner implements BrowserPodCommandRunner {
+  private readonly queue = new AsyncTaskQueue({ concurrency: 1 });
+  private terminal: BrowserPodTerminalLike | null = null;
+  private terminalPod: BrowserPodLike | null = null;
+  private activeCommand: ((chunk: string) => void) | null = null;
+
   async run(
     pod: BrowserPodLike,
     command: string,
@@ -23,21 +29,68 @@ export class CustomTerminalCommandRunner implements BrowserPodCommandRunner {
     if (!pod.run || !pod.createCustomTerminal) {
       throw new Error("BrowserPod command runner requires run and createCustomTerminal.");
     }
+    const run = pod.run;
 
+    return this.queue.enqueue(() => this.runQueued(pod, run, command, args, options));
+  }
+
+  async dispose(): Promise<void> {
+    await this.queue.enqueue(async () => {
+      const terminal = this.terminal;
+      this.terminal = null;
+      this.terminalPod = null;
+      this.activeCommand = null;
+      if (terminal) {
+        await closeTerminal(terminal);
+      }
+    });
+  }
+
+  private async runQueued(
+    pod: BrowserPodLike,
+    run: NonNullable<BrowserPodLike["run"]>,
+    command: string,
+    args: readonly string[],
+    options: BrowserPodCommandRunOptions,
+  ): Promise<BrowserPodCommandRunResult> {
     const chunks: string[] = [];
     const cwd = options.cwd ?? DEFAULT_COMMAND_CWD;
-    const terminal = await pod.createCustomTerminal({
-      onOutput: (buffer) => {
-        chunks.push(decodeTerminalChunk(buffer));
-      },
-    });
+    const terminal = await this.getTerminal(pod);
+    this.activeCommand = (chunk) => {
+      chunks.push(chunk);
+    };
 
     try {
-      const runReturn = pod.run(command, [...args], { terminal, cwd, echo: false });
+      const runReturn = run.call(pod, command, [...args], { terminal, cwd, echo: false });
       return await waitForRunResult(chunks, runReturn, options);
     } finally {
-      await closeTerminal(terminal);
+      this.activeCommand = null;
     }
+  }
+
+  private async getTerminal(pod: BrowserPodLike): Promise<BrowserPodTerminalLike> {
+    if (this.terminal && this.terminalPod === pod) {
+      return this.terminal;
+    }
+
+    if (this.terminal) {
+      await closeTerminal(this.terminal);
+      this.terminal = null;
+      this.terminalPod = null;
+    }
+
+    const terminal = await pod.createCustomTerminal?.({
+      onOutput: (buffer) => {
+        this.activeCommand?.(decodeTerminalChunk(buffer));
+      },
+    });
+    if (!terminal) {
+      throw new Error("BrowserPod command runner failed to create a custom terminal.");
+    }
+
+    this.terminal = terminal;
+    this.terminalPod = pod;
+    return terminal;
   }
 }
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Button } from "$lib/components/ui/button";
+  import { Icon, type IconName } from "$lib/components/icon";
   import { RuntimeManagerProvider } from "$lib/core/runtime";
   import type { RuntimeSnapshot, RuntimeStatus } from "os-core";
 
@@ -68,14 +69,32 @@
     if (value === "unknown") return "未知";
     return "不可用";
   }
+
+  function statusIconName(status: RuntimeStatus): IconName {
+    if (status === "running" || status === "supported") return "checkCircle";
+    if (status === "failed" || status === "unsupported") return "errorCircle";
+    if (status === "checking" || status === "booting" || status === "stopping") return "loading";
+    return "info";
+  }
+
+  function capabilityIconName(value: boolean | string): IconName {
+    if (value === true || value === "supported") return "checkCircle";
+    if (value === "partial" || value === "unknown") return "info";
+    return "errorCircle";
+  }
 </script>
 
 <section class="rounded-lg border bg-card p-4 text-card-foreground shadow-xs">
   <div class="flex flex-wrap items-start gap-3">
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">
+        <Icon name="info" class="size-4 text-muted-foreground" />
         <h2 class="text-sm font-semibold">Runtime status</h2>
-        <span class={`rounded-md border px-2 py-0.5 text-[0.625rem] font-medium ${statusBadgeClass(snapshot.status)}`}>
+        <span class={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.625rem] font-medium ${statusBadgeClass(snapshot.status)}`}>
+          <Icon
+            name={statusIconName(snapshot.status)}
+            class={`size-3 ${snapshot.status === "checking" || snapshot.status === "booting" || snapshot.status === "stopping" ? "animate-spin" : ""}`}
+          />
           {statusLabel(snapshot.status)}
         </span>
       </div>
@@ -86,9 +105,13 @@
 
     <div class="flex gap-2">
       {#if snapshot.status === "running"}
-        <Button variant="outline" size="sm" disabled={busy} onclick={stopRuntime}>容器关机</Button>
+        <Button variant="outline" size="sm" disabled={busy} onclick={stopRuntime}>
+          <Icon name="close" class="size-3" />
+          容器关机
+        </Button>
       {:else if snapshot.status !== "unsupported"}
         <Button size="sm" disabled={busy || snapshot.status === "checking" || snapshot.status === "booting" || snapshot.status === "stopping"} onclick={bootRuntime}>
+          <Icon name={busy ? "loading" : "play"} class={`size-3 ${busy ? "animate-spin" : ""}`} />
           {snapshot.status === "failed" ? "重试启动" : "启动容器"}
         </Button>
       {/if}
@@ -97,7 +120,10 @@
 
   {#if snapshot.session}
     <div class="mt-4 rounded-md border bg-muted/40 p-3 text-xs">
-      <div class="font-medium">当前会话</div>
+      <div class="flex items-center gap-1 font-medium">
+        <Icon name="terminal" class="size-3.5 text-muted-foreground" />
+        当前会话
+      </div>
       <div class="mt-1 text-muted-foreground">
         {snapshot.session.kind} / {snapshot.session.id}
       </div>
@@ -106,34 +132,55 @@
 
   <div class="mt-4 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3">
     <div class="rounded-md border p-3">
-      <div class="font-medium">多终端</div>
+      <div class="flex items-center gap-1 font-medium">
+        <Icon name={capabilityIconName(snapshot.capabilities.multipleTerminals)} class="size-3.5 text-muted-foreground" />
+        多终端
+      </div>
       <div class="mt-1 text-muted-foreground">{capabilityText(snapshot.capabilities.multipleTerminals)}</div>
     </div>
     <div class="rounded-md border p-3">
-      <div class="font-medium">命令运行</div>
+      <div class="flex items-center gap-1 font-medium">
+        <Icon name={capabilityIconName(snapshot.capabilities.commandRun)} class="size-3.5 text-muted-foreground" />
+        命令运行
+      </div>
       <div class="mt-1 text-muted-foreground">{capabilityText(snapshot.capabilities.commandRun)}</div>
     </div>
     <div class="rounded-md border p-3">
-      <div class="font-medium">运行中输入</div>
+      <div class="flex items-center gap-1 font-medium">
+        <Icon name={capabilityIconName(snapshot.capabilities.processStdin)} class="size-3.5 text-muted-foreground" />
+        运行中输入
+      </div>
       <div class="mt-1 text-muted-foreground">{capabilityText(snapshot.capabilities.processStdin)}</div>
     </div>
     <div class="rounded-md border p-3">
-      <div class="font-medium">容器关机</div>
+      <div class="flex items-center gap-1 font-medium">
+        <Icon name={capabilityIconName(snapshot.capabilities.shutdown)} class="size-3.5 text-muted-foreground" />
+        容器关机
+      </div>
       <div class="mt-1 text-muted-foreground">{capabilityText(snapshot.capabilities.shutdown)}</div>
     </div>
     <div class="rounded-md border p-3">
-      <div class="font-medium">文件持久化</div>
+      <div class="flex items-center gap-1 font-medium">
+        <Icon name={capabilityIconName(snapshot.capabilities.filePersistence)} class="size-3.5 text-muted-foreground" />
+        文件持久化
+      </div>
       <div class="mt-1 text-muted-foreground">{capabilityText(snapshot.capabilities.filePersistence)}</div>
     </div>
     <div class="rounded-md border p-3">
-      <div class="font-medium">服务预览</div>
+      <div class="flex items-center gap-1 font-medium">
+        <Icon name={capabilityIconName(snapshot.capabilities.servicePreview)} class="size-3.5 text-muted-foreground" />
+        服务预览
+      </div>
       <div class="mt-1 text-muted-foreground">{capabilityText(snapshot.capabilities.servicePreview)}</div>
     </div>
   </div>
 
   {#if snapshot.lastCheck && !snapshot.lastCheck.ok}
     <div class="mt-4 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-900 dark:border-yellow-900 dark:bg-yellow-950/30 dark:text-yellow-200">
-      <div class="font-medium">依赖检查未通过</div>
+      <div class="flex items-center gap-1 font-medium">
+        <Icon name="alert" class="size-3.5" />
+        依赖检查未通过
+      </div>
       <ul class="mt-2 list-disc space-y-1 pl-4">
         {#each snapshot.lastCheck.issues as issue}
           <li>{issue.message}</li>
@@ -143,7 +190,8 @@
   {/if}
 
   {#if snapshot.lastError || actionError}
-    <div class="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+    <div class="mt-4 flex items-center gap-1 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+      <Icon name="errorCircle" class="size-3.5" />
       {snapshot.lastError?.message ?? actionError}
     </div>
   {/if}

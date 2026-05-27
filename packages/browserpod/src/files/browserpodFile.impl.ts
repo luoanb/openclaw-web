@@ -7,6 +7,7 @@ import {
   type FileErrorCode,
   type FileService,
   type RuntimeSession,
+  type TextFileInspectionResult,
   type TextFileSnapshot,
 } from "os-core";
 import { BrowserPodRuntimeManager } from "../runtime";
@@ -16,6 +17,7 @@ import { BrowserPodFilePath } from "./browserpodFilePath.impl";
 
 const BROWSERPOD_DEFAULT_FILE_PATH = "/home/user";
 const DEFAULT_TEXT_FILE_LIMIT_BYTES = 1024 * 1024;
+const BROWSERPOD_TEXT_FILE_MODE = "utf-8";
 
 export class BrowserPodFileService implements FileService {
   private readonly fileCommandRunner = new BrowserPodFileCommandRunner();
@@ -30,9 +32,99 @@ export class BrowserPodFileService implements FileService {
     return this.fileCommandRunner.listDirectory(this.resolvePod(runtimeSession), path);
   }
 
+  async inspectTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileInspectionResult> {
+    const normalizedPath = BrowserPodFilePath.normalize(path);
+    const pod = this.resolvePod(runtimeSession);
+    console.debug("[BrowserPodFileService]", "inspectTextFile:start", { path: normalizedPath });
+    try {
+      const file = await this.openReadableFile(pod, normalizedPath);
+      let size: number;
+      try {
+        size = await readFileSize(file);
+      } finally {
+        await closeFile(file);
+      }
+
+      if (size > DEFAULT_TEXT_FILE_LIMIT_BYTES) {
+        console.debug("[BrowserPodFileService]", "inspectTextFile:fileTooLarge", {
+          path: normalizedPath,
+          size,
+        });
+        return {
+          ok: false,
+          path: normalizedPath,
+          reason: "unsupported",
+          message: `File is larger than ${DEFAULT_TEXT_FILE_LIMIT_BYTES} bytes: ${normalizedPath}`,
+          error: {
+            code: "file-too-large",
+            message: `File is larger than ${DEFAULT_TEXT_FILE_LIMIT_BYTES} bytes: ${normalizedPath}`,
+            recoverable: true,
+          },
+          size,
+        };
+      }
+
+      const isText = await this.fileCommandRunner.isTextFile(pod, normalizedPath);
+      console.debug("[BrowserPodFileService]", "inspectTextFile:textProbe", {
+        path: normalizedPath,
+        size,
+        isText,
+      });
+      if (!isText) {
+        return {
+          ok: false,
+          path: normalizedPath,
+          reason: "unsupported",
+          message: `File is not a text file: ${normalizedPath}`,
+          error: {
+            code: "unsupported-file-type",
+            message: `File is not a text file: ${normalizedPath}`,
+            recoverable: true,
+          },
+          size,
+        };
+      }
+
+      return {
+        ok: true,
+        path: normalizedPath,
+        encoding: "utf-8",
+        size,
+      };
+    } catch (error) {
+      console.debug("[BrowserPodFileService]", "inspectTextFile:error", {
+        path: normalizedPath,
+        error,
+      });
+      if (error instanceof FileContractError) {
+        return {
+          ok: false,
+          path: normalizedPath,
+          reason: "failed",
+          message: error.message,
+          error: error.fileError,
+        };
+      }
+      return {
+        ok: false,
+        path: normalizedPath,
+        reason: "failed",
+        message: `Failed to inspect file ${normalizedPath}.`,
+        error: {
+          code: "file-read-failed",
+          message: `Failed to inspect file ${normalizedPath}.`,
+          recoverable: true,
+          cause: error,
+        },
+      };
+    }
+  }
+
   async readTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileSnapshot> {
     const normalizedPath = BrowserPodFilePath.normalize(path);
-    const file = await this.openReadableFile(this.resolvePod(runtimeSession), normalizedPath);
+    console.debug("[BrowserPodFileService]", "readTextFile:start", { path: normalizedPath });
+    const pod = this.resolvePod(runtimeSession);
+    const file = await this.openReadableFile(pod, normalizedPath);
     try {
       const size = await readFileSize(file);
       if (size > DEFAULT_TEXT_FILE_LIMIT_BYTES) {
@@ -42,7 +134,22 @@ export class BrowserPodFileService implements FileService {
           recoverable: true,
         });
       }
+
+      const isText = await this.fileCommandRunner.isTextFile(pod, normalizedPath);
+      if (!isText) {
+        throw new FileContractError({
+          code: "unsupported-file-type",
+          message: `File is not a text file: ${normalizedPath}`,
+          recoverable: true,
+        });
+      }
+
       const content = await readFileContent(file, size);
+      console.debug("[BrowserPodFileService]", "readTextFile:content", {
+        path: normalizedPath,
+        size,
+        contentLength: content.length,
+      });
       return {
         path: normalizedPath,
         content,
@@ -81,21 +188,31 @@ export class BrowserPodFileService implements FileService {
   async createFile(runtimeSession: RuntimeSession, path: string, content = ""): Promise<FileActionResult> {
     const pod = this.resolvePod(runtimeSession);
     const normalizedPath = BrowserPodFilePath.normalize(path);
+    console.debug("[BrowserPodFileService]", "createFile:start", {
+      path: normalizedPath,
+      contentLength: content.length,
+      hasCreateFile: Boolean(pod.createFile),
+    });
     if (!pod.createFile) {
       return this.fail("unsupported", "file-create-failed", "BrowserPod createFile API is unavailable.");
     }
 
     try {
-      const file = await pod.createFile(normalizedPath, "w");
+      const file = await pod.createFile(normalizedPath, BROWSERPOD_TEXT_FILE_MODE);
       try {
         if (content && file.write) {
           await file.write(content);
         }
+        console.debug("[BrowserPodFileService]", "createFile:ok", { path: normalizedPath });
         return { ok: true };
       } finally {
         await closeFile(file);
       }
     } catch (error) {
+      console.debug("[BrowserPodFileService]", "createFile:error", {
+        path: normalizedPath,
+        error,
+      });
       return this.fail("failed", "file-create-failed", `Failed to create ${normalizedPath}.`, error);
     }
   }
@@ -103,6 +220,10 @@ export class BrowserPodFileService implements FileService {
   async createDirectory(runtimeSession: RuntimeSession, path: string): Promise<FileActionResult> {
     const pod = this.resolvePod(runtimeSession);
     const normalizedPath = BrowserPodFilePath.normalize(path);
+    console.debug("[BrowserPodFileService]", "createDirectory:start", {
+      path: normalizedPath,
+      hasCreateDirectory: Boolean(pod.createDirectory),
+    });
     try {
       if (pod.createDirectory) {
         await pod.createDirectory(normalizedPath, { recursive: true });
@@ -115,8 +236,13 @@ export class BrowserPodFileService implements FileService {
           "Failed to create directory",
         );
       }
+      console.debug("[BrowserPodFileService]", "createDirectory:ok", { path: normalizedPath });
       return { ok: true };
     } catch (error) {
+      console.debug("[BrowserPodFileService]", "createDirectory:error", {
+        path: normalizedPath,
+        error,
+      });
       return this.fail("failed", "directory-create-failed", `Failed to create directory ${normalizedPath}.`, error);
     }
   }
@@ -177,15 +303,15 @@ export class BrowserPodFileService implements FileService {
         recoverable: true,
       });
     }
-    return pod.openFile(path, "r");
+    return pod.openFile(path, BROWSERPOD_TEXT_FILE_MODE);
   }
 
   private async openWritableFile(pod: BrowserPodLike, path: string): Promise<BrowserPodFileLike> {
     if (pod.openFile) {
-      return pod.openFile(path, "w");
+      return pod.openFile(path, BROWSERPOD_TEXT_FILE_MODE);
     }
     if (pod.createFile) {
-      return pod.createFile(path, "w");
+      return pod.createFile(path, BROWSERPOD_TEXT_FILE_MODE);
     }
     throw new FileContractError({
       code: "file-write-failed",

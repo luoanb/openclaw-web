@@ -25,6 +25,22 @@ export type TextFileSnapshot = {
   readonly size?: number;
 };
 
+export type TextFileInspectionResult =
+  | {
+      readonly ok: true;
+      readonly path: string;
+      readonly encoding: "utf-8";
+      readonly size?: number;
+    }
+  | {
+      readonly ok: false;
+      readonly path: string;
+      readonly reason: FileActionFailureReason;
+      readonly message: string;
+      readonly error?: FileError;
+      readonly size?: number;
+    };
+
 export type FileWriteOptions = {
   readonly overwrite?: boolean;
 };
@@ -47,6 +63,7 @@ export type FileActionResult =
 export interface FileService {
   getDefaultPath(runtimeSession: RuntimeSession): string;
   listDirectory(runtimeSession: RuntimeSession, path: string): Promise<DirectorySnapshot>;
+  inspectTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileInspectionResult>;
   readTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileSnapshot>;
   writeTextFile(
     runtimeSession: RuntimeSession,

@@ -92,10 +92,13 @@
   body,
   #app {
     margin: 0;
+    width: 100dvw;
+    height: 100dvh;
     min-height: 100dvh;
   }
 
   body {
+    overflow: hidden;
     font-family:
       "Inter Variable",
       ui-sans-serif,
