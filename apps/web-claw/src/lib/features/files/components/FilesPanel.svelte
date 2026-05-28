@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Button } from "$lib/components/ui/button";
+  import { Checkbox } from "$lib/components/ui/checkbox";
   import { Icon } from "$lib/components/icon";
   import { Input } from "$lib/components/ui/input";
   import { Textarea } from "$lib/components/ui/textarea";
@@ -45,6 +46,7 @@
   let errorMessage: string | null = $state(null);
   let menuTarget: FileMenuTarget | null = $state(null);
   let uploadTargetDirectory: string | null = $state(null);
+  let showHiddenFiles = $state(false);
   let fileInputElement: HTMLInputElement | null = null;
   let unsubscribe: Unsubscribe | null = null;
 
@@ -99,7 +101,8 @@
     try {
       const directory = await fileService.listDirectory(
         runtimeManager.currentSession,
-        path
+        path,
+        { showHidden: showHiddenFiles },
       );
       workspace.setDirectory(directory);
       if (options.expand) workspace.setExpanded(directory.path, true);
@@ -117,6 +120,11 @@
     for (const path of workspace.getExpandedDirectoryPaths()) {
       await loadDirectory(path);
     }
+  }
+
+  async function toggleHiddenFiles() {
+    showHiddenFiles = !showHiddenFiles;
+    await refreshOpenedDirectories();
   }
 
   async function toggleDirectory(entry: FileEntry) {
@@ -699,17 +707,34 @@
                 Go
               </Button>
             </form>
-            <div class="mt-2 flex items-center justify-between">
+            <div class="mt-2 flex items-center justify-between gap-2">
               <div class="text-xs font-medium">Explorer</div>
-              <Button
-                size="sm"
-                variant="ghost"
-                class="h-7 px-2 text-xs"
-                onclick={() => void refreshOpenedDirectories()}
-              >
-                <Icon name="refresh" class="size-3" />
-                Refresh
-              </Button>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={showHiddenFiles}
+                  class="flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                  onclick={() => void toggleHiddenFiles()}
+                >
+                  <Checkbox
+                    checked={showHiddenFiles}
+                    tabindex={-1}
+                    aria-hidden="true"
+                    class="pointer-events-none size-3.5"
+                  />
+                  Hidden files
+                </button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  class="h-7 px-2 text-xs"
+                  onclick={() => void refreshOpenedDirectories()}
+                >
+                  <Icon name="refresh" class="size-3" />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </div>
 

@@ -1,4 +1,4 @@
-import { DebugLogger, FileContractError, type DirectorySnapshot, type FileEntry, type FileErrorCode } from "os-core";
+import { DebugLogger, FileContractError, type DirectorySnapshot, type FileEntry, type FileErrorCode, type FileListOptions } from "os-core";
 import type { BrowserPodLike } from "../runtime";
 import { CustomTerminalCommandRunner } from "../command";
 import { BrowserPodFilePath } from "./browserpodFilePath.impl";
@@ -20,9 +20,10 @@ export class BrowserPodFileCommandRunner {
   private readonly commandRunner = new CustomTerminalCommandRunner();
   private readonly logger = new DebugLogger("browserpod.file.command");
 
-  async listDirectory(pod: BrowserPodLike, path: string): Promise<DirectorySnapshot> {
+  async listDirectory(pod: BrowserPodLike, path: string, options: FileListOptions = {}): Promise<DirectorySnapshot> {
     const normalizedPath = BrowserPodFilePath.normalize(path);
-    const result = await this.commandRunner.run(pod, "sh", ["-lc", `ls -l ${BrowserPodFilePath.shellQuote(normalizedPath)}`], {
+    const flags = options.showHidden ? "-1pA" : "-1p";
+    const result = await this.commandRunner.run(pod, "sh", ["-lc", `uls ${flags} --color=never ${BrowserPodFilePath.shellQuote(normalizedPath)}`], {
       cwd: "/",
       timeoutMs: 15_000,
     });
@@ -36,7 +37,7 @@ export class BrowserPodFileCommandRunner {
       });
     }
 
-    const entries = parseLongListOutput(result.output, normalizedPath);
+    const entries = parseDirectoryListOutput(result.output, normalizedPath);
     if (!entries) {
       throw new FileContractError({
         code: "directory-read-failed",
@@ -455,10 +456,9 @@ export class BrowserPodFileCommandRunner {
   }
 }
 
-function parseLongListOutput(output: string, parentPath: string): readonly FileEntry[] | null {
+function parseDirectoryListOutput(output: string, parentPath: string): readonly FileEntry[] | null {
   const lines = output.split(/\r?\n/).map((line) => stripAnsi(line).trim()).filter(Boolean);
-  const entryLines = lines.filter((line) => !line.startsWith("total "));
-  const entries = entryLines.map((line) => parseLongListEntry(line, parentPath)).filter((entry): entry is FileEntry => Boolean(entry));
+  const entries = lines.map((line) => parseDirectoryListEntry(line, parentPath)).filter((entry): entry is FileEntry => Boolean(entry));
   entries.sort((a, b) => {
     if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
     return a.name.localeCompare(b.name);
@@ -466,17 +466,16 @@ function parseLongListOutput(output: string, parentPath: string): readonly FileE
   return entries;
 }
 
-function parseLongListEntry(line: string, parentPath: string): FileEntry | null {
-  const match = /^(\S+)\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(.+)$/.exec(line);
-  if (!match) return null;
-  const [, mode, rawName] = match;
-  if (!mode || !rawName) return null;
-  const name = rawName.replace(/\s+->\s+.+$/, "");
+function parseDirectoryListEntry(line: string, parentPath: string): FileEntry | null {
+  if (line === "." || line === "..") return null;
+  const isDirectory = line.endsWith("/");
+  const name = isDirectory ? line.slice(0, -1) : line;
+  if (!name || name === "." || name === "..") return null;
 
   return {
     name,
     path: BrowserPodFilePath.join(parentPath, name),
-    kind: mode.startsWith("d") ? "directory" : "file",
+    kind: isDirectory ? "directory" : "file",
   };
 }
 

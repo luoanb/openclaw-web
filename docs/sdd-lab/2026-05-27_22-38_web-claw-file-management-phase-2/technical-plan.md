@@ -37,7 +37,7 @@
   - `FileService` 目前提供 `listDirectory`、`inspectTextFile`、`readTextFile`、`writeTextFile`、`createFile`、`createDirectory`、`rename`、`delete`。
   - `FileService` 还没有通用字节读写、下载、上传或复制文件契约。
   - `BrowserPodFileService` 目前对文本文件使用 `openFile(path, "utf-8")` / `createFile(path, "utf-8")`，文件句柄类型已声明 `read(length)` 可返回 `string | ArrayBuffer`，`write(data)` 可接收 `string | ArrayBuffer`。
-  - `BrowserPodFileCommandRunner` 已通过 `CustomTerminalCommandRunner` 执行 `ls -l`、`mv`、`rm`、`grep` 等 shell 命令。
+  - `BrowserPodFileCommandRunner` 已通过 `CustomTerminalCommandRunner` 执行 `ls -l`、`mv`、`rm`、`grep` 等 shell 命令；目录列举需要改为已注入的 `uls`，避免继续依赖系统 `ls` 对中文文件名的显示行为。
   - `CustomTerminalCommandRunner` 已按一期修复方向使用单 custom terminal + 队列串行执行，并保留 `pod.run` receiver。
   - `BrowserPodFilePath` 已提供 `normalize`、`dirname`、`basename`、`join`、`shellQuote`。
   - `FileWorkspaceState` 维护 root path、选中路径、已展开目录、目录缓存、打开文件 Tab；目前没有应用内文件剪贴板状态。
@@ -57,6 +57,8 @@
     - 下载：app 调用 `FileService.readFileBytes(...)` 获取 `ArrayBuffer`，再由浏览器 `Blob` 下载。
     - 复制粘贴：不把文件内容拉回浏览器，adapter 使用容器内 `cp` 完成同容器文件 / 目录复制。
   - 在 `apps/web-claw` 中新增统一菜单目标模型：右键 row 时目标为文件 / 目录；右键目录树空白区域时目标为当前工作区 root path。
+  - Files 工具栏新增“显示隐藏文件”checkbox，状态保存在 `FilesPanel` 本地；切换后重新读取已展开目录。
+  - `FileService.listDirectory(...)` 增加可选 `showHidden` 读取选项；BrowserPod adapter 使用 `uls -1p` 列举目录，勾选隐藏文件时使用 `uls -1pA`，排除 `.` / `..`。
   - 在 `FileWorkspaceState` 中新增应用内剪贴板状态，记录源路径、名称与 kind，不写入系统剪贴板。
   - 粘贴同名冲突默认策略：不弹二次确认，不覆盖；文件和目录都由系统自动探测并选取第一个不存在的副本目标名，例如 `{name}_copy`、`{name}_copy_2`、`{name}_copy_3`。
 - 为什么选择该方案：
@@ -96,6 +98,7 @@
   - `overwrite?: boolean`，仅供内部或后续显式覆盖能力使用；Files UI 粘贴不使用覆盖确认。
 - `FileCopyKind = "file" | "directory"`
 - `FileService` 新增方法：
+  - `listDirectory(runtimeSession, path, options?)` 支持 `showHidden?: boolean`。
   - `readFileBytes(runtimeSession: RuntimeSession, path: string): Promise<BinaryFileSnapshot>`
   - `writeFileBytes(runtimeSession: RuntimeSession, path: string, content: ArrayBuffer, options?: FileBytesWriteOptions): Promise<FileActionResult>`
   - `copyPath(runtimeSession: RuntimeSession, fromPath: string, toPath: string, kind: FileCopyKind, options?: FileCopyOptions): Promise<FileActionResult>`
@@ -119,6 +122,7 @@
 - 文本类型探测通过后，才能应用 `FileTextPolicy` 的文本预览大小限制。
 - `readFileBytes/writeFileBytes` 服务上传下载，不做文本检测。
 - `copyPath` 承诺文件与目录复制；目录复制只支持同容器递归复制，不处理目录下载或系统剪贴板。
+- `listDirectory` 的 `showHidden` 只表达是否返回 dotfile，不要求返回 `.` / `..`，也不要求实时监听。
 
 ### `packages/browserpod/src/runtime`
 
@@ -172,6 +176,8 @@
 命令约束：
 
 - 命令仍通过 `CustomTerminalCommandRunner` 串行执行。
+- 目录列举命令改为 `uls -1p --color=never "$path"`；显示隐藏文件时改为 `uls -1pA --color=never "$path"`。
+- 目录类型通过 `uls -p` 追加的 `/` 判定，避免解析本地化时间列。
 - shell 参数必须使用 `BrowserPodFilePath.shellQuote`。
 - base64 降级路径需要 sentinel 包裹输出，避免 terminal prompt 或 ANSI 内容混入。
 - 不使用 raw binary stdout。
@@ -248,6 +254,7 @@
 - 布局结构：
   - 保持左侧 Explorer + 右侧 Tab 编辑区。
   - 目录树滚动容器成为上下文菜单可触发区域。
+  - Explorer 工具栏增加紧凑 checkbox：`Hidden files`，默认未选中；切换后保留展开状态并刷新已展开目录。
 - 核心组件：
   - `ContextMenu`：用于 row 与空白区域菜单。
   - `Button`：下载、保存、刷新等按钮仍按现有小尺寸风格。
@@ -287,6 +294,10 @@
    - 文件粘贴：`FileService.copyPath(session, sourcePath, targetPath, "file", { overwrite: false })`；若目标存在，由 adapter 自动使用第一个不存在的副本目标名。
    - 目录粘贴：`FileService.copyPath(session, sourcePath, targetPath, "directory", { overwrite: false })`；若目标目录存在，由 adapter 自动使用第一个不存在的副本目标名，不覆盖、不合并。
    - 成功后刷新目标目录。
+7. 切换显示隐藏文件：
+   - `FilesPanel` 更新 `showHiddenFiles`。
+   - 遍历当前展开目录，调用 `FileService.listDirectory(session, path, { showHidden: showHiddenFiles })`。
+   - 更新目录缓存，保留展开状态和当前选中路径。
 
 ## Impacted Areas / 影响范围
 
@@ -304,11 +315,13 @@
 - 接口/类型：
   - 新增字节文件 snapshot、字节写入选项、复制 kind 与复制选项。
   - `FileService` 新增 `readFileBytes`、`writeFileBytes`、`copyPath`。
+  - `listDirectory` 增加 `showHidden` 选项。
 - 数据/状态：
   - `FileWorkspaceState` 新增应用内文件剪贴板。
   - `FilesPanel` 新增 context menu target state、upload pending target state。
 - UI/交互：
   - 目录树空白区域右键菜单。
+  - Explorer 工具栏显示隐藏文件 checkbox。
   - 文件上传 input。
   - 文件下载 Blob 触发。
   - 文件与目录复制 / 粘贴菜单项。
@@ -451,8 +464,13 @@ console.error("[web-claw:browserpod.file] operation:error", {
 5. **步骤 5：FilesPanel 菜单与上传下载**
    - 引入统一 menu target。
    - 让目录树容器空白区域可打开 workspace 菜单。
+   - 增加显示隐藏文件 checkbox，并将选项传给 `listDirectory`。
    - 接入上传、下载、复制、粘贴。
    - 操作完成后刷新受影响目录。
+5a. **步骤 5a：目录列举改用 uls**
+   - 扩展 `FileService.listDirectory` 选项。
+   - BrowserPod adapter 用 `uls -1p` / `uls -1pA` 替代 `ls -l`。
+   - 解析目录后缀 `/`，不再解析本地化时间列。
 6. **步骤 6：开发者工具日志补强**
    - 在 `packages/os-core/src/debug` 新增通用轻量 `DebugLogger` 类，统一 scope、事件字段、错误格式化和环境输出策略。
    - 删除 `FilesPanel.svelte` 中的 `debugFiles(...)` 与裸 `console.log(error)`。
@@ -506,6 +524,8 @@ console.error("[web-claw:browserpod.file] operation:error", {
     - error 对象格式化。
     - 敏感字段和长输出截断。
   - BrowserPod file adapter tests：
+    - `listDirectory` 默认调用 `uls -1p --color=never`，不返回 dotfile。
+    - `listDirectory({ showHidden: true })` 调用 `uls -1pA --color=never`，返回 dotfile 但排除 `.` / `..`。
     - `writeFileBytes` 通过 `createFile(path, "binary")` 写入 `ArrayBuffer`。
     - `readFileBytes` 通过 `openFile(path, "binary")` 返回 `ArrayBuffer`。
     - base64 降级只解析 sentinel payload。
@@ -520,6 +540,8 @@ console.error("[web-claw:browserpod.file] operation:error", {
   - 右键文件 row：菜单目标为该文件。
   - 右键目录 row：菜单目标为该目录。
   - 右键目录树空白区域：菜单目标为当前工作区 root path。
+  - Files 工具栏默认不勾选 Hidden files，目录列表不显示 dotfile。
+  - 勾选 Hidden files 后目录刷新并显示 dotfile；取消勾选后 dotfile 隐藏。
   - 上传单个文本文件到工作区，目录刷新后可见。
   - 上传单个二进制小文件到目录，目录刷新后可见。
   - 下载文件到浏览器本地。

@@ -38,12 +38,11 @@ function createPodWithOutputs(results: Array<{ readonly output: string; readonly
 }
 
 describe("BrowserPodFileCommandRunner", () => {
-  it("parses ls -l output into directory entries", async () => {
+  it("parses uls -1p output into directory entries", async () => {
     const pod = createPodWithOutput(
       [
-        "total 8",
-        "drwxr-xr-x 1 user user 0 May 27 00:00 src",
-        "-rw-r--r-- 1 user user 12 May 27 00:01 README.md",
+        "README.md",
+        "src/",
       ].join("\n"),
     );
     const runner = new BrowserPodFileCommandRunner();
@@ -55,7 +54,33 @@ describe("BrowserPodFileCommandRunner", () => {
       { name: "src", path: "/home/user/src", kind: "directory" },
       { name: "README.md", path: "/home/user/README.md", kind: "file" },
     ]);
-    expect(pod.run).toHaveBeenCalledWith("sh", ["-lc", "ls -l '/home/user'"], expect.objectContaining({
+    expect(pod.run).toHaveBeenCalledWith("sh", ["-lc", "uls -1p --color=never '/home/user'"], expect.objectContaining({
+      terminal: expect.any(Object),
+      cwd: "/",
+      echo: false,
+    }));
+  });
+
+  it("uses uls almost-all mode when hidden files are requested", async () => {
+    const pod = createPodWithOutput(
+      [
+        ".env",
+        ".config/",
+        "README.md",
+        "src/",
+      ].join("\n"),
+    );
+    const runner = new BrowserPodFileCommandRunner();
+
+    const snapshot = await runner.listDirectory(pod, "/home/user", { showHidden: true });
+
+    expect(snapshot.entries).toEqual([
+      { name: ".config", path: "/home/user/.config", kind: "directory" },
+      { name: "src", path: "/home/user/src", kind: "directory" },
+      { name: ".env", path: "/home/user/.env", kind: "file" },
+      { name: "README.md", path: "/home/user/README.md", kind: "file" },
+    ]);
+    expect(pod.run).toHaveBeenCalledWith("sh", ["-lc", "uls -1pA --color=never '/home/user'"], expect.objectContaining({
       terminal: expect.any(Object),
       cwd: "/",
       echo: false,

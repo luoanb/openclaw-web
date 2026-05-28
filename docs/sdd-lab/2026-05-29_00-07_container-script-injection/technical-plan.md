@@ -35,7 +35,7 @@
   - 当前 `BrowserPodRuntimeManager.boot()` 在 `pod` 返回后创建 `RuntimeSession`，BrowserPod 实现层最稳注入点是 `pod` 可用之后、`RuntimeSession` 返回之前。
   - `BrowserPodLike` 已建模 `createDirectory`、`createFile`、`openFile`、`run`、`createDefaultTerminal`、`createCustomTerminal`。
   - `BrowserPodRunOptions` 当前缺少官方 `env?: string[]` 字段，但官方 `pod.run` 文档支持 `env`。
-  - `BrowserPodTerminalService.submitCommand()` 当前每次通过 `pod.run("sh", ["-c", command])` 执行命令，不是长驻交互式 shell；在 alias-only 方案下，这类非交互式命令模型不作为注入指令可用性的验收入口。
+  - `BrowserPodTerminalService.submitCommand()` 需要默认通过 `pod.run("sh", ["-lc", command])` 执行命令，尽量按 login shell 加载 profile；`sh -lc` 的实际加载行为依赖容器内 shell 实现。
   - `BrowserPodFileCommandRunner.listDirectory()` 当前依赖 `ls -l` 文本解析；已知 BrowserPod 内 `ls` 对中文文件名显示不可靠，后续文件能力不宜继续扩大对 `ls` 输出的依赖。
 - 相关接口/数据结构：
   - 公共契约应新增在 `os-core`，例如 `packages/os-core/src/injection/`。
@@ -44,7 +44,7 @@
 - 约束与风险：
   - 公共契约只描述“注入能力是什么”，不描述 BrowserPod 怎么写文件、怎么 boot、怎么跑 Node。
   - 平台实现负责解释脚本如何落地、如何暴露命令、如何持久化、如何处理 shell 差异。
-  - 当前用户约束要求只使用 alias 注入指令；因此 BrowserPod 当前 `sh -c` 模型的 PATH/bin wrapper 保底不进入本轮方案。
+  - 当前用户约束要求只使用 alias 注入指令；BrowserPod terminal submitCommand 先默认使用 `sh -lc` 贴近终端环境，但 PATH/bin wrapper 保底不进入本轮方案。
 
 ## Proposed Solution / 拟定方案
 
@@ -71,7 +71,7 @@
     - 脚本文件。
     - meta/manifest 文件。
     - shell 受管片段，其中只包含 alias 指令。
-  - BrowserPod 命令运行层不承担注入激活职责，不通过默认 PATH/env 让非交互式 `sh -c` 自动获得注入指令。
+  - BrowserPod terminal submitCommand 默认使用 `sh -lc` 执行用户 shell 命令，以便 login shell 尽量加载 profile 中的 alias source 片段；不通过默认 PATH/env 让其他 run 入口自动获得注入指令。
 - 为什么选择该方案：
   - 符合“契约公用、实现平台化”的分层要求。
   - `os-core` 已是跨 runtime 契约包，新增 injection 域符合现有包职责。
@@ -80,7 +80,7 @@
 - 不采用的方案：
   - 不在 `packages/browserpod` 内定义唯一注入契约：这会让公共能力被首个平台绑死。
   - 不把 BrowserPod 路径、Node、profile 文件选择写入 `os-core` 类型：这些属于实现策略。
-  - 不实现 PATH/bin wrapper 或默认 env 注入：当前阶段用户明确只能使用 alias 注入指令，非交互式可用性留待后续能力迭代。
+  - 不实现 PATH/bin wrapper 或默认 env 注入：当前阶段用户明确只能使用 alias 注入指令；terminal submitCommand 先通过 `sh -lc` 尝试获得 profile 加载行为，其他 run 入口不做默认包装。
   - 不直接替换 BrowserPod 系统工具：风险高，且不符合“不修改底层运行时”的边界。
 
 ## Public Contract Draft / 公共契约草案

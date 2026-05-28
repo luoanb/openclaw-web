@@ -18,7 +18,7 @@ function createConfig(pod: BrowserPodLike): BrowserPodRuntimeConfig {
 }
 
 describe("BrowserPodTerminalService", () => {
-  it("runs submitted commands through sh -c with the current cwd", async () => {
+  it("runs submitted commands through sh -lc with the current cwd", async () => {
     const run = vi.fn(async () => ({ exitCode: 0 }));
     const terminal = {};
     const pod: BrowserPodLike = {
@@ -36,7 +36,7 @@ describe("BrowserPodTerminalService", () => {
     const result = await session.submitCommand("echo hello");
 
     expect(result).toEqual({ ok: true });
-    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], {
+    expect(run).toHaveBeenCalledWith("sh", ["-lc", "echo hello"], {
       echo: true,
       terminal,
       cwd: "/workspace",
@@ -62,7 +62,7 @@ describe("BrowserPodTerminalService", () => {
 
     expect(result).toEqual({ ok: true });
     expect(session.cwd).toBe("/home/user");
-    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], expect.objectContaining({
+    expect(run).toHaveBeenCalledWith("sh", ["-lc", "echo hello"], expect.objectContaining({
       echo: true,
       terminal,
       cwd: "/home/user",
@@ -86,7 +86,7 @@ describe("BrowserPodTerminalService", () => {
     const result = await session.submitCommand("echo hello");
 
     expect(result).toEqual({ ok: true });
-    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], expect.objectContaining({
+    expect(run).toHaveBeenCalledWith("sh", ["-lc", "echo hello"], expect.objectContaining({
       echo: true,
       terminal,
       cwd: "/home/user",
@@ -134,7 +134,7 @@ describe("BrowserPodTerminalService", () => {
 
     expect(result).toEqual({ ok: true });
     expect(session.cwd).toBe("/workspace/packages/os-core");
-    expect(run).toHaveBeenCalledWith("sh", ["-c", "cd '/workspace/packages/os-core'"], expect.objectContaining({
+    expect(run).toHaveBeenCalledWith("sh", ["-lc", "cd '/workspace/packages/os-core'"], expect.objectContaining({
       echo: true,
       terminal: expect.any(Object),
       cwd: "/workspace",

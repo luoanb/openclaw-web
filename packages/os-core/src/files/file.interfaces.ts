@@ -17,6 +17,10 @@ export type DirectorySnapshot = {
   readonly readAt: number;
 };
 
+export type FileListOptions = {
+  readonly showHidden?: boolean;
+};
+
 export type TextFileSnapshot = {
   readonly path: string;
   readonly content: string;
@@ -80,7 +84,7 @@ export type FileActionResult =
 
 export interface FileService {
   getDefaultPath(runtimeSession: RuntimeSession): string;
-  listDirectory(runtimeSession: RuntimeSession, path: string): Promise<DirectorySnapshot>;
+  listDirectory(runtimeSession: RuntimeSession, path: string, options?: FileListOptions): Promise<DirectorySnapshot>;
   inspectTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileInspectionResult>;
   readTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileSnapshot>;
   readFileBytes(runtimeSession: RuntimeSession, path: string): Promise<BinaryFileSnapshot>;

@@ -206,7 +206,7 @@ class BrowserPodTerminalSession implements TerminalSession {
     this.state.startProcess(process);
 
     try {
-      const result = await this.pod.run("sh", ["-c", command], {
+      const result = await this.pod.run("sh", ["-lc", command], {
         echo: true,
         terminal: this.terminal,
         cwd: this.cwd,

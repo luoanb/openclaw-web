@@ -97,6 +97,16 @@ owner: user
   - 涉及文件：`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/technical-plan.md`、`packages/browserpod/src/files/browserpodFile.impl.ts`、`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/lifecycle.md`
   - 状态变化：无，仍为 `executing`（原因：上限策略和代码已更新，真实 BrowserPod 页面上传验证尚未完成；依据：本轮测试、类型检查与 lint 结果；下一步：真实页面重试上传目标文件）
   - 偏差：原二期保守上限为 `5 MiB`；现按用户明确要求放开到 `100 MiB`，仍不实现分片上传或断点续传。
+- 2026-05-29 03:06:
+  - 动作：根据用户要求先同步文档，追加目录列举改用 `uls`，并在 Files 工具栏增加显示隐藏文件 checkbox 的需求和技术方案。
+  - 涉及文件：`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/requirements.md`、`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/technical-plan.md`、`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/lifecycle.md`
+  - 状态变化：无，仍为 `executing`（原因：用户明确要求“同步到文档，然后一并改”；依据：本轮用户指令；下一步：扩展文件契约、BrowserPod 列举命令和 Files UI）
+  - 偏差：现有目录列举仍使用系统 `ls -l`，且 Files 工具栏没有隐藏文件显示开关；本轮先回写文档再修代码。
+- 2026-05-29 03:10:
+  - 动作：完成目录列举改用 `uls` 与 Files 工具栏隐藏文件 checkbox；`FileService.listDirectory` 增加 `showHidden` 选项，BrowserPod adapter 默认执行 `uls -1p --color=never`，显示隐藏文件时执行 `uls -1pA --color=never`。
+  - 涉及文件：`packages/os-core/src/files/file.interfaces.ts`、`packages/browserpod/src/files/browserpodFile.impl.ts`、`packages/browserpod/src/files/browserpodFileCommand.impl.ts`、`packages/browserpod/src/files/browserpodFileCommand.impl.test.ts`、`apps/web-claw/src/lib/features/files/components/FilesPanel.svelte`、`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/lifecycle.md`
+  - 状态变化：无，仍为 `executing`（原因：代码与自动验证完成，真实 BrowserPod 页面仍需手动确认 `uls` alias 在文件命令 run 中可用；依据：本轮测试、类型检查与 Svelte check）
+  - 偏差：Figma MCP 查询 Checkbox 节点时触发 API rate limit，已使用 `docs/design/BitsUI.md` 与本地 Checkbox 组件实现对齐。
 
 ## Validation / 验证
 
@@ -111,17 +121,21 @@ owner: user
   - `pnpm --filter browserpod check-types`：2026-05-27 23:55 开发者工具日志补强后复跑通过。
   - `pnpm --filter browserpod check-types`：2026-05-28 00:18 BinaryFile API 上传主路径修复后复跑通过。
   - `pnpm --filter browserpod check-types`：2026-05-28 22:18 二进制上限放开到 100 MiB 后复跑通过。
+  - `pnpm --filter os-core check-types`：2026-05-29 03:10 `listDirectory` 选项扩展后复跑通过。
+  - `pnpm --filter browserpod check-types`：2026-05-29 03:10 `uls` 目录列举接入后复跑通过。
   - `pnpm --filter web-claw check`：通过，`svelte-check found 0 errors and 0 warnings`。
   - `pnpm --filter web-claw check`：2026-05-27 23:16 粘贴取消二次确认后复跑通过，`svelte-check found 0 errors and 0 warnings`。
   - `pnpm --filter web-claw check`：2026-05-27 23:28 复制目标探测修复后复跑通过，`svelte-check found 0 errors and 0 warnings`。
   - `pnpm --filter web-claw check`：2026-05-27 23:10 右键菜单触发区修复后复跑通过，`svelte-check found 0 errors and 0 warnings`。
   - `pnpm --filter web-claw check`：2026-05-27 23:55 开发者工具日志补强后复跑通过，`svelte-check found 0 errors and 0 warnings`。
+  - `pnpm --filter web-claw check`：2026-05-29 03:10 Hidden files checkbox 接入后复跑通过，`svelte-check found 0 errors and 0 warnings`。
   - IDE lints：相关路径无 linter errors。
   - IDE lints：2026-05-27 23:10 右键菜单触发区相关路径无 linter errors。
   - IDE lints：2026-05-27 23:55 开发者工具日志补强相关路径无 linter errors。
   - IDE lints：2026-05-28 00:04 结构化错误日志格式化相关路径无 linter errors。
   - IDE lints：2026-05-28 00:18 BinaryFile API 上传主路径相关文件无 linter errors。
   - IDE lints：2026-05-28 22:18 二进制上限相关文件无 linter errors。
+  - IDE lints：2026-05-29 03:10 `uls` 目录列举与 Hidden files checkbox 相关文件无 linter errors。
 - Runtime / Test:
   - `pnpm --filter os-core test`：通过，2 files / 9 tests。
   - `pnpm --filter browserpod test`：初次失败后修正 copy mock；复跑通过，6 files / 38 tests。
@@ -132,6 +146,7 @@ owner: user
   - `pnpm --filter browserpod test`：2026-05-27 23:55 开发者工具日志补强后复跑通过，6 files / 40 tests。
   - `pnpm --filter browserpod test`：2026-05-28 00:18 BinaryFile API 上传主路径修复后复跑通过，6 files / 41 tests。
   - `pnpm --filter browserpod test`：2026-05-28 22:18 二进制上限放开到 100 MiB 后复跑通过，7 files / 49 tests。
+  - `pnpm --filter browserpod test -- browserpodFileCommand.impl.test.ts`：2026-05-29 03:10 通过，9 files / 57 tests。
   - `pnpm --filter web-claw build`：通过。
   - `pnpm --filter web-claw build`：2026-05-27 23:18 粘贴取消二次确认后复跑通过。
   - `pnpm --filter web-claw build`：2026-05-27 23:28 复制目标探测修复后复跑通过。

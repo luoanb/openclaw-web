@@ -10,6 +10,7 @@ import {
   type FileCopyOptions,
   type FileDeleteOptions,
   type FileErrorCode,
+  type FileListOptions,
   type FileService,
   type RuntimeSession,
   type TextFileInspectionResult,
@@ -36,8 +37,8 @@ export class BrowserPodFileService implements FileService {
     return BROWSERPOD_DEFAULT_FILE_PATH;
   }
 
-  async listDirectory(runtimeSession: RuntimeSession, path: string): Promise<DirectorySnapshot> {
-    return this.fileCommandRunner.listDirectory(this.resolvePod(runtimeSession), path);
+  async listDirectory(runtimeSession: RuntimeSession, path: string, options: FileListOptions = {}): Promise<DirectorySnapshot> {
+    return this.fileCommandRunner.listDirectory(this.resolvePod(runtimeSession), path, options);
   }
 
   async inspectTextFile(runtimeSession: RuntimeSession, path: string): Promise<TextFileInspectionResult> {
