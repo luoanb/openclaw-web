@@ -4,7 +4,7 @@
 status: executing
 result: pending
 created_at: 2026-05-27 22:38
-updated_at: 2026-05-28 00:18
+updated_at: 2026-05-28 22:18
 owner: user
 ```
 
@@ -12,9 +12,9 @@ owner: user
 
 - 当前状态：`executing`，二期代码实现与自动验证已完成，等待真实 BrowserPod 页面手动验证后进入 review。
 - 当前核心目标：扩展 Files Tab 文件操作能力，包括目录树容器空白区域上下文菜单、上传文件、下载文件、复制粘贴文件与目录。
-- 当前下一步：在真实 BrowserPod runtime 中重试上传，确认 `writeFileBytes` 的 `"binary"` 主路径能完成图片写入。
+- 当前下一步：在真实 BrowserPod runtime 中重试上传，确认 `writeFileBytes` 的 `"binary"` 主路径能完成目标文件写入。
 - 当前卡点：代码已改为 BinaryFile API 主路径并通过包级测试；真实页面上传验证尚未完成。
-- 下一步唯一动作：用户或 agent 在真实 BrowserPod runtime 中上传小图片，并检查目录刷新与 DevTools 日志。
+- 下一步唯一动作：用户或 agent 在真实 BrowserPod runtime 中上传目标文件，并检查目录刷新与 DevTools 日志。
 - 下一轮核心目标：根据真实上传结果进入 review；若仍失败，基于新日志继续定位 BrowserPod BinaryFile API 行为。
 
 ## Approval / 批准状态
@@ -92,6 +92,11 @@ owner: user
   - 涉及文件：`packages/browserpod/src/files/browserpodFile.impl.ts`、`packages/browserpod/src/files/browserpodFile.impl.test.ts`、`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/lifecycle.md`
   - 状态变化：无，仍为 `executing`（原因：代码与自动验证已完成，真实 BrowserPod 页面上传验证尚未完成；依据：本轮测试、类型检查与 lint 结果；下一步：真实页面重试上传）
   - 偏差：无新增偏差；本轮代码修正了 00:15 记录的 base64 主路径偏差。
+- 2026-05-28 22:18:
+  - 动作：根据用户反馈 `agent.zip` 触发 `file-too-large`，将二期单文件二进制上传/下载上限从 `5 MiB` 放开到 `100 MiB`。
+  - 涉及文件：`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/technical-plan.md`、`packages/browserpod/src/files/browserpodFile.impl.ts`、`docs/sdd-lab/2026-05-27_22-38_web-claw-file-management-phase-2/lifecycle.md`
+  - 状态变化：无，仍为 `executing`（原因：上限策略和代码已更新，真实 BrowserPod 页面上传验证尚未完成；依据：本轮测试、类型检查与 lint 结果；下一步：真实页面重试上传目标文件）
+  - 偏差：原二期保守上限为 `5 MiB`；现按用户明确要求放开到 `100 MiB`，仍不实现分片上传或断点续传。
 
 ## Validation / 验证
 
@@ -105,6 +110,7 @@ owner: user
   - `pnpm --filter os-core check-types`：2026-05-28 00:04 结构化错误日志格式化修复后复跑通过。
   - `pnpm --filter browserpod check-types`：2026-05-27 23:55 开发者工具日志补强后复跑通过。
   - `pnpm --filter browserpod check-types`：2026-05-28 00:18 BinaryFile API 上传主路径修复后复跑通过。
+  - `pnpm --filter browserpod check-types`：2026-05-28 22:18 二进制上限放开到 100 MiB 后复跑通过。
   - `pnpm --filter web-claw check`：通过，`svelte-check found 0 errors and 0 warnings`。
   - `pnpm --filter web-claw check`：2026-05-27 23:16 粘贴取消二次确认后复跑通过，`svelte-check found 0 errors and 0 warnings`。
   - `pnpm --filter web-claw check`：2026-05-27 23:28 复制目标探测修复后复跑通过，`svelte-check found 0 errors and 0 warnings`。
@@ -115,6 +121,7 @@ owner: user
   - IDE lints：2026-05-27 23:55 开发者工具日志补强相关路径无 linter errors。
   - IDE lints：2026-05-28 00:04 结构化错误日志格式化相关路径无 linter errors。
   - IDE lints：2026-05-28 00:18 BinaryFile API 上传主路径相关文件无 linter errors。
+  - IDE lints：2026-05-28 22:18 二进制上限相关文件无 linter errors。
 - Runtime / Test:
   - `pnpm --filter os-core test`：通过，2 files / 9 tests。
   - `pnpm --filter browserpod test`：初次失败后修正 copy mock；复跑通过，6 files / 38 tests。
@@ -124,6 +131,7 @@ owner: user
   - `pnpm --filter os-core test`：2026-05-28 00:04 结构化错误日志格式化修复后复跑通过，3 files / 15 tests。
   - `pnpm --filter browserpod test`：2026-05-27 23:55 开发者工具日志补强后复跑通过，6 files / 40 tests。
   - `pnpm --filter browserpod test`：2026-05-28 00:18 BinaryFile API 上传主路径修复后复跑通过，6 files / 41 tests。
+  - `pnpm --filter browserpod test`：2026-05-28 22:18 二进制上限放开到 100 MiB 后复跑通过，7 files / 49 tests。
   - `pnpm --filter web-claw build`：通过。
   - `pnpm --filter web-claw build`：2026-05-27 23:18 粘贴取消二次确认后复跑通过。
   - `pnpm --filter web-claw build`：2026-05-27 23:28 复制目标探测修复后复跑通过。
@@ -131,8 +139,8 @@ owner: user
 - Human confirmation: 用户已确认新建独立二期迭代，并确认需求可先作为已确认需求写入。
 - Human confirmation: 2026-05-27 23:39 用户批准执行开发者工具日志技术方案文档更新，未批准进入日志代码实现。
 - Human confirmation: 2026-05-27 23:44 用户批准进入开发者工具日志代码实现；2026-05-27 23:52 用户纠偏日志只加关键节点，并要求写入 Cursor 规则。
-- 结果汇总：二期大部分实现与自动验证已完成；`writeFileBytes` 已按 BrowserPod BinaryFile API 契约改为 `"binary"` 主路径，避免上传依赖 `/tmp` base64 临时文件。
-- 剩余风险：真实 BrowserPod runtime 上传验证尚未完成；2026-05-27 23:10 浏览器 MCP 观察到当前 dev 页面 runtime 为启动失败状态，无法验证真实目录树 item 右键；base64 降级通道对大文件有压力，当前按 `5 MiB` 上限处理；复制目标自动探测最多尝试 100 个候选名，极端冲突场景下会失败提示。
+- 结果汇总：二期大部分实现与自动验证已完成；`writeFileBytes` 已按 BrowserPod BinaryFile API 契约改为 `"binary"` 主路径，避免上传依赖 `/tmp` base64 临时文件；二进制上传/下载上限已放开到 `100 MiB`。
+- 剩余风险：真实 BrowserPod runtime 上传验证尚未完成；2026-05-27 23:10 浏览器 MCP 观察到当前 dev 页面 runtime 为启动失败状态，无法验证真实目录树 item 右键；base64 降级通道对大文件有压力，当前按用户反馈放开到 `100 MiB` 上限处理；复制目标自动探测最多尝试 100 个候选名，极端冲突场景下会失败提示。
 
 ## Review / 复盘
 

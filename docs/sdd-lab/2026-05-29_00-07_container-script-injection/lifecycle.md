@@ -1,0 +1,243 @@
+# Lifecycle / 生命周期: Container Script Injection
+
+```yaml
+status: reviewing
+result: pending
+created_at: 2026-05-29 00:07
+updated_at: 2026-05-29 02:52
+owner: user
+```
+
+## Current Summary / 当前摘要
+
+- 当前状态：`reviewing`，alias-only 方案已执行并通过自动验证。
+- 当前核心目标：定义公共容器脚本注入契约，并提供 BrowserPod alias-only 首个实现；脚本以正常 JS 文件存在，BrowserPod 细节不得污染公共契约。
+- 当前下一步：真实 BrowserPod 容器中验证 profile alias 片段、脚本文件和 manifest 是否一致。
+- 当前卡点：自动验证已通过，仍需真实容器确认 shell 加载 profile 后 alias 指令可用。
+- 下一步唯一动作：真实容器验证 alias 注入效果。
+- 下一轮核心目标：根据真实验证结果进入 `done` 或继续定位 shell/profile 加载行为。
+
+## Approval / 批准状态
+
+- Requirements confirmed: `Approved`
+- Technical plan confirmed: `Approved`
+- Execution approval: `Approved`
+- Approved by: user
+- Approved at: 2026-05-29 02:36
+
+## Execution Log / 执行记录
+
+- 2026-05-29 00:07:
+  - 动作：创建 SDD Lab 需求迭代并写入需求阶段文档。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/requirements.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：无，保持 `draft`（原因：需求尚未确认；依据：用户提出新需求迭代；下一步：等待需求确认或修订）。
+  - 偏差：无。
+- 2026-05-29 00:20:
+  - 动作：根据用户对 q1-q5 的答复更新需求边界和需求决策。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/requirements.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：无，保持 `draft`（原因：需求仍待用户整体确认；依据：用户补充开放问题答复；下一步：等待确认后进入技术方案阶段）。
+  - 偏差：无。
+- 2026-05-29 00:22:
+  - 动作：读取 BrowserPod runtime、file、command、terminal 相关实现和 os-core 契约，创建技术方案。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`draft -> planned`（原因：用户要求开始落地技术方案；依据：需求已通过 q1-q5 收敛且用户明确推进；下一步：等待技术方案确认与执行批准）。
+  - 偏差：无。
+- 2026-05-29 00:26:
+  - 动作：根据用户指出的分层问题修正需求和技术方案，将注入契约上移为 `os-core` 公共契约，BrowserPod 仅作为首个具体实现。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/requirements.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：无，保持 `planned`（原因：技术方案纠偏但仍处于方案确认阶段；依据：用户明确指出“契约是公用的，实现才针对具体平台”；下一步：等待修正后方案确认）。
+  - 偏差：原方案将 BrowserPod 细节放入契约层，已修正为公共契约 + BrowserPod 实现。
+- 2026-05-29 00:33:
+  - 动作：根据用户反馈更新脚本资产管理方式，明确开发态脚本以正常 JS 文件存在，不以大段 `content` 字符串维护；同时清理 `technical-plan.md` 中残留的旧方案重复段落。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/requirements.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：无，保持 `planned`（原因：技术方案细节纠偏；依据：用户要求脚本以正常 JS 文件存在；下一步：等待修正后方案确认）。
+  - 偏差：原草案中的 `content` 字段不利于维护，已改为脚本资产引用和开发目录管理。
+- 2026-05-29 00:37:
+  - 动作：将 BrowserPod 实现中的容器受管目录建议从品牌化 `.openclaw` 改为中性的 `.container-tools`，shell 片段改为 `container-tools.sh`。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：无，保持 `planned`（原因：命名纠偏；依据：用户指出受控目录不应叫 openclaw；下一步：等待修正后方案确认）。
+  - 偏差：原目录名带项目品牌，已改为能力描述型命名。
+- 2026-05-29 00:38:
+  - 动作：用户批准开始执行，进入代码实现阶段。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`planned -> executing`（原因：用户明确“开始执行”；依据：技术方案已落盘并经多轮修正；下一步：实现公共契约与 BrowserPod 注入能力）。
+  - 偏差：无。
+- 2026-05-29 00:47:
+  - 动作：完成公共注入契约、BrowserPod 注入实现、runtime boot 接入、默认 env/PATH 注入和测试补充。
+  - 涉及文件：
+    - `packages/os-core/src/injection/injection.interfaces.ts`
+    - `packages/os-core/src/injection/index.ts`
+    - `packages/os-core/src/index.ts`
+    - `packages/browserpod/src/injection/browserpodInjection.interfaces.ts`
+    - `packages/browserpod/src/injection/browserpodInjection.impl.ts`
+    - `packages/browserpod/src/injection/browserpodInjection.impl.test.ts`
+    - `packages/browserpod/src/injection/browserpodScriptRegistry.impl.ts`
+    - `packages/browserpod/src/injection/scripts/uls.js`
+    - `packages/browserpod/src/injection/index.ts`
+    - `packages/browserpod/src/runtime/browserpodRuntime.interfaces.ts`
+    - `packages/browserpod/src/runtime/browserpodRuntime.impl.ts`
+    - `packages/browserpod/src/command/browserpodCommand.interfaces.ts`
+    - `packages/browserpod/src/command/browserpodCommand.impl.ts`
+    - `packages/browserpod/src/command/browserpodCommand.impl.test.ts`
+    - `packages/browserpod/src/terminal/browserpodTerminal.impl.ts`
+    - `packages/browserpod/src/terminal/browserpodTerminal.impl.test.ts`
+    - `packages/browserpod/src/files/browserpodFile.impl.test.ts`
+    - `packages/browserpod/src/files/browserpodFileCommand.impl.test.ts`
+    - `packages/browserpod/src/preview/browserpodPreviewDiscovery.impl.test.ts`
+    - `packages/browserpod/src/index.ts`
+  - 状态变化：`executing -> reviewing`（原因：实现与自动验证完成；依据：类型检查和测试通过；下一步：对照需求和技术方案 review）。
+  - 偏差：未做真实 BrowserPod 容器手动验证；当前验证以单元测试、类型检查和 fake pod 为主。
+- 2026-05-29 01:20:
+  - 动作：review 发现 terminal/command 层硬编码注入 PATH/env，用户选择改为注入阶段读取默认 `PATH` 并安装 wrapper 到可写 PATH 目录。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`reviewing -> executing`（原因：实现职责边界不干净；依据：用户确认采用 `printf '%s\n' "$PATH"` 探测方案；下一步：修正代码并重跑验证）。
+  - 偏差：原实现通过 terminal/command 默认 env 补 PATH，已明确回退修正为 inject 自完成指令可用性。
+- 2026-05-29 01:24:
+  - 动作：完成注入激活职责修正：移除 terminal/command 默认 env，改为 BrowserPod 注入阶段探测默认 PATH 并安装 wrapper 到可写 PATH 目录。
+  - 涉及文件：
+    - `packages/browserpod/src/injection/browserpodInjection.impl.ts`
+    - `packages/browserpod/src/injection/browserpodInjection.impl.test.ts`
+    - `packages/browserpod/src/command/browserpodCommand.impl.ts`
+    - `packages/browserpod/src/command/browserpodCommand.impl.test.ts`
+    - `packages/browserpod/src/terminal/browserpodTerminal.impl.ts`
+    - `packages/browserpod/src/terminal/browserpodTerminal.impl.test.ts`
+    - `packages/browserpod/src/files/browserpodFileCommand.impl.test.ts`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`executing -> reviewing`（原因：职责修正和自动验证完成；依据：类型检查和测试通过；下一步：最终 review）。
+  - 偏差：无新增偏差。
+- 2026-05-29 01:33:
+  - 动作：根据真实验证反馈回写偏差：`uls` 命令入口已写入，但脚本文件和 meta/manifest 没有写入；同步修正技术方案，要求拆分注入阶段并补充偏差测试。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`reviewing -> executing`（原因：review/真实验证发现实现偏差；依据：用户反馈“uls 指令写进去了，但是 script 和 meta 没有写进去”；下一步：拆分 `inject()` 并补测试）。
+  - 偏差：当前实现和测试把注入成功验证集中在 happy path，缺少阶段级失败暴露；真实容器中出现入口与资源文件状态不一致。
+- 2026-05-29 01:36:
+  - 动作：完成注入实现拆分与偏差测试：`inject()` 拆为准备上下文、安装脚本和 wrapper、安装 shell/profile、写 manifest；文本写入后读取校验；新增 manifest 写入无法验证时的失败测试。
+  - 涉及文件：
+    - `packages/browserpod/src/injection/browserpodInjection.impl.ts`
+    - `packages/browserpod/src/injection/browserpodInjection.impl.test.ts`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`executing -> reviewing`（原因：修复实现与自动验证完成；依据：注入测试和类型检查通过；下一步：真实 BrowserPod 容器复测）。
+  - 偏差：无新增偏差；本轮修复增强了入口与资源文件不一致时的错误暴露。
+- 2026-05-29 01:42:
+  - 动作：根据真实验证反馈回写偏差：写入容器的脚本内容末尾带有 inline sourcemap，不等于开发态原始脚本；同步修正技术方案，要求脚本资产加载时移除末尾 inline sourcemap 并补注册表测试。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`reviewing -> executing`（原因：真实验证发现注入脚本内容不符合原始脚本；依据：用户反馈写入文件后缀 `sourceMappingURL=data:application/json;base64,...`；下一步：修正脚本资产加载）。
+  - 偏差：当前注册表从开发服务器 fetch `.js` 资源，可能拿到带 inline sourcemap 的产物文本；需求要求开发态脚本以正常 JS 文件存在并按脚本内容注入。
+- 2026-05-29 01:45:
+  - 动作：根据用户纠偏修正方案方向：不对加工后的脚本内容做 sourcemap 清洗，而是改为通过 raw asset 获取正确原始文件内容。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+    - `packages/browserpod/src/injection/browserpodScriptRegistry.impl.ts`
+    - `packages/browserpod/src/injection/browserpodScriptRegistry.impl.test.ts`
+    - `packages/browserpod/src/vite-env.d.ts`
+  - 状态变化：无，仍为 `executing`（原因：修正仍在执行中，尚未完成验证；依据：用户明确指出应获取正确文件内容而不是去掉后缀；下一步：运行注册表测试和类型检查）。
+  - 偏差：01:42 的初始修正方向错误，曾设计为事后移除 inline sourcemap；现已改为 raw asset 源头获取。
+- 2026-05-29 01:46:
+  - 动作：完成 raw asset 加载修正与验证：`BrowserPodScriptRegistry` 改为 `./scripts/uls.js?raw` 导入原始脚本文本，新增 `*?raw` 类型声明，注册表测试校验默认脚本内容等于 raw asset 原文且不包含 inline sourcemap。
+  - 涉及文件：
+    - `packages/browserpod/src/injection/browserpodScriptRegistry.impl.ts`
+    - `packages/browserpod/src/injection/browserpodScriptRegistry.impl.test.ts`
+    - `packages/browserpod/src/vite-env.d.ts`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`executing -> reviewing`（原因：代码修正和自动验证完成；依据：注册表测试与类型检查通过；下一步：真实 BrowserPod 容器复测注入脚本内容）。
+  - 偏差：无新增偏差。
+- 2026-05-29 02:33:
+  - 动作：根据用户要求重新调整需求和技术方案，当前阶段只使用 alias 注入指令；PATH/bin wrapper、默认 env 注入、命令层兜底不属于当前方案范围。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/requirements.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/technical-plan.md`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`reviewing -> planned`（原因：用户明确收敛方案能力边界；依据：“只能用alias注入指令目前”；下一步：等待用户确认 alias-only 技术方案后再进入执行）。
+  - 偏差：此前方案包含 PATH/bin wrapper 与默认 env/命令层兜底，当前约束下应移出本轮方案。
+- 2026-05-29 02:36:
+  - 动作：用户批准 alias-only 调整方案开始执行。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`planned -> executing`（原因：用户明确“开始执行”；依据：alias-only 技术方案已落盘；下一步：移除 wrapper/PATH/env 兜底实现）。
+  - 偏差：无。
+- 2026-05-29 02:38:
+  - 动作：完成 BrowserPod alias-only 实现修正：移除 PATH 探测、bin wrapper 写入和 chmod；shell 片段中的 alias 直接执行受管脚本 runner。
+  - 涉及文件：
+    - `packages/browserpod/src/injection/browserpodInjection.impl.ts`
+    - `packages/browserpod/src/injection/browserpodInjection.impl.test.ts`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`executing -> reviewing`（原因：实现修正和自动验证完成；依据：注入测试、类型检查和 IDE lint 均通过；下一步：真实 BrowserPod 容器验证 alias 注入）。
+  - 偏差：无新增偏差；当前方案明确不覆盖非交互式 `sh -c` 直接解析注入指令。
+- 2026-05-29 02:45:
+  - 动作：根据用户反馈修正 alias 文本形态，确保 alias 直接对应 Node 运行命令，例如 `alias uls='node /home/user/.container-tools/scripts/uls.js'`。
+  - 涉及文件：
+    - `packages/browserpod/src/injection/browserpodInjection.impl.ts`
+    - `packages/browserpod/src/injection/browserpodInjection.impl.test.ts`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：无，保持 `reviewing`（原因：实现细节纠偏并完成自动验证；依据：用户指出 alias 必须直接对应 Node 运行命令；下一步：真实 BrowserPod 容器验证 alias 注入）。
+  - 偏差：上一版 alias 虽未依赖 `/bin/uls`，但生成文本包含嵌套 shell quote，不够直观；已改为直接 Node 命令形态。
+- 2026-05-29 02:50:
+  - 动作：根据用户反馈回写偏差：刷新页面后 alias 未更新，说明 `force` 虽已传入 boot 注入，但真实容器可能没有可靠覆盖已有受管文件，或注入失败未阻断启动导致旧 alias 仍被保留。
+  - 涉及文件：
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`reviewing -> executing`（原因：真实验证反馈暴露 force 覆盖偏差；依据：用户反馈“--force不生效、刷新页面后没有刷新新的 alias”；下一步：修正受管文件覆盖写入路径并补测试）。
+  - 偏差：自动测试未覆盖 BrowserPod `openFile().write()` 对已有文件可能不截断的情况；需要让覆盖写入优先重建受管文件。
+- 2026-05-29 02:52:
+  - 动作：修正受管文件覆盖写入路径，写入时优先使用 `createFile` 重建文件，避免已有文件通过 `openFile().write()` 非截断覆盖后残留旧 alias；补充 force 刷新旧 alias 的测试。
+  - 涉及文件：
+    - `packages/browserpod/src/injection/browserpodInjection.impl.ts`
+    - `packages/browserpod/src/injection/browserpodInjection.impl.test.ts`
+    - `docs/sdd-lab/2026-05-29_00-07_container-script-injection/lifecycle.md`
+  - 状态变化：`executing -> reviewing`（原因：修复实现与自动验证完成；依据：注入测试和类型检查通过；下一步：真实 BrowserPod 容器刷新页面复测 alias 文件）。
+  - 偏差：无新增偏差。
+
+## Validation / 验证
+
+- Self-check: 已确认实现按公共契约 + BrowserPod 实现分层推进，脚本资产以正常 JS 文件管理。
+- Static checks:
+  - `pnpm --filter os-core check-types`：通过。
+  - `pnpm --filter browserpod check-types`：通过。
+  - `pnpm --filter browserpod check-types`：2026-05-29 01:36 注入拆分与写后校验后复跑通过。
+  - `pnpm --filter browserpod check-types`：2026-05-29 01:46 raw asset 加载修正后复跑通过。
+  - `pnpm --filter browserpod check-types`：2026-05-29 02:37 alias-only 修正后复跑通过。
+  - `pnpm --filter browserpod check-types`：2026-05-29 02:44 alias 直接 Node 命令修正后复跑通过。
+  - `pnpm --filter browserpod check-types`：2026-05-29 02:51 force 覆盖写入修正后复跑通过。
+- Runtime / Test:
+  - `pnpm --filter os-core test`：4 files / 20 tests passed。
+  - `pnpm --filter browserpod test`：8 files / 53 tests passed。
+  - `pnpm --filter browserpod test -- src/injection/browserpodInjection.impl.test.ts`：2026-05-29 01:36 通过，8 files / 54 tests passed。
+  - `pnpm --filter browserpod test -- src/injection/browserpodScriptRegistry.impl.test.ts`：2026-05-29 01:46 通过，9 files / 55 tests passed。
+  - `pnpm --filter browserpod test -- src/injection/browserpodInjection.impl.test.ts`：2026-05-29 02:37 通过，9 files / 55 tests passed。
+  - `pnpm --filter browserpod test -- src/injection/browserpodInjection.impl.test.ts`：2026-05-29 02:44 通过，9 files / 55 tests passed。
+  - `pnpm --filter browserpod test -- src/injection/browserpodInjection.impl.test.ts`：2026-05-29 02:51 通过，9 files / 56 tests passed。
+- IDE lint:
+  - `packages/browserpod/src/injection/browserpodInjection.impl.ts`、`packages/browserpod/src/injection/browserpodInjection.impl.test.ts`：无 linter errors。
+- Human confirmation: alias-only 方案已由用户在 2026-05-29 02:36 批准执行。
+- 结果汇总：公共契约、BrowserPod 注入实现、注入阶段拆分和 raw asset 加载保留；PATH 探测、bin wrapper 写入和 chmod 已从 BrowserPod 注入实现中移除；shell 受管片段现在只生成 alias，alias 直接调用受管脚本 runner，文本形态为 `alias uls='node /home/user/.container-tools/scripts/uls.js'`；force 覆盖写入已改为优先重建受管文件。
+- 剩余风险：尚未在真实 BrowserPod 容器中确认 `.container-tools/scripts/uls.js` 与原始脚本完全一致，且 `.container-tools/meta/manifest.json`、profile alias 片段全部一致；当前方案不覆盖非交互式 `sh -c`、未加载 profile 的终端或 wrapper 可执行权限。
+
+## Review / 复盘
+
+- Requirements fidelity: 技术方案覆盖公共契约、容器启动后指令可用、幂等、meta/脚本管理、profile 注入和 force 覆盖要求。
+- Technical-plan fidelity: alias-only 自动验证已对齐，真实容器验证仍待补充。
+- Quality: 自动验证通过，仍需真实容器验证补强。
+- Risk: 当前主要风险是 BrowserPod 真实文件写入/权限语义与 fake pod 测试不完全一致。
+- 结论：迭代已进入 `reviewing`，下一步完成真实 BrowserPod 容器 alias 验证。

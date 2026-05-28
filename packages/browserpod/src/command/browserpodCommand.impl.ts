@@ -61,7 +61,8 @@ export class CustomTerminalCommandRunner implements BrowserPodCommandRunner {
     };
 
     try {
-      const runReturn = run.call(pod, command, [...args], { terminal, cwd, echo: false });
+      const runOptions = options.env ? { terminal, cwd, echo: false, env: options.env } : { terminal, cwd, echo: false };
+      const runReturn = run.call(pod, command, [...args], runOptions);
       return await waitForRunResult(chunks, runReturn, options);
     } finally {
       this.activeCommand = null;
@@ -177,3 +178,4 @@ function readExitCode(value: unknown): number | undefined {
   const exitCode = (value as { readonly exitCode?: unknown }).exitCode;
   return typeof exitCode === "number" ? exitCode : undefined;
 }
+

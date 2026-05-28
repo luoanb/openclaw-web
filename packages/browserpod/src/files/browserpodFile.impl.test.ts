@@ -12,6 +12,7 @@ function createConfig(pod: BrowserPodLike): BrowserPodRuntimeConfig {
     booter: {
       boot: vi.fn(async () => pod),
     },
+    injection: false,
   };
 }
 

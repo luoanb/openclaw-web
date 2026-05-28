@@ -55,11 +55,11 @@ describe("BrowserPodFileCommandRunner", () => {
       { name: "src", path: "/home/user/src", kind: "directory" },
       { name: "README.md", path: "/home/user/README.md", kind: "file" },
     ]);
-    expect(pod.run).toHaveBeenCalledWith("sh", ["-lc", "ls -l '/home/user'"], {
+    expect(pod.run).toHaveBeenCalledWith("sh", ["-lc", "ls -l '/home/user'"], expect.objectContaining({
       terminal: expect.any(Object),
       cwd: "/",
       echo: false,
-    });
+    }));
   });
 
   it("runs file actions through simple shell commands", async () => {
@@ -68,11 +68,11 @@ describe("BrowserPodFileCommandRunner", () => {
 
     await runner.runFileAction(pod, "mv", ["/home/user/a.txt", "/home/user/b.txt"], "/home/user/a.txt", "Failed");
 
-    expect(pod.run).toHaveBeenCalledWith("sh", ["-lc", "mv '/home/user/a.txt' '/home/user/b.txt'"], {
+    expect(pod.run).toHaveBeenCalledWith("sh", ["-lc", "mv '/home/user/a.txt' '/home/user/b.txt'"], expect.objectContaining({
       terminal: expect.any(Object),
       cwd: "/",
       echo: false,
-    });
+    }));
   });
 
   it("detects text files through grep-compatible shell output", async () => {
@@ -94,11 +94,11 @@ describe("BrowserPodFileCommandRunner", () => {
           'exit "$status"',
         ].join("; "),
       ],
-      {
+      expect.objectContaining({
         terminal: expect.any(Object),
         cwd: "/",
         echo: false,
-      },
+      }),
     );
   });
 
@@ -129,11 +129,11 @@ describe("BrowserPodFileCommandRunner", () => {
           "if [ -e \"$target\" ]; then printf '__OPENCLAW_DELETE_STILL_EXISTS__'; else printf '__OPENCLAW_DELETE_SUCCESS__'; fi",
         ].join("; "),
       ],
-      {
+      expect.objectContaining({
         terminal: expect.any(Object),
         cwd: "/",
         echo: false,
-      },
+      }),
     );
   });
 
@@ -171,11 +171,11 @@ describe("BrowserPodFileCommandRunner", () => {
 
     await runner.copyPath(pod, "/home/user/a.txt", "/home/user/b.txt", "file");
 
-    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], {
+    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], expect.objectContaining({
       terminal: expect.any(Object),
       cwd: "/",
       echo: false,
-    });
+    }));
   });
 
   it("copies colliding files to a copy target without confirmation", async () => {
@@ -189,11 +189,11 @@ describe("BrowserPodFileCommandRunner", () => {
     const result = await runner.copyPath(pod, "/home/user/a.txt", "/home/user/b.txt", "file");
 
     expect(result).toEqual({ targetPath: "/home/user/b.txt_copy" });
-    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt_copy'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], {
+    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt_copy'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], expect.objectContaining({
       terminal: expect.any(Object),
       cwd: "/",
       echo: false,
-    });
+    }));
   });
 
   it("keeps probing copy targets until one is available", async () => {
@@ -208,11 +208,11 @@ describe("BrowserPodFileCommandRunner", () => {
     const result = await runner.copyPath(pod, "/home/user/a.txt", "/home/user/b.txt", "file");
 
     expect(result).toEqual({ targetPath: "/home/user/b.txt_copy_2" });
-    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt_copy_2'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], {
+    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/a.txt'; target='/home/user/b.txt_copy_2'; if [ ! -f \"$src\" ]; then exit 2; fi; cp \"$src\" \"$target\""], expect.objectContaining({
       terminal: expect.any(Object),
       cwd: "/",
       echo: false,
-    });
+    }));
   });
 
   it("copies colliding directories to a copy target", async () => {
@@ -226,11 +226,11 @@ describe("BrowserPodFileCommandRunner", () => {
     const result = await runner.copyPath(pod, "/home/user/src", "/home/user/src", "directory");
 
     expect(result).toEqual({ targetPath: "/home/user/src_copy" });
-    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/src'; target='/home/user/src_copy'; if [ ! -d \"$src\" ]; then exit 2; fi; cp -r \"$src\" \"$target\""], {
+    expect(pod.run).toHaveBeenLastCalledWith("sh", ["-lc", "src='/home/user/src'; target='/home/user/src_copy'; if [ ! -d \"$src\" ]; then exit 2; fi; cp -r \"$src\" \"$target\""], expect.objectContaining({
       terminal: expect.any(Object),
       cwd: "/",
       echo: false,
-    });
+    }));
   });
 
   it("rejects copying a directory into itself", async () => {

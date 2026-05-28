@@ -17,6 +17,7 @@ import {
   type Unsubscribe,
 } from "os-core";
 import { BrowserPodErrorMapper } from "../errors/browserpodErrorMapper.impl";
+import { BrowserPodInjectionService } from "../injection/browserpodInjection.impl";
 import { DefaultBrowserPodBooter } from "./browserpodBooter.impl";
 import type {
   BrowserPodBooter,
@@ -40,6 +41,8 @@ export class BrowserPodRuntimeManager implements RuntimeManager {
   private readonly config: BrowserPodRuntimeConfig;
   private readonly booter: BrowserPodBooter;
   private readonly environment: BrowserPodEnvironment;
+  private readonly injectionService: BrowserPodInjectionService | null;
+  private readonly injectionRequired: boolean;
   private readonly state = new RuntimeStateMachine({
     capabilities: BROWSERPOD_RUNTIME_CAPABILITIES,
   });
@@ -50,6 +53,8 @@ export class BrowserPodRuntimeManager implements RuntimeManager {
     this.config = config;
     this.booter = config.booter ?? new DefaultBrowserPodBooter();
     this.environment = config.environment ?? defaultBrowserPodEnvironment;
+    this.injectionService = config.injection === false ? null : new BrowserPodInjectionService(this, config.injection);
+    this.injectionRequired = config.injection !== false && config.injection?.required === true;
   }
 
   get status(): RuntimeStatus {
@@ -124,6 +129,17 @@ export class BrowserPodRuntimeManager implements RuntimeManager {
         capabilities: BROWSERPOD_RUNTIME_CAPABILITIES,
       });
       this.podByToken.set(session.ref.token, pod);
+      if (this.injectionService) {
+        const injectionResult = await this.injectionService.inject(session, { reason: "boot", force: true });
+        if (!injectionResult.ok && this.injectionRequired) {
+          throw new RuntimeContractError({
+            code: "boot-failed",
+            message: injectionResult.error.message,
+            recoverable: injectionResult.error.recoverable,
+            cause: injectionResult.error.cause,
+          });
+        }
+      }
       this.bootContextKey = contextKey;
       this.state.setSession(session);
       return session;

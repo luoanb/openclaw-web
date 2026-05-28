@@ -22,7 +22,7 @@ import { BrowserPodFilePath } from "./browserpodFilePath.impl";
 
 const BROWSERPOD_DEFAULT_FILE_PATH = "/home/user";
 const DEFAULT_TEXT_FILE_LIMIT_BYTES = 1024 * 1024;
-const DEFAULT_BINARY_FILE_LIMIT_BYTES = 5 * 1024 * 1024;
+const DEFAULT_BINARY_FILE_LIMIT_BYTES = 100 * 1024 * 1024;
 const BROWSERPOD_TEXT_FILE_MODE = "utf-8";
 const BROWSERPOD_BINARY_FILE_MODE = "binary";
 

@@ -3,6 +3,7 @@ import type { BrowserPodLike } from "../runtime";
 export type BrowserPodCommandRunOptions = {
   readonly cwd?: string;
   readonly timeoutMs?: number;
+  readonly env?: readonly string[];
 };
 
 export type BrowserPodCommandRunResult = {

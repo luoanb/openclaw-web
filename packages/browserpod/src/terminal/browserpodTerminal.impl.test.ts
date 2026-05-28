@@ -13,6 +13,7 @@ function createConfig(pod: BrowserPodLike): BrowserPodRuntimeConfig {
     booter: {
       boot: vi.fn(async () => pod),
     },
+    injection: false,
   };
 }
 
@@ -61,11 +62,11 @@ describe("BrowserPodTerminalService", () => {
 
     expect(result).toEqual({ ok: true });
     expect(session.cwd).toBe("/home/user");
-    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], {
+    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], expect.objectContaining({
       echo: true,
       terminal,
       cwd: "/home/user",
-    });
+    }));
   });
 
   it("awaits BrowserPod default terminal creation before running commands", async () => {
@@ -85,11 +86,11 @@ describe("BrowserPodTerminalService", () => {
     const result = await session.submitCommand("echo hello");
 
     expect(result).toEqual({ ok: true });
-    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], {
+    expect(run).toHaveBeenCalledWith("sh", ["-c", "echo hello"], expect.objectContaining({
       echo: true,
       terminal,
       cwd: "/home/user",
-    });
+    }));
   });
 
   it("handles clear as a terminal UI event without running a process", async () => {
@@ -133,11 +134,11 @@ describe("BrowserPodTerminalService", () => {
 
     expect(result).toEqual({ ok: true });
     expect(session.cwd).toBe("/workspace/packages/os-core");
-    expect(run).toHaveBeenCalledWith("sh", ["-c", "cd '/workspace/packages/os-core'"], {
+    expect(run).toHaveBeenCalledWith("sh", ["-c", "cd '/workspace/packages/os-core'"], expect.objectContaining({
       echo: true,
       terminal: expect.any(Object),
       cwd: "/workspace",
-    });
+    }));
   });
 
   it("returns unsupported for programmatic stdin when terminal does not expose write", async () => {

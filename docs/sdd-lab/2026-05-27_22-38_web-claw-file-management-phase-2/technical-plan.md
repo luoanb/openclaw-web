@@ -150,7 +150,7 @@
 - `readFileBytes`：
   - 主路径：使用 BrowserPod SDK `openFile(path, "binary")` 打开二进制文件，读取 size 后返回 `ArrayBuffer`。
   - 降级路径：仅当 BinaryFile API 不可用或真实运行不稳定时，通过 `base64 <file>` 输出文本，在 adapter 中解码为 `ArrayBuffer`。
-  - 加大小上限，建议二期先设为 `5 MiB`，避免 base64 输出和浏览器内存压力过大。
+  - 加大小上限；二期按用户反馈放开到 `100 MiB`，仍避免无上限 base64 输出和浏览器内存压力。
 - `writeFileBytes`：
   - 主路径：使用 BrowserPod SDK `createFile(path, "binary")` 或 `openFile(path, "binary")` 写入 `ArrayBuffer`。
   - 降级路径：仅当 BinaryFile API 不可用或真实运行不稳定时，将 `ArrayBuffer` 转 base64，使用 shell `base64 -d > target` 写入。
@@ -472,7 +472,7 @@ console.error("[web-claw:browserpod.file] operation:error", {
 - 风险：base64 输出混入 terminal 提示符或 ANSI。
   - 缓解方式：使用 sentinel 包裹 payload，只解析 sentinel 之间内容；解析前剥离 ANSI。
 - 风险：大文件上传下载导致内存或 terminal 输出压力过大。
-  - 缓解方式：二期先设 `5 MiB` 文件上限；超过上限返回可读错误。
+  - 缓解方式：二期设 `100 MiB` 文件上限；超过上限返回可读错误，后续如需更大文件再设计分片或流式传输。
 - 风险：右键空白区域误判为当前选中项。
   - 缓解方式：菜单目标由 `contextmenu` 命中区域显式设置，不能从 `selectedPath` 推导。
 - 风险：粘贴同名文件覆盖用户数据。
@@ -548,7 +548,7 @@ console.error("[web-claw:browserpod.file] operation:error", {
 - 下一步动作：
   - 等待用户 review 技术方案并明确批准执行。
 - 执行前仍需确认：
-  - 二期单文件上传/下载大小上限是否采用 `5 MiB`。
+  - 二期单文件上传/下载大小上限已由用户确认放开到 `100 MiB`。
   - 上传是否先只支持单文件。
   - 粘贴同名冲突已确认不弹二次确认；文件和目录均使用 `{name}_copy`。
   - 复制目标命名已确认使用自动探测策略；实现上限采用 100 次候选路径探测，超过后失败提示。

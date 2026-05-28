@@ -4,3 +4,4 @@ export * from "./files";
 export * from "./runtime";
 export * from "./terminal";
 export * from "./preview";
+export * from "./injection";

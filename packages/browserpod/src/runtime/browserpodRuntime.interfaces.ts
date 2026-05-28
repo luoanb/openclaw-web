@@ -1,4 +1,5 @@
 import type { RuntimeBootOptions, RuntimeCheckOptions, RuntimeStopOptions } from "os-core";
+import type { BrowserPodInjectionConfig } from "../injection/browserpodInjection.interfaces";
 
 export type BrowserPodRuntimeRequest = {
   readonly bootOptions?: RuntimeBootOptions;
@@ -25,6 +26,7 @@ export type BrowserPodRunOptions = {
   readonly echo?: boolean;
   readonly terminal: BrowserPodTerminalLike;
   readonly cwd?: string;
+  readonly env?: readonly string[];
 };
 
 export type BrowserPodRun = (
@@ -104,4 +106,5 @@ export type BrowserPodRuntimeConfig = {
   readonly storageKeyResolver: (request: BrowserPodRuntimeRequest) => string;
   readonly booter?: BrowserPodBooter;
   readonly environment?: BrowserPodEnvironment;
+  readonly injection?: BrowserPodInjectionConfig | false;
 };

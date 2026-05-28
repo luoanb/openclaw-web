@@ -14,6 +14,7 @@ function createConfig(onPortal?: BrowserPodOnPortal): BrowserPodRuntimeConfig {
     booter: {
       boot: vi.fn(async () => ({ run: vi.fn(), onPortal })),
     },
+    injection: false,
   };
 }
 
