@@ -1,71 +1,64 @@
 import type { RuntimeSession, Unsubscribe } from "../runtime";
-import type { ServicePreviewError } from "./preview.errors";
+import type { PreviewTargetError } from "./preview.errors";
 
-export type ServicePreviewSource = "portal" | "manual" | "terminal-output";
+export type PreviewTargetSource = "portal" | "manual" | "terminal-output";
 
-export type ServicePreviewEntryStatus = "discovered" | "selected" | "loading" | "ready" | "failed" | "cleared";
-
-export type ServicePreviewEntry = {
+export type PreviewTarget = {
   readonly id: string;
   readonly url: string;
   readonly port?: number;
   readonly label: string;
-  readonly source: ServicePreviewSource;
-  readonly status: ServicePreviewEntryStatus;
+  readonly source: PreviewTargetSource;
   readonly discoveredAt: number;
-  readonly lastOpenedAt?: number;
-  readonly lastError?: ServicePreviewError;
+  readonly metadata?: Record<string, unknown>;
 };
 
-export type ServicePreviewSnapshot = {
+export type PreviewTargetRegistrySnapshot = {
   readonly runtimeSessionId: string;
-  readonly entries: readonly ServicePreviewEntry[];
-  readonly selectedEntryId: string | null;
+  readonly targets: readonly PreviewTarget[];
   readonly updatedAt: number;
 };
 
-export type ServicePreviewActionFailureReason = "not-found" | "invalid-url" | "unsupported" | "failed";
+export type PreviewTargetActionFailureReason = "not-found" | "invalid-url" | "unsupported" | "failed";
 
-export type ServicePreviewActionResult =
-  | { readonly ok: true }
+export type PreviewTargetActionResult =
+  | { readonly ok: true; readonly target?: PreviewTarget }
   | {
       readonly ok: false;
-      readonly reason: ServicePreviewActionFailureReason;
-      readonly error: ServicePreviewError;
+      readonly reason: PreviewTargetActionFailureReason;
+      readonly error: PreviewTargetError;
     };
 
-export type ServicePreviewEvent =
-  | { readonly type: "service-preview-entry-discovered"; readonly entry: ServicePreviewEntry }
-  | { readonly type: "service-preview-entry-updated"; readonly entry: ServicePreviewEntry }
-  | { readonly type: "service-preview-entry-cleared"; readonly entryId: string }
-  | { readonly type: "service-preview-selection"; readonly entryId: string | null }
-  | { readonly type: "service-preview-error"; readonly error: ServicePreviewError };
+export type PreviewTargetRegistryEvent =
+  | { readonly type: "preview-target-added"; readonly target: PreviewTarget }
+  | { readonly type: "preview-target-updated"; readonly target: PreviewTarget }
+  | { readonly type: "preview-target-removed"; readonly targetId: string }
+  | { readonly type: "preview-target-registry-error"; readonly error: PreviewTargetError };
 
-export type ServicePreviewEventListener = (event: ServicePreviewEvent) => void;
+export type PreviewTargetRegistryEventListener = (event: PreviewTargetRegistryEvent) => void;
 
-export type AddServicePreviewEntryInput = {
+export type PreviewTargetInput = {
   readonly url: string;
   readonly port?: number;
   readonly label?: string;
-  readonly source: ServicePreviewSource;
+  readonly source: PreviewTargetSource;
+  readonly metadata?: Record<string, unknown>;
 };
 
-export interface ServicePreviewService {
-  attach(runtimeSession: RuntimeSession): Promise<ServicePreviewSession>;
+export interface PreviewTargetDiscoveryService {
+  attach(runtimeSession: RuntimeSession, registry: PreviewTargetRegistry): Promise<PreviewDiscoveryAttachment>;
 }
 
-export interface ServicePreviewSession {
+export interface PreviewTargetRegistry {
   readonly runtimeSessionId: string;
 
-  addManualUrl(url: string): ServicePreviewActionResult;
-  addDiscoveredEntry(input: AddServicePreviewEntryInput): ServicePreviewActionResult;
-  select(entryId: string): ServicePreviewActionResult;
-  markLoading(entryId: string): ServicePreviewActionResult;
-  markReady(entryId: string): ServicePreviewActionResult;
-  markFailed(entryId: string, error: ServicePreviewError): ServicePreviewActionResult;
-  clear(entryId: string): ServicePreviewActionResult;
-  clearAll(): ServicePreviewActionResult;
-  getSnapshot(): ServicePreviewSnapshot;
-  onEvent(listener: ServicePreviewEventListener): Unsubscribe;
-  close(): ServicePreviewActionResult;
+  addTarget(input: PreviewTargetInput): PreviewTargetActionResult;
+  removeTarget(targetId: string): PreviewTargetActionResult;
+  clearTargets(): PreviewTargetActionResult;
+  getSnapshot(): PreviewTargetRegistrySnapshot;
+  onEvent(listener: PreviewTargetRegistryEventListener): Unsubscribe;
+}
+
+export interface PreviewDiscoveryAttachment {
+  close(): PreviewTargetActionResult;
 }

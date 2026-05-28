@@ -4,7 +4,7 @@
   import { Icon } from "$lib/components/icon";
   import { RuntimeManagerProvider } from "$lib/core/runtime";
   import { PreviewServiceProvider, PreviewWorkspaceState, type PreviewWorkspaceSnapshot } from "$lib/core/preview";
-  import type { ServicePreviewEntry } from "os-core";
+  import type { PreviewTarget } from "os-core";
 
   type Props = {
     onOpenRuntime?: () => void;
@@ -13,7 +13,7 @@
   const { onOpenRuntime = () => undefined }: Props = $props();
   const previewState = new PreviewWorkspaceState(
     RuntimeManagerProvider.getRuntimeManager(),
-    PreviewServiceProvider.getPreviewService(),
+    PreviewServiceProvider.getPreviewDiscoveryService(),
   );
 
   let snapshot: PreviewWorkspaceSnapshot = $state(previewState.getSnapshot());
@@ -33,13 +33,13 @@
     };
   });
 
-  function selectedEntry(): ServicePreviewEntry | null {
-    const selectedId = snapshot.preview?.selectedEntryId;
-    return snapshot.preview?.entries.find((entry) => entry.id === selectedId) ?? snapshot.preview?.entries[0] ?? null;
+  function selectedTarget(): PreviewTarget | null {
+    const selectedId = snapshot.selection.selectedTargetId;
+    return snapshot.registry?.targets.find((target) => target.id === selectedId) ?? snapshot.registry?.targets[0] ?? null;
   }
 
-  function entries(): readonly ServicePreviewEntry[] {
-    return snapshot.preview?.entries ?? [];
+  function targets(): readonly PreviewTarget[] {
+    return snapshot.registry?.targets ?? [];
   }
 
   function isRuntimeRunning(): boolean {
@@ -57,9 +57,9 @@
     iframeKey += 1;
   }
 
-  function selectEntry(entryId: string) {
+  function selectTarget(targetId: string) {
     actionMessage = null;
-    const result = previewState.select(entryId);
+    const result = previewState.select(targetId);
     if (!result.ok) {
       actionMessage = result.error.message;
       return;
@@ -68,40 +68,40 @@
   }
 
   function refreshPreview() {
-    const entry = selectedEntry();
-    if (!entry) return;
+    const target = selectedTarget();
+    if (!target) return;
 
-    previewState.markLoading(entry.id);
+    previewState.markLoading(target.id);
     iframeKey += 1;
   }
 
   function openExternal() {
-    const entry = selectedEntry();
-    if (!entry) return;
+    const target = selectedTarget();
+    if (!target) return;
 
-    window.open(entry.url, "_blank", "noopener,noreferrer");
+    window.open(target.url, "_blank", "noopener,noreferrer");
   }
 
   function clearSelected() {
-    const entry = selectedEntry();
-    if (!entry) return;
+    const target = selectedTarget();
+    if (!target) return;
 
-    previewState.clear(entry.id);
+    previewState.clear(target.id);
     iframeKey += 1;
   }
 
   function handleIframeLoad() {
-    const entry = selectedEntry();
-    if (!entry) return;
+    const target = selectedTarget();
+    if (!target) return;
 
-    previewState.markReady(entry.id);
+    previewState.markReady(target.id);
   }
 
   function handleIframeError() {
-    const entry = selectedEntry();
-    if (!entry) return;
+    const target = selectedTarget();
+    if (!target) return;
 
-    previewState.markFailed(entry.id, {
+    previewState.markFailed(target.id, {
       code: "iframe-load-failed",
       message: "Preview failed to load. Try opening it in a new browser tab.",
       recoverable: true,
@@ -122,20 +122,20 @@
       <div class="min-w-0">
         <div class="truncate text-xs font-medium">Service Preview</div>
         <div class="truncate text-[0.6875rem] text-muted-foreground">
-          {selectedEntry()?.label ?? "Waiting for a BrowserPod Portal"}
+          {selectedTarget()?.label ?? "Waiting for a BrowserPod Portal"}
         </div>
       </div>
     </div>
 
-    {#if entries().length > 0}
+    {#if targets().length > 0}
       <select
         class="h-8 max-w-[16rem] rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
         aria-label="Select service preview"
-        value={selectedEntry()?.id ?? ""}
-        onchange={(event) => selectEntry(event.currentTarget.value)}
+        value={selectedTarget()?.id ?? ""}
+        onchange={(event) => selectTarget(event.currentTarget.value)}
       >
-        {#each entries() as entry}
-          <option value={entry.id}>{entry.label} · {new URL(entry.url).host}</option>
+        {#each targets() as target}
+          <option value={target.id}>{target.label} · {new URL(target.url).host}</option>
         {/each}
       </select>
     {/if}
@@ -154,13 +154,13 @@
       </Button>
     </div>
 
-    <Button size="sm" variant="ghost" disabled={!selectedEntry()} onclick={refreshPreview} aria-label="Refresh preview">
+    <Button size="sm" variant="ghost" disabled={!selectedTarget()} onclick={refreshPreview} aria-label="Refresh preview">
       <Icon name="refresh" class="size-3" />
     </Button>
-    <Button size="sm" variant="ghost" disabled={!selectedEntry()} onclick={openExternal} aria-label="Open preview in new tab">
+    <Button size="sm" variant="ghost" disabled={!selectedTarget()} onclick={openExternal} aria-label="Open preview in new tab">
       <Icon name="browser" class="size-3" />
     </Button>
-    <Button size="sm" variant="ghost" disabled={!selectedEntry()} onclick={clearSelected} aria-label="Clear preview">
+    <Button size="sm" variant="ghost" disabled={!selectedTarget()} onclick={clearSelected} aria-label="Clear preview">
       <Icon name="close" class="size-3" />
     </Button>
   </div>
@@ -176,7 +176,7 @@
         <Button class="mt-4" size="sm" variant="outline" onclick={onOpenRuntime}>打开容器面板</Button>
       </div>
     </div>
-  {:else if entries().length === 0}
+  {:else if targets().length === 0}
     <div class="flex min-h-0 flex-1 items-center justify-center p-6 text-center">
       <div class="max-w-[32rem]">
         <Icon name="browser" class="mx-auto mb-3 size-6 text-muted-foreground" />
@@ -196,21 +196,21 @@
         {/if}
       </div>
     </div>
-  {:else if selectedEntry()}
+  {:else if selectedTarget()}
     <div class="flex min-h-0 flex-1 flex-col">
-      {#if actionMessage || selectedEntry()?.lastError}
+      {#if actionMessage || snapshot.render.error}
         <div class="border-b bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           <span class="inline-flex items-center gap-1">
             <Icon name="info" class="size-3.5" />
-            {actionMessage ?? selectedEntry()?.lastError?.message}
+            {actionMessage ?? snapshot.render.error?.message}
           </span>
         </div>
       {/if}
       {#key iframeKey}
         <iframe
           class="min-h-0 flex-1 border-0 bg-background"
-          src={selectedEntry()?.url}
-          title={`Preview for ${selectedEntry()?.label ?? "service"}`}
+          src={selectedTarget()?.url}
+          title={`Preview for ${selectedTarget()?.label ?? "service"}`}
           onload={handleIframeLoad}
           onerror={handleIframeError}
         ></iframe>

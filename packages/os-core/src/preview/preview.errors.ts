@@ -1,26 +1,24 @@
-export type ServicePreviewErrorCode =
+export type PreviewTargetErrorCode =
   | "runtime-not-running"
   | "capability-unsupported"
   | "invalid-url"
   | "localhost-url-unresolved"
   | "portal-api-unavailable"
-  | "iframe-load-failed"
-  | "iframe-blocked"
   | "unknown";
 
-export type ServicePreviewError = {
-  readonly code: ServicePreviewErrorCode;
+export type PreviewTargetError = {
+  readonly code: PreviewTargetErrorCode;
   readonly message: string;
   readonly recoverable: boolean;
   readonly cause?: unknown;
 };
 
-export class ServicePreviewContractError extends Error {
-  readonly error: ServicePreviewError;
+export class PreviewTargetContractError extends Error {
+  readonly error: PreviewTargetError;
 
-  constructor(error: ServicePreviewError) {
+  constructor(error: PreviewTargetError) {
     super(error.message);
-    this.name = "ServicePreviewContractError";
+    this.name = "PreviewTargetContractError";
     this.error = error;
   }
 }

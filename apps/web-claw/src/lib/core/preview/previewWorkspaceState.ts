@@ -1,17 +1,41 @@
 import {
-  ServicePreviewState,
+  PreviewTargetRegistryState,
   type RuntimeManager,
-  type ServicePreviewActionResult,
-  type ServicePreviewError,
-  type ServicePreviewService,
-  type ServicePreviewSession,
-  type ServicePreviewSnapshot,
+  type PreviewDiscoveryAttachment,
+  type PreviewTarget,
+  type PreviewTargetActionResult,
+  type PreviewTargetDiscoveryService,
+  type PreviewTargetRegistry,
+  type PreviewTargetRegistrySnapshot,
   type Unsubscribe,
 } from "os-core";
 
+export type PreviewRenderError = {
+  readonly code: "iframe-load-failed" | "iframe-blocked" | "unknown";
+  readonly message: string;
+  readonly recoverable: boolean;
+  readonly cause?: unknown;
+};
+
+export type PreviewRenderStatus = "idle" | "loading" | "ready" | "failed" | "blocked";
+
+export type PreviewSelectionState = {
+  readonly selectedTargetId: string | null;
+  readonly lastSelectedAt?: number;
+};
+
+export type PreviewRenderState = {
+  readonly targetId: string | null;
+  readonly status: PreviewRenderStatus;
+  readonly error?: PreviewRenderError;
+  readonly updatedAt: number;
+};
+
 export type PreviewWorkspaceSnapshot = {
   readonly runtimeStatus: ReturnType<RuntimeManager["getSnapshot"]>["status"];
-  readonly preview: ServicePreviewSnapshot | null;
+  readonly registry: PreviewTargetRegistrySnapshot | null;
+  readonly selection: PreviewSelectionState;
+  readonly render: PreviewRenderState;
   readonly errorMessage: string | null;
   readonly portalUnavailable: boolean;
 };
@@ -21,15 +45,19 @@ export type PreviewWorkspaceListener = (snapshot: PreviewWorkspaceSnapshot) => v
 export class PreviewWorkspaceState {
   private readonly listeners = new Set<PreviewWorkspaceListener>();
   private runtimeUnsubscribe: Unsubscribe | null = null;
-  private previewUnsubscribe: Unsubscribe | null = null;
-  private previewSession: ServicePreviewSession | null = null;
+  private registryUnsubscribe: Unsubscribe | null = null;
+  private discoveryAttachment: PreviewDiscoveryAttachment | null = null;
+  private registry: PreviewTargetRegistry | null = null;
   private attachedRuntimeSessionId: string | null = null;
+  private selection: PreviewSelectionState = { selectedTargetId: null };
+  private render: PreviewRenderState = { targetId: null, status: "idle", updatedAt: Date.now() };
   private errorMessage: string | null = null;
   private portalUnavailable = false;
 
   constructor(
     private readonly runtimeManager: RuntimeManager,
-    private readonly previewService: ServicePreviewService,
+    private readonly discoveryService: PreviewTargetDiscoveryService,
+    private readonly now: () => number = Date.now,
   ) {}
 
   start(): Unsubscribe {
@@ -65,45 +93,73 @@ export class PreviewWorkspaceState {
   getSnapshot(): PreviewWorkspaceSnapshot {
     return {
       runtimeStatus: this.runtimeManager.getSnapshot().status,
-      preview: this.previewSession?.getSnapshot() ?? null,
+      registry: this.registry?.getSnapshot() ?? null,
+      selection: this.selection,
+      render: this.render,
       errorMessage: this.errorMessage,
       portalUnavailable: this.portalUnavailable,
     };
   }
 
-  addManualUrl(url: string): ServicePreviewActionResult {
-    const session = this.ensurePreviewSession();
-    const result = session.addManualUrl(url);
+  addManualUrl(url: string): PreviewTargetActionResult {
+    const registry = this.ensureRegistry();
+    const result = registry.addTarget({ url, source: "manual" });
+    if (result.ok && result.target) {
+      this.select(result.target.id);
+    }
     this.notify();
     return result;
   }
 
-  select(entryId: string): ServicePreviewActionResult {
-    const result = this.ensurePreviewSession().select(entryId);
+  select(targetId: string): PreviewTargetActionResult {
+    const target = this.findTarget(targetId);
+    if (!target) return this.targetNotFound(targetId);
+
+    this.selection = { selectedTargetId: targetId, lastSelectedAt: this.now() };
+    this.render = { targetId, status: "loading", updatedAt: this.now() };
     this.notify();
-    return result;
+    return { ok: true, target };
   }
 
-  markLoading(entryId: string): ServicePreviewActionResult {
-    const result = this.ensurePreviewSession().markLoading(entryId);
+  markLoading(targetId: string): PreviewTargetActionResult {
+    const target = this.findTarget(targetId);
+    if (!target) return this.targetNotFound(targetId);
+
+    this.render = { targetId, status: "loading", updatedAt: this.now() };
     this.notify();
-    return result;
+    return { ok: true, target };
   }
 
-  markReady(entryId: string): ServicePreviewActionResult {
-    const result = this.ensurePreviewSession().markReady(entryId);
+  markReady(targetId: string): PreviewTargetActionResult {
+    const target = this.findTarget(targetId);
+    if (!target) return this.targetNotFound(targetId);
+
+    this.render = { targetId, status: "ready", updatedAt: this.now() };
     this.notify();
-    return result;
+    return { ok: true, target };
   }
 
-  markFailed(entryId: string, error: ServicePreviewError): ServicePreviewActionResult {
-    const result = this.ensurePreviewSession().markFailed(entryId, error);
+  markFailed(targetId: string, error: PreviewRenderError): PreviewTargetActionResult {
+    const target = this.findTarget(targetId);
+    if (!target) return this.targetNotFound(targetId);
+
+    this.render = { targetId, status: "failed", error, updatedAt: this.now() };
     this.notify();
-    return result;
+    return { ok: true, target };
   }
 
-  clear(entryId: string): ServicePreviewActionResult {
-    const result = this.ensurePreviewSession().clear(entryId);
+  clear(targetId: string): PreviewTargetActionResult {
+    const registry = this.ensureRegistry();
+    const result = registry.removeTarget(targetId);
+    if (result.ok && this.selection.selectedTargetId === targetId) {
+      const nextTarget = registry.getSnapshot().targets[0] ?? null;
+      this.selection = { selectedTargetId: nextTarget?.id ?? null, lastSelectedAt: nextTarget ? this.now() : undefined };
+      this.render = {
+        targetId: nextTarget?.id ?? null,
+        status: nextTarget ? "loading" : "idle",
+        updatedAt: this.now(),
+      };
+    }
     this.notify();
     return result;
   }
@@ -116,7 +172,7 @@ export class PreviewWorkspaceState {
       return;
     }
 
-    if (this.attachedRuntimeSessionId === currentSession.id && this.previewSession) {
+    if (this.attachedRuntimeSessionId === currentSession.id && this.registry) {
       this.notify();
       return;
     }
@@ -124,39 +180,76 @@ export class PreviewWorkspaceState {
     this.detachPreview();
     this.errorMessage = null;
     this.portalUnavailable = false;
+    this.registry = new PreviewTargetRegistryState({ runtimeSessionId: currentSession.id });
+    this.registryUnsubscribe = this.registry.onEvent(() => {
+      this.ensureSelection();
+      this.notify();
+    });
     try {
-      this.previewSession = await this.previewService.attach(currentSession);
+      this.discoveryAttachment = await this.discoveryService.attach(currentSession, this.registry);
     } catch (error) {
       this.portalUnavailable = true;
       this.errorMessage = error instanceof Error ? error.message : String(error);
-      this.previewSession = new ServicePreviewState({ runtimeSessionId: currentSession.id });
     }
     this.attachedRuntimeSessionId = currentSession.id;
-    this.previewUnsubscribe = this.previewSession.onEvent(() => {
-      this.notify();
-    });
     this.notify();
   }
 
   private detachPreview(): void {
-    this.previewUnsubscribe?.();
-    this.previewUnsubscribe = null;
-    this.previewSession?.close();
-    this.previewSession = null;
+    this.discoveryAttachment?.close();
+    this.discoveryAttachment = null;
+    this.registryUnsubscribe?.();
+    this.registryUnsubscribe = null;
+    this.registry = null;
     this.attachedRuntimeSessionId = null;
+    this.selection = { selectedTargetId: null };
+    this.render = { targetId: null, status: "idle", updatedAt: this.now() };
   }
 
-  private ensurePreviewSession(): ServicePreviewSession {
-    if (this.previewSession) return this.previewSession;
+  private ensureRegistry(): PreviewTargetRegistry {
+    if (this.registry) return this.registry;
 
     const currentSession = this.runtimeManager.currentSession;
     const runtimeSessionId = currentSession?.id ?? "manual-preview";
-    this.previewSession = new ServicePreviewState({ runtimeSessionId });
+    this.registry = new PreviewTargetRegistryState({ runtimeSessionId });
     this.attachedRuntimeSessionId = runtimeSessionId;
-    this.previewUnsubscribe = this.previewSession.onEvent(() => {
+    this.registryUnsubscribe = this.registry.onEvent(() => {
+      this.ensureSelection();
       this.notify();
     });
-    return this.previewSession;
+    return this.registry;
+  }
+
+  private ensureSelection(): void {
+    const targets = this.registry?.getSnapshot().targets ?? [];
+    if (targets.length === 0) {
+      this.selection = { selectedTargetId: null };
+      this.render = { targetId: null, status: "idle", updatedAt: this.now() };
+      return;
+    }
+    if (this.selection.selectedTargetId && targets.some((target) => target.id === this.selection.selectedTargetId)) {
+      return;
+    }
+
+    const target = targets[0];
+    this.selection = { selectedTargetId: target.id, lastSelectedAt: this.now() };
+    this.render = { targetId: target.id, status: "loading", updatedAt: this.now() };
+  }
+
+  private findTarget(targetId: string): PreviewTarget | null {
+    return this.registry?.getSnapshot().targets.find((target) => target.id === targetId) ?? null;
+  }
+
+  private targetNotFound(targetId: string): PreviewTargetActionResult {
+    return {
+      ok: false,
+      reason: "not-found",
+      error: {
+        code: "unknown",
+        message: `Preview target ${targetId} was not found.`,
+        recoverable: true,
+      },
+    };
   }
 
   private notify(): void {

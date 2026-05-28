@@ -1,12 +1,12 @@
-import { BrowserPodServicePreviewService } from "browserpod";
-import type { ServicePreviewService } from "os-core";
+import { BrowserPodPreviewDiscoveryService } from "browserpod";
+import type { PreviewTargetDiscoveryService } from "os-core";
 import { RuntimeManagerProvider } from "$lib/core/runtime";
 
 export class PreviewServiceProvider {
-  private static service: ServicePreviewService | null = null;
+  private static service: PreviewTargetDiscoveryService | null = null;
 
-  static getPreviewService(): ServicePreviewService {
-    PreviewServiceProvider.service ??= new BrowserPodServicePreviewService(
+  static getPreviewDiscoveryService(): PreviewTargetDiscoveryService {
+    PreviewServiceProvider.service ??= new BrowserPodPreviewDiscoveryService(
       RuntimeManagerProvider.getBrowserPodRuntimeManager(),
     );
 

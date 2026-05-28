@@ -1,1 +1,1 @@
-export * from "./browserpodServicePreview.impl";
+export * from "./browserpodPreviewDiscovery.impl";

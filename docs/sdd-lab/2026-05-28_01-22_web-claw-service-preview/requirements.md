@@ -129,3 +129,6 @@
 - 2026-05-28 01:28:
   - 决策：按用户指令进入技术方案阶段；第一阶段自动发现主路径采用 BrowserPod 官方 Portal / `onPortal` 事件，手动 URL 输入作为兜底，终端输出解析不纳入第一阶段。
   - 原因：当前 BrowserPod 官方文档与 demo 均证明 Portal 会提供最终可访问的 `{ url, port }`；当前 BrowserPod default terminal 输出未稳定进入 `TerminalEvent.terminal-output`，直接解析终端 DOM 不可靠。
+- 2026-05-28 20:53:
+  - 决策：服务预览按三层架构组织：`os-core` 只承载 Discovery / target registry；Selection 与 Render 状态放在 `apps/web-claw` 应用内。
+  - 原因：服务地址 target 是跨 runtime 的稳定事实；用户选择和 iframe 加载状态属于产品应用的 view 状态，不应污染公共 core 契约。
