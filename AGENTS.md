@@ -85,6 +85,12 @@ The goal is to turn useful one-time agent work into reusable project terrain.
 - `skills/sdd-riper-one/`
   - More explicit control protocol.
   - Best for complex, high-risk, cross-module, audit, training, or handoff-heavy work.
+- `skills/impeccable/`
+  - 前端界面设计与迭代（网站、落地页、Dashboard、产品 UI）
+  - UX 评审、视觉层级、信息架构、响应式
+- `skills/frontend-dev/`
+  - 高级前端子智能体，专精前端开发
+  - 由主智能体调度，负责前端代码开发任务
 
 ## 页面与设计（项目约定）
 
