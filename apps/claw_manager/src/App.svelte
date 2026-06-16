@@ -3,7 +3,7 @@
   import { cn } from "$lib/utils";
 
   const iframeServices = [
-    { label: "管理后台", icon: "dashboard" as const, page: "admin", url: "https://192.168.1.2:18789/" },
+    { label: "管理后台", icon: "dashboard" as const, page: "admin", url: "/proxy/admin/" },
     { label: "Code", icon: "code" as const, page: "code-server", url: "https://192.168.1.2:8080/" },
   ];
 

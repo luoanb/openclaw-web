@@ -26,7 +26,16 @@ export default defineConfig({
         target: "https://192.168.1.2:18789",
         changeOrigin: true,
         secure: false,
+        ws: true,
         rewrite: (path) => path.replace(/^\/proxy\/admin/, ""),
+        configure: (proxy) => {
+          proxy.on("proxyRes", (proxyRes) => {
+            const csp = proxyRes.headers["content-security-policy"];
+            if (csp) {
+              proxyRes.headers["content-security-policy"] = csp.replace(/;\s*frame-ancestors[^;]*/, "");
+            }
+          });
+        },
       },
       "/proxy/code": {
         target: "http://192.168.1.2:8080",
