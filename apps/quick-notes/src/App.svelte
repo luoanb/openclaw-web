@@ -157,7 +157,7 @@
           aria-current={activeTab === "notes" ? "page" : undefined}
           onclick={() => selectTab("notes")}
         >
-          速记
+          便签
         </button>
       </nav>
     </div>

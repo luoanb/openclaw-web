@@ -2,7 +2,10 @@
   import { Crepe } from "@milkdown/crepe";
   import "@milkdown/crepe/theme/common/style.css";
   import "@milkdown/crepe/theme/frame.css";
+  import { DiffAutoSaver } from "$lib/core/autosave/diff-auto-saver";
   import type { QuickNote } from "$lib/core/quick-notes-types";
+
+  const AUTOSAVE_INTERVAL_MS = 3000;
 
   let {
     note,
@@ -23,6 +26,7 @@
   let draft = $state("");
   let editorRoot = $state<HTMLDivElement | null>(null);
   let crepeEditor: Crepe | null = null;
+  let autoSaver: DiffAutoSaver<string> | null = null;
   const editorKey = $derived(creating ? "new" : (note?.id ?? "empty"));
 
   $effect(() => {
@@ -31,6 +35,8 @@
     }
 
     const initialContent = creating ? "" : (note?.content ?? "");
+    const activeNoteId = note?.id ?? null;
+    const isCreating = creating;
     let disposed = false;
     draft = initialContent;
 
@@ -50,6 +56,17 @@
     });
 
     crepeEditor = editor;
+    const saver = new DiffAutoSaver(initialContent, {
+      intervalMs: AUTOSAVE_INTERVAL_MS,
+      readSnapshot: getEditorContent,
+      submitSnapshot: (content) => {
+        submitNoteContent(content, isCreating, activeNoteId);
+      },
+      normalizeSnapshot: (content) => content.trim(),
+      canSubmit: (content) => content.length > 0,
+    });
+    autoSaver = saver;
+
     editor.on((listener) => {
       listener.markdownUpdated((_, markdown) => {
         if (!disposed) {
@@ -61,9 +78,15 @@
     void editor.create().catch((error: unknown) => {
       console.error("Failed to create Milkdown Crepe editor", error);
     });
+    saver.start();
 
     return () => {
+      saver.dispose({ flush: true });
       disposed = true;
+
+      if (autoSaver === saver) {
+        autoSaver = null;
+      }
 
       if (crepeEditor === editor) {
         crepeEditor = null;
@@ -83,22 +106,28 @@
     }
   }
 
-  function saveNote() {
-    const nextContent = getEditorContent().trim();
+  function submitNoteContent(content: string, isCreatingNote: boolean, noteId: string | null) {
+    const nextContent = content.trim();
 
     if (!nextContent) {
       return;
     }
 
-    if (creating) {
+    if (isCreatingNote) {
       onCreateNote(nextContent);
       draft = "";
       return;
     }
 
-    if (note) {
-      onUpdateNote(note.id, nextContent);
+    if (noteId) {
+      onUpdateNote(noteId, nextContent);
     }
+  }
+
+  function saveNote() {
+    const nextContent = getEditorContent().trim();
+    submitNoteContent(nextContent, creating, note?.id ?? null);
+    autoSaver?.markCommitted(nextContent);
   }
 </script>
 

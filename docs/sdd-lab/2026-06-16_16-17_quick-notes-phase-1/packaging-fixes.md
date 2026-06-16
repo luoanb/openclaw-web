@@ -12,6 +12,7 @@
 
 - 图标配置位于 `apps/quick-notes/src-tauri/tauri.conf.json`，当前引用 `src-tauri/icons/*` 下的多尺寸图标文件。
 - 当前源图标为 `apps/quick-notes/src-tauri/icons/icon.svg`；为避免 `.ico` / PNG / Windows bundle 图标不一致，应从该源 SVG 重新生成整套 Tauri 图标资源。
+- 2026-06-16 18:13 追加诊断：用户反馈“安装器 `速记_0.0.0_x64-setup.exe` 图标仍不对，但启动后的应用图标正确”。原因是 NSIS 安装器 exe 图标需要通过 `bundle.windows.nsis.installerIcon` 单独指定；`bundle.icon` 主要影响应用和平台图标资源，不保证 NSIS 安装器文件图标使用同一 `.ico`。
 - 空白终端窗口是 Windows release 二进制仍使用 console subsystem 的典型表现。
 - 对 Tauri / Rust Windows GUI 应用，应在 `src-tauri/src/main.rs` 顶部添加：
 
@@ -23,7 +24,8 @@
 
 1. 在 `apps/quick-notes/src-tauri/src/main.rs` 顶部添加 release-only Windows GUI subsystem 标记。
 2. 使用 Tauri CLI 从 `src-tauri/icons/icon.svg` 重新生成 `src-tauri/icons` 下的图标资源。
-3. 使用 `pnpm --filter quick-notes tauri build --bundles nsis` 重新生成 Windows NSIS 安装包。
+3. 在 `apps/quick-notes/src-tauri/tauri.conf.json` 中为 NSIS 设置 `bundle.windows.nsis.installerIcon = "icons/icon.ico"`。
+4. 使用 `pnpm --filter quick-notes tauri build --bundles nsis` 重新生成 Windows NSIS 安装包。
 
 ## Validation / 验证
 
@@ -35,6 +37,7 @@
   - [x] NSIS 安装包生成成功。
   - [x] 新安装包使用重新生成后的应用图标资源。
   - [x] release 二进制已配置 Windows GUI subsystem，启动时不应再出现空白终端窗口。
+  - [ ] NSIS 安装器 exe 文件图标通过 `installerIcon` 显式使用 `icons/icon.ico`。
 
 ## Result / 结果
 
