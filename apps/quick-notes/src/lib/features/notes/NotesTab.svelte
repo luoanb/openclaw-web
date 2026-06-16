@@ -1,7 +1,10 @@
 <script lang="ts">
   import type { QuickNote } from "$lib/core/quick-notes-types";
+  import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
   import NoteEditor from "./NoteEditor.svelte";
   import NotesSidebar from "./NotesSidebar.svelte";
+
+  const { t } = getLocaleStore();
 
   let {
     notes,
@@ -63,8 +66,8 @@
   {#if hasQuery && notes.length === 0}
     <div class="grid min-w-0 flex-1 place-items-center p-8 text-center">
       <div>
-        <h2 class="text-sm font-semibold">没有匹配的速记</h2>
-        <p class="mt-2 text-sm text-muted-foreground">清空搜索后会恢复全部速记。</p>
+        <h2 class="text-sm font-semibold">{t("notes.searchEmpty")}</h2>
+        <p class="mt-2 text-sm text-muted-foreground">{t("notes.searchEmptyHint")}</p>
       </div>
     </div>
   {:else}

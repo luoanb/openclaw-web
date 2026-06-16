@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { QuickTask } from "$lib/core/quick-notes-types";
-import { formatDateTime } from "$lib/utils";
+  import { formatDateTime } from "$lib/utils";
+  import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import Icons from "$lib/features/common/Icons.svelte";
+
+  const { t } = getLocaleStore();
 
   let {
     task,
@@ -58,12 +62,12 @@ import { formatDateTime } from "$lib/utils";
     class="size-4 rounded border-input accent-primary"
     type="checkbox"
     checked={done}
-    aria-label={done ? "恢复任务" : "完成任务"}
+    aria-label={done ? t("tasks.action.restore") : t("tasks.action.complete")}
     onchange={() => (done ? onRestoreTask(task.id) : onCompleteTask(task.id))}
   />
 
   {#if !done}
-    <span class="w-6 text-right text-xs tabular-nums text-muted-foreground" aria-label={`第 ${position} 项`}>
+    <span class="w-6 text-right text-xs tabular-nums text-muted-foreground">
       {position}
     </span>
   {/if}
@@ -80,17 +84,17 @@ import { formatDateTime } from "$lib/utils";
         <input
           class="h-8 min-w-0 flex-1 rounded-md border bg-input/20 px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
           bind:value={draft}
-          aria-label="编辑任务"
+          aria-label={t("tasks.editPlaceholder")}
         />
         <button class="text-xs font-medium text-foreground hover:underline" type="submit">
-          保存
+          {t("common.save")}
         </button>
         <button
           class="text-xs text-muted-foreground hover:text-foreground"
           type="button"
           onclick={() => (editing = false)}
         >
-          取消
+          {t("common.cancel")}
         </button>
       </form>
     {:else}
@@ -98,7 +102,9 @@ import { formatDateTime } from "$lib/utils";
         {task.content}
       </p>
       <p class="mt-1 text-xs text-muted-foreground">
-        {done ? `完成于 ${formatDateTime(task.completedAt ?? task.updatedAt)}` : `更新于 ${formatDateTime(task.updatedAt)}`}
+        {done
+          ? `${t("time.completedAt")} ${formatDateTime(task.completedAt ?? task.updatedAt)}`
+          : `${t("time.updatedAt")} ${formatDateTime(task.updatedAt)}`}
       </p>
     {/if}
   </div>
@@ -107,22 +113,25 @@ import { formatDateTime } from "$lib/utils";
     <div class="flex items-center gap-3 text-xs">
       {#if !done}
         <button
-          class="font-medium text-foreground hover:underline"
+          class="flex items-center gap-1 font-medium text-foreground hover:underline"
           type="button"
           onclick={() => onCompleteTask(task.id)}
         >
-          完成
+          <Icons name="check" class="size-3.5" />
+          {t("tasks.action.complete")}
         </button>
       {/if}
-      <button class="text-muted-foreground hover:text-foreground" type="button" onclick={startEditing}>
-        编辑
+      <button class="flex items-center gap-1 text-muted-foreground hover:text-foreground" type="button" onclick={startEditing}>
+        <Icons name="edit" class="size-3.5" />
+        {t("tasks.action.edit")}
       </button>
       <button
-        class="text-muted-foreground hover:text-destructive"
+        class="flex items-center gap-1 text-muted-foreground hover:text-destructive"
         type="button"
         onclick={() => onDeleteTask(task.id)}
       >
-        删除
+        <Icons name="trash" class="size-3.5" />
+        {t("tasks.action.delete")}
       </button>
     </div>
   {/if}

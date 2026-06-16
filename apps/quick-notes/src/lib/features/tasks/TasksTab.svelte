@@ -1,8 +1,11 @@
 <script lang="ts">
   import type { QuickTask } from "$lib/core/quick-notes-types";
+  import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
   import CompletedTasks from "./CompletedTasks.svelte";
   import TaskComposer from "./TaskComposer.svelte";
   import TaskList from "./TaskList.svelte";
+
+  const { t } = getLocaleStore();
 
   let {
     activeTasks,
@@ -32,12 +35,12 @@
     <div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
       <div>
         <div class="mb-3 flex items-center justify-between">
-          <h2 class="text-sm font-semibold">进行中</h2>
-          <span class="text-xs text-muted-foreground">{activeTasks.length} 项</span>
+          <h2 class="text-sm font-semibold">{t("tasks.active")}</h2>
+          <span class="text-xs text-muted-foreground">{activeTasks.length}</span>
         </div>
         <TaskList
           tasks={activeTasks}
-          emptyText={hasQuery ? "没有匹配的进行中任务。" : "还没有进行中的任务。"}
+          emptyText={hasQuery ? t("tasks.empty.search") : t("tasks.empty.active")}
           onCompleteTask={onCompleteTask}
           onRestoreTask={onRestoreTask}
           onUpdateTask={onUpdateTask}

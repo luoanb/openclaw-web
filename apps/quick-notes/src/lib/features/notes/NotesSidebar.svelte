@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { QuickNote } from "$lib/core/quick-notes-types";
-import { formatDateTime } from "$lib/utils";
+  import { formatDateTime } from "$lib/utils";
+  import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import Icons from "$lib/features/common/Icons.svelte";
+
+  const { t } = getLocaleStore();
 
   let {
     notes,
@@ -20,15 +24,16 @@ import { formatDateTime } from "$lib/utils";
 <aside class="flex w-80 shrink-0 flex-col border-r bg-card/60">
   <div class="flex items-center justify-between border-b p-3">
     <div>
-      <h2 class="text-sm font-semibold">速记</h2>
-      <p class="text-xs text-muted-foreground">{notes.length} 条记录</p>
+      <h2 class="text-sm font-semibold">{t("tab.notes")}</h2>
+      <p class="text-xs text-muted-foreground">{notes.length} {t("notes.emptyCount")}</p>
     </div>
     <button
-      class="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/80"
+      class="flex h-8 items-center gap-1 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/80"
       type="button"
       onclick={onCreateNote}
     >
-      新增
+      <Icons name="plus" class="size-3.5" />
+      {t("notes.addNote")}
     </button>
   </div>
 
@@ -51,7 +56,7 @@ import { formatDateTime } from "$lib/utils";
       </div>
     {:else}
       <div class="rounded-lg border border-dashed px-3 py-8 text-center text-sm text-muted-foreground">
-        还没有速记。
+        {t("notes.empty")}
       </div>
     {/if}
   </div>

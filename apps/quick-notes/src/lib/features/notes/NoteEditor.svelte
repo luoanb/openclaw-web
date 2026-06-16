@@ -5,6 +5,9 @@
   import "@milkdown/crepe/theme/frame.css";
   import { DiffAutoSaver } from "$lib/core/autosave/diff-auto-saver";
 import { formatDateTime } from "$lib/utils";
+import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+
+const { t } = getLocaleStore();
   import type { QuickNote } from "$lib/core/quick-notes-types";
 
   const AUTOSAVE_INTERVAL_MS = 3000;
@@ -43,8 +46,8 @@ import { formatDateTime } from "$lib/utils";
   let currentCleanup: (() => void) | null = null;
 
   $effect(() => {
-    // Track ONLY viewKey and editorRoot
-    const _viewKey = viewKey;
+    // Force-track viewKey and editorRoot only
+    void viewKey;
     const root = editorRoot;
 
     untrack(() => {
@@ -78,7 +81,7 @@ import { formatDateTime } from "$lib/utils";
         },
         featureConfigs: {
           [Crepe.Feature.Placeholder]: {
-            text: "写下速记...",
+            text: t("notes.placeholder"),
             mode: "block",
           },
         },
@@ -203,7 +206,7 @@ import { formatDateTime } from "$lib/utils";
   {#if note || creating}
     <div class="flex items-center justify-between border-b p-4">
       <div class="min-w-0">
-        <h2 class="truncate text-sm font-semibold">{creating ? "新增速记" : title}</h2>
+        <h2 class="truncate text-sm font-semibold">{creating ? t("notes.addNote") : title}</h2>
         <p class="mt-1 text-xs text-muted-foreground">
           {formatDateTime(note?.updatedAt ?? "")}
         </p>
@@ -215,7 +218,7 @@ import { formatDateTime } from "$lib/utils";
           disabled={!draft.trim()}
           onclick={saveNote}
         >
-          保存
+          {t("common.save")}
         </button>
         {#if note}
           <button
@@ -223,7 +226,7 @@ import { formatDateTime } from "$lib/utils";
             type="button"
             onclick={() => onDeleteNote(note.id)}
           >
-            删除
+            {t("common.delete")}
           </button>
         {/if}
       </div>
@@ -240,9 +243,9 @@ import { formatDateTime } from "$lib/utils";
   {:else}
     <div class="grid h-full place-items-center p-8 text-center">
       <div>
-        <h2 class="text-sm font-semibold">选择或新增一条速记</h2>
+        <h2 class="text-sm font-semibold">{t("notes.selectorEmpty")}</h2>
         <p class="mt-2 max-w-sm text-sm text-muted-foreground">
-          左侧会自动用正文第一行生成标题和摘要，不需要单独维护标题。
+          {t("notes.selectorHint")}
         </p>
       </div>
     </div>

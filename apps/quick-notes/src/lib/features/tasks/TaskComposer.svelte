@@ -1,4 +1,8 @@
 <script lang="ts">
+  import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+
+  const { t } = getLocaleStore();
+
   let {
     onCreateTask,
     disabled = false,
@@ -28,12 +32,12 @@
     submitTask();
   }}
 >
-  <label class="sr-only" for="task-content">新增任务</label>
+  <label class="sr-only" for="task-content">{t("tasks.addTask")}</label>
   <input
     id="task-content"
     class="h-9 min-w-0 flex-1 rounded-md border bg-input/20 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-50"
     bind:value={content}
-    placeholder="新增任务..."
+    placeholder={t("tasks.addTask")}
     disabled={disabled}
   />
   <button
@@ -41,6 +45,6 @@
     type="submit"
     disabled={disabled || !content.trim()}
   >
-    添加
+    {t("common.save")}
   </button>
 </form>

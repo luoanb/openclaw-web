@@ -5,8 +5,16 @@
   import { QuickNotesStoreService } from "$lib/core/quick-notes-store";
   import type { QuickNotesStore, QuickNotesTab } from "$lib/core/quick-notes-types";
   import { TaskService } from "$lib/core/tasks/task-service";
+  import { createLocaleStore, getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import Icons from "$lib/features/common/Icons.svelte";
+  import HeaderMenu from "$lib/features/common/HeaderMenu.svelte";
+  import SettingsModal from "$lib/features/settings/SettingsModal.svelte";
   import NotesTab from "$lib/features/notes/NotesTab.svelte";
   import TasksTab from "$lib/features/tasks/TasksTab.svelte";
+
+  // ── i18n ──────────────────────────────────────────────────────────────
+  createLocaleStore();
+  const { t } = getLocaleStore();
 
   type LoadState = "loading" | "ready" | "error";
 
@@ -18,6 +26,7 @@
   let saveError = $state<string | null>(null);
   let pendingStore = $state<QuickNotesStore | null>(null);
   let selectedNoteId = $state<string | null>(null);
+  let settingsOpen = $state(false);
 
   const activeTasks = $derived(
     TaskService.getActiveTasks(store.tasks, activeTab === "tasks" ? searchQuery : "")
@@ -43,7 +52,7 @@
       selectedNoteId = NoteService.getNotes(store.notes, "")[0]?.id ?? null;
       loadState = "ready";
     } catch (error) {
-      loadError = getErrorMessage(error, "读取本地数据失败");
+      loadError = getErrorMessage(error, t("error.loadFailed"));
       loadState = "error";
     }
   }
@@ -62,7 +71,7 @@
       store = await QuickNotesRepository.saveStore(nextStore);
       pendingStore = null;
     } catch (error) {
-      saveError = getErrorMessage(error, "保存本地数据失败");
+      saveError = getErrorMessage(error, t("error.saveFailed"));
     }
   }
 
@@ -127,14 +136,14 @@
 </script>
 
 <svelte:head>
-  <title>速记</title>
+  <title>{t("app.title")}</title>
 </svelte:head>
 
 <main class="flex h-dvh w-dvw flex-col bg-background text-foreground">
   <header class="flex h-14 shrink-0 items-center gap-4 border-b px-4">
     <div class="flex min-w-0 items-center gap-4">
-      <h1 class="text-sm font-semibold">速记</h1>
-      <nav class="flex h-14 items-end gap-1" aria-label="主视图">
+      <h1 class="text-sm font-semibold">{t("app.title")}</h1>
+      <nav class="flex h-14 items-end gap-1" aria-label={t("tab.tasks")}>
         <button
           class="h-14 border-b-2 px-3 text-sm font-medium transition-colors hover:text-foreground"
           class:border-foreground={activeTab === "tasks"}
@@ -145,7 +154,7 @@
           aria-current={activeTab === "tasks" ? "page" : undefined}
           onclick={() => selectTab("tasks")}
         >
-          任务
+          {t("tab.tasks")}
         </button>
         <button
           class="h-14 border-b-2 px-3 text-sm font-medium transition-colors hover:text-foreground"
@@ -157,37 +166,43 @@
           aria-current={activeTab === "notes" ? "page" : undefined}
           onclick={() => selectTab("notes")}
         >
-          便签
+          {t("tab.notes")}
         </button>
       </nav>
     </div>
 
-    <div class="ml-auto w-72">
-      <label class="sr-only" for="current-tab-search">搜索当前页</label>
+    <div class="relative ml-auto w-72">
+      <label class="sr-only" for="current-tab-search">{t("search.placeholder")}</label>
+      <Icons
+        name="search"
+        class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      />
       <input
         id="current-tab-search"
-        class="h-8 w-full rounded-md border bg-input/20 px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+        class="h-8 w-full rounded-md border bg-input/20 pl-8 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
         bind:value={searchQuery}
-        placeholder="搜索当前页"
+        placeholder={t("search.placeholder")}
       />
     </div>
+
+    <HeaderMenu onOpenSettings={() => (settingsOpen = true)} />
   </header>
 
   {#if loadState === "loading"}
     <section class="grid min-h-0 flex-1 place-items-center text-sm text-muted-foreground">
-      正在读取本地数据...
+      {t("error.loadFailed")}
     </section>
   {:else if loadState === "error"}
     <section class="grid min-h-0 flex-1 place-items-center p-6 text-center">
       <div class="max-w-sm rounded-lg border bg-card p-5">
-        <h2 class="text-sm font-semibold">读取本地数据失败</h2>
+        <h2 class="text-sm font-semibold">{t("error.loadFailed")}</h2>
         <p class="mt-2 text-sm text-muted-foreground">{loadError}</p>
         <button
           class="mt-4 h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
           type="button"
           onclick={() => void loadStore()}
         >
-          重试读取
+          {t("error.retry")}
         </button>
       </div>
     </section>
@@ -196,7 +211,7 @@
       <div class="flex shrink-0 items-center justify-between border-b bg-destructive/5 px-4 py-2 text-sm">
         <span class="text-destructive">{saveError}</span>
         <button class="font-medium text-destructive hover:underline" type="button" onclick={retrySave}>
-          重试保存
+          {t("error.retrySave")}
         </button>
       </div>
     {/if}
@@ -228,3 +243,5 @@
     </div>
   {/if}
 </main>
+
+<SettingsModal open={settingsOpen} onClose={() => (settingsOpen = false)} />
