@@ -112,6 +112,15 @@ src/lib/
 
 若本机缺少 Tauri/Rust/WebKitGTK 等桌面构建依赖，应记录失败原因，并至少完成 Svelte/Vite 层验证。
 
+Windows 上需要先满足系统依赖：
+
+```powershell
+winget install --id Rustlang.Rustup -e
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --quiet --norestart --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows11SDK.26100"
+```
+
+为控制体积，Windows 本机只需安装 MSVC x64/x86 工具链与 Windows SDK；不要求安装完整 `Microsoft.VisualStudio.Workload.VCTools --includeRecommended`。
+
 WSL/Ubuntu 上需要先满足系统依赖：
 
 ```bash
@@ -128,8 +137,21 @@ sudo apt install -y build-essential pkg-config libwebkit2gtk-4.1-dev libxdo-dev 
 | `pnpm --filter quick-notes tauri:dev` | 未通过；已补齐用户态 Rust/Cargo，并进入 `cargo run`；当前环境缺少系统 C linker，报错 `linker cc not found`。 |
 | `pnpm --filter quick-notes tauri:build` | 未通过；同属系统构建依赖未满足，需先安装 C toolchain 与 Tauri Linux WebView 依赖。 |
 
+### 2026-06-16 Windows 初始化续跑结果
+
+| 命令 | 结果 |
+|------|------|
+| `pnpm install --frozen-lockfile` | 通过；按现有 lockfile 安装工作区依赖。 |
+| `pnpm --filter quick-notes check` | 通过；`svelte-check` 0 errors / 0 warnings。 |
+| `pnpm --filter quick-notes build` | 通过；Vite production build 成功。 |
+| `pnpm --filter quick-notes tauri:build` | 未通过；脚本使用 `bash -lc`，在当前 Windows Shell 下解析失败。应改为跨平台直接调用 Tauri CLI。 |
+| `pnpm --filter quick-notes exec tauri build` | 未通过；Rust/MSVC 构建链路已打通，但 Tauri build script 报 `icons/icon.ico not found`，说明应用图标资源仍未初始化完成。 |
+| `pnpm --filter quick-notes tauri:build` | 部分通过；已生成 `quick-notes.exe`，Wix 打包阶段报 `Couldn't find a .ico icon`。应在 `tauri.conf.json` 的 `bundle.icon` 显式声明生成的图标资源。 |
+| `pnpm --filter quick-notes tauri:build` | 通过；生成 Windows MSI 与 NSIS 安装包。 |
+
 ## 修订记录
 
 | 日期 | 摘要 |
 |------|------|
 | 2026-06-16 | 初稿；定义 Tauri command、JSON 数据模型与写入策略。当前仅完成框架搭建，业务实现待审核后推进。 |
+| 2026-06-16 | Windows 初始化续跑；补充最小 MSVC Build Tools 安装方式，并记录 `tauri:*` 脚本与缺失图标资源两个初始化缺口。 |

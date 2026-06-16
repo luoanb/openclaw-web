@@ -8,9 +8,9 @@
     "build": "svelte-check --tsconfig ./tsconfig.json && vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "tauri": "bash -lc 'source \"$HOME/.cargo/env\" 2>/dev/null || true; tauri'",
-    "tauri:dev": "bash -lc 'source \"$HOME/.cargo/env\" 2>/dev/null || true; tauri dev'",
-    "tauri:build": "bash -lc 'source \"$HOME/.cargo/env\" 2>/dev/null || true; tauri build'"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",
