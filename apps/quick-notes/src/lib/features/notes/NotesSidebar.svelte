@@ -1,18 +1,17 @@
 <script lang="ts">
   import type { QuickNote } from "$lib/core/quick-notes-types";
+import { formatDateTime } from "$lib/utils";
 
   let {
     notes,
     selectedNoteId,
     getNoteTitle,
-    getNoteSummary,
     onCreateNote,
     onSelectNote,
   }: {
     notes: QuickNote[];
     selectedNoteId: string | null;
     getNoteTitle: (note: QuickNote) => string;
-    getNoteSummary: (note: QuickNote) => string;
     onCreateNote: () => void;
     onSelectNote: (noteId: string) => void;
   } = $props();
@@ -46,10 +45,7 @@
             onclick={() => onSelectNote(note.id)}
           >
             <span class="block truncate text-sm font-medium">{getNoteTitle(note)}</span>
-            <span class="mt-1 block truncate text-xs text-muted-foreground">
-              {getNoteSummary(note) || "无摘要"}
-            </span>
-            <span class="mt-2 block text-[0.6875rem] text-muted-foreground">{note.updatedAt}</span>
+            <span class="mt-2 block text-[0.6875rem] text-muted-foreground">{formatDateTime(note.updatedAt)}</span>
           </button>
         {/each}
       </div>

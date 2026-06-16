@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { Crepe } from "@milkdown/crepe";
   import "@milkdown/crepe/theme/common/style.css";
   import "@milkdown/crepe/theme/frame.css";
   import { DiffAutoSaver } from "$lib/core/autosave/diff-auto-saver";
+import { formatDateTime } from "$lib/utils";
   import type { QuickNote } from "$lib/core/quick-notes-types";
 
   const AUTOSAVE_INTERVAL_MS = 3000;
@@ -11,6 +13,7 @@
     note,
     title,
     creating,
+    viewKey = 0,
     onCreateNote,
     onUpdateNote,
     onDeleteNote,
@@ -18,6 +21,7 @@
     note: QuickNote | null;
     title: string;
     creating: boolean;
+    viewKey: number;
     onCreateNote: (content: string) => void;
     onUpdateNote: (noteId: string, content: string) => void;
     onDeleteNote: (noteId: string) => void;
@@ -27,75 +31,124 @@
   let editorRoot = $state<HTMLDivElement | null>(null);
   let crepeEditor: Crepe | null = null;
   let autoSaver: DiffAutoSaver<string> | null = null;
-  const editorKey = $derived(creating ? "new" : (note?.id ?? "empty"));
+
+  // ── Editor lifecycle: only responds to viewKey ────────────────────────
+  // viewKey is incremented ONLY on explicit user actions (select note, new).
+  // Auto-save creating→saved does NOT change viewKey, so the editor survives
+  // and the user's cursor stays intact.
+  //
+  // All other reactive reads (note, creating, etc.) are wrapped in untrack()
+  // to prevent Svelte 5's auto-tracking from making the effect re-run on
+  // every prop change.
+  let currentCleanup: (() => void) | null = null;
 
   $effect(() => {
-    if (!editorRoot || editorKey === "empty") {
-      return;
-    }
+    // Track ONLY viewKey and editorRoot
+    const _viewKey = viewKey;
+    const root = editorRoot;
 
-    const initialContent = creating ? "" : (note?.content ?? "");
-    const activeNoteId = note?.id ?? null;
-    const isCreating = creating;
-    let disposed = false;
-    draft = initialContent;
+    untrack(() => {
+      // Clear any previous setup
+      disposeEditor();
 
-    const editor = new Crepe({
-      root: editorRoot,
-      defaultValue: initialContent,
-      features: {
-        [Crepe.Feature.ImageBlock]: false,
-        [Crepe.Feature.AI]: false,
-      },
-      featureConfigs: {
-        [Crepe.Feature.Placeholder]: {
-          text: "写下速记...",
-          mode: "block",
+      if (!root) {
+        return;
+      }
+
+      const isCreating = creating;
+      const currentNote = note;
+      const shouldHaveEditor = isCreating || currentNote !== null;
+
+      if (!shouldHaveEditor) {
+        return;
+      }
+
+      // Create editor
+      const initialContent = isCreating ? "" : (currentNote?.content ?? "");
+      const activeNoteId = currentNote?.id ?? null;
+      let disposed = false;
+      draft = initialContent;
+
+      const editor = new Crepe({
+        root,
+        defaultValue: initialContent,
+        features: {
+          [Crepe.Feature.ImageBlock]: false,
+          [Crepe.Feature.AI]: false,
         },
-      },
-    });
+        featureConfigs: {
+          [Crepe.Feature.Placeholder]: {
+            text: "写下速记...",
+            mode: "block",
+          },
+        },
+      });
 
-    crepeEditor = editor;
-    const saver = new DiffAutoSaver(initialContent, {
-      intervalMs: AUTOSAVE_INTERVAL_MS,
-      readSnapshot: getEditorContent,
-      submitSnapshot: (content) => {
-        submitNoteContent(content, isCreating, activeNoteId);
-      },
-      normalizeSnapshot: (content) => content.trim(),
-      canSubmit: (content) => content.length > 0,
-    });
-    autoSaver = saver;
+      crepeEditor = editor;
 
-    editor.on((listener) => {
-      listener.markdownUpdated((_, markdown) => {
-        if (!disposed) {
-          draft = markdown;
+      const saver = new DiffAutoSaver(initialContent, {
+        intervalMs: AUTOSAVE_INTERVAL_MS,
+        readSnapshot: getEditorContent,
+        submitSnapshot: (content) => {
+          submitNoteContent(content, isCreating, activeNoteId);
+        },
+        normalizeSnapshot: (content) => content.trim(),
+        canSubmit: (content) => content.length > 0,
+      });
+      autoSaver = saver;
+
+      editor.on((listener) => {
+        listener.markdownUpdated((_, markdown) => {
+          if (!disposed) {
+            draft = markdown;
+          }
+        });
+      });
+
+      void editor.create().catch((error: unknown) => {
+        console.error("Failed to create Milkdown Crepe editor", error);
+      });
+      saver.start();
+
+      // Register cleanup for component destroy
+      currentCleanup = () => {
+        if (autoSaver === saver) {
+          autoSaver = null;
         }
-      });
+
+        if (crepeEditor === editor) {
+          crepeEditor = null;
+        }
+
+        saver.dispose({ flush: true });
+        disposed = true;
+        void editor.destroy().catch((error: unknown) => {
+          console.error("Failed to destroy Milkdown Crepe editor", error);
+        });
+      };
     });
 
-    void editor.create().catch((error: unknown) => {
-      console.error("Failed to create Milkdown Crepe editor", error);
-    });
-    saver.start();
-
+    // Return cleanup for $effect lifecycle (dep changes + component destroy)
     return () => {
-      saver.dispose({ flush: true });
-      disposed = true;
-
-      if (autoSaver === saver) {
-        autoSaver = null;
-      }
-
-      if (crepeEditor === editor) {
-        crepeEditor = null;
-      }
-
-      void editor.destroy().catch((error: unknown) => {
-        console.error("Failed to destroy Milkdown Crepe editor", error);
-      });
+      const fn = currentCleanup;
+      currentCleanup = null;
+      fn?.();
     };
+  });
+
+  // ── Handle creating→saved transition ──────────────────────────────────
+  // When auto-save creates the note (creating becomes false, note is set),
+  // update the auto-saver's committed snapshot so it doesn't re-submit
+  // the same content. Does NOT recreate the editor.
+  $effect(() => {
+    const isCreating = creating;
+    const currentNote = note;
+
+    untrack(() => {
+      if (!isCreating && currentNote && crepeEditor && autoSaver) {
+        autoSaver.markCommitted(currentNote.content ?? "");
+      }
+    });
   });
 
   function getEditorContent() {
@@ -129,6 +182,19 @@
     submitNoteContent(nextContent, creating, note?.id ?? null);
     autoSaver?.markCommitted(nextContent);
   }
+
+  function disposeEditor() {
+    autoSaver?.dispose({ flush: true });
+    autoSaver = null;
+
+    if (crepeEditor) {
+      const editor = crepeEditor;
+      crepeEditor = null;
+      void editor.destroy().catch((error: unknown) => {
+        console.error("Failed to destroy Milkdown Crepe editor", error);
+      });
+    }
+  }
 </script>
 
 <!-- Crepe's frame theme is roomy by default; keep note-editor density scoped here. -->
@@ -139,7 +205,7 @@
       <div class="min-w-0">
         <h2 class="truncate text-sm font-semibold">{creating ? "新增速记" : title}</h2>
         <p class="mt-1 text-xs text-muted-foreground">
-          {creating ? "正文第一行会自动成为左侧标题" : `更新于 ${note?.updatedAt}`}
+          {formatDateTime(note?.updatedAt ?? "")}
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -164,7 +230,7 @@
     </div>
 
     <div class="min-h-0 flex-1 p-4">
-      {#key editorKey}
+      {#key viewKey}
         <div
           class="quick-note-crepe-editor h-full overflow-hidden rounded-lg border bg-card text-sm leading-6"
           bind:this={editorRoot}

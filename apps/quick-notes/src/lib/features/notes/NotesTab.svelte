@@ -8,7 +8,6 @@
     selectedNoteId,
     hasQuery,
     getNoteTitle,
-    getNoteSummary,
     onCreateNote,
     onSelectNote,
     onUpdateNote,
@@ -18,7 +17,6 @@
     selectedNoteId: string | null;
     hasQuery: boolean;
     getNoteTitle: (note: QuickNote) => string;
-    getNoteSummary: (note: QuickNote) => string;
     onCreateNote: (content: string) => void;
     onSelectNote: (noteId: string) => void;
     onUpdateNote: (noteId: string, content: string) => void;
@@ -28,18 +26,28 @@
   let creating = $state(false);
   const selectedNote = $derived(notes.find((note) => note.id === selectedNoteId) ?? null);
 
+  // ── Editor view key ───────────────────────────────────────────────────
+  // Incremented ONLY on explicit user actions (click "新增", select a note).
+  // NOT on auto-save transitions (creating→saved).
+  // This is passed to NoteEditor to control editor lifecycle separately
+  // from reactive prop changes.
+  let editorViewKey = $state(0);
+
   function startCreating() {
     creating = true;
+    editorViewKey++;
   }
 
   function selectNote(noteId: string) {
     creating = false;
+    editorViewKey++;
     onSelectNote(noteId);
   }
 
   function createNote(content: string) {
     creating = false;
     onCreateNote(content);
+    // editorViewKey stays unchanged → editor survives across creating→saved
   }
 </script>
 
@@ -48,7 +56,6 @@
     {notes}
     {selectedNoteId}
     getNoteTitle={getNoteTitle}
-    getNoteSummary={getNoteSummary}
     onCreateNote={startCreating}
     onSelectNote={selectNote}
   />
@@ -65,6 +72,7 @@
       note={selectedNote}
       title={selectedNote ? getNoteTitle(selectedNote) : ""}
       {creating}
+      viewKey={editorViewKey}
       onCreateNote={createNote}
       onUpdateNote={onUpdateNote}
       onDeleteNote={onDeleteNote}

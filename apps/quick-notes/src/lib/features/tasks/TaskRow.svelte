@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { QuickTask } from "$lib/core/quick-notes-types";
+import { formatDateTime } from "$lib/utils";
 
   let {
     task,
@@ -97,7 +98,7 @@
         {task.content}
       </p>
       <p class="mt-1 text-xs text-muted-foreground">
-        {done ? `完成于 ${task.completedAt ?? task.updatedAt}` : `更新于 ${task.updatedAt}`}
+        {done ? `完成于 ${formatDateTime(task.completedAt ?? task.updatedAt)}` : `更新于 ${formatDateTime(task.updatedAt)}`}
       </p>
     {/if}
   </div>

@@ -219,7 +219,6 @@
           {selectedNoteId}
           {hasQuery}
           getNoteTitle={NoteService.getNoteTitle}
-          getNoteSummary={NoteService.getNoteSummary}
           onCreateNote={createNote}
           onSelectNote={(noteId) => (selectedNoteId = noteId)}
           onUpdateNote={updateNote}

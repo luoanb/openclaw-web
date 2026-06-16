@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "速记",
+  "productName": "quick-notes",
   "version": "0.0.0",
   "identifier": "com.openclaw.quicknotes",
   "build": {
