@@ -4,6 +4,7 @@
   let {
     task,
     done = false,
+    position,
     onCompleteTask,
     onRestoreTask,
     onUpdateTask,
@@ -11,6 +12,7 @@
   }: {
     task: QuickTask;
     done?: boolean;
+    position?: number;
     onCompleteTask: (taskId: string) => void;
     onRestoreTask: (taskId: string) => void;
     onUpdateTask: (taskId: string, content: string) => void;
@@ -46,7 +48,11 @@
   }
 </script>
 
-<div class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b px-4 py-3 last:border-b-0">
+<div
+  class="grid items-center gap-3 border-b px-4 py-3 last:border-b-0 {done
+    ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
+    : 'grid-cols-[auto_auto_minmax(0,1fr)_auto]'}"
+>
   <input
     class="size-4 rounded border-input accent-primary"
     type="checkbox"
@@ -54,6 +60,12 @@
     aria-label={done ? "恢复任务" : "完成任务"}
     onchange={() => (done ? onRestoreTask(task.id) : onCompleteTask(task.id))}
   />
+
+  {#if !done}
+    <span class="w-6 text-right text-xs tabular-nums text-muted-foreground" aria-label={`第 ${position} 项`}>
+      {position}
+    </span>
+  {/if}
 
   <div class="min-w-0">
     {#if editing}
@@ -92,6 +104,15 @@
 
   {#if !editing}
     <div class="flex items-center gap-3 text-xs">
+      {#if !done}
+        <button
+          class="font-medium text-foreground hover:underline"
+          type="button"
+          onclick={() => onCompleteTask(task.id)}
+        >
+          完成
+        </button>
+      {/if}
       <button class="text-muted-foreground hover:text-foreground" type="button" onclick={startEditing}>
         编辑
       </button>

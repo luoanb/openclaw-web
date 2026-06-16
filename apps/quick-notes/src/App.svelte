@@ -127,13 +127,13 @@
 </script>
 
 <svelte:head>
-  <title>quick-notes</title>
+  <title>速记</title>
 </svelte:head>
 
 <main class="flex h-dvh w-dvw flex-col bg-background text-foreground">
   <header class="flex h-14 shrink-0 items-center gap-4 border-b px-4">
     <div class="flex min-w-0 items-center gap-4">
-      <h1 class="text-sm font-semibold">quick-notes</h1>
+      <h1 class="text-sm font-semibold">速记</h1>
       <nav class="flex h-14 items-end gap-1" aria-label="主视图">
         <button
           class="h-14 border-b-2 px-3 text-sm font-medium transition-colors hover:text-foreground"

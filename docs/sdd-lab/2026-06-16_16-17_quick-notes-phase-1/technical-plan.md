@@ -4,8 +4,8 @@
 
 - 对应需求文档：`docs/sdd-lab/2026-06-16_16-17_quick-notes-phase-1/requirements.md`
 - 需求确认状态：用户已确认“先这样编写技术方案”，进入技术方案阶段。
-- 本方案覆盖范围：`quick-notes` 第一阶段业务实现方案，覆盖 Header Tab、当前 Tab 搜索、任务进行中/已完成、速记 sidebar + content、本地 JSON 读写、轻量错误反馈。
-- 本方案不覆盖：账号、云同步、富文本、复杂标签、高级筛选、跨 Tab 全局搜索、提醒通知、系统托盘、快捷键、导入导出、多窗口冲突处理。
+- 本方案覆盖范围：`quick-notes` 第一阶段业务实现方案，覆盖 Header Tab、当前 Tab 搜索、任务进行中/已完成、速记 sidebar + content、速记区 Milkdown Crepe Markdown 编辑器、本地 JSON 读写、轻量错误反馈。
+- 本方案不覆盖：账号、云同步、复杂标签、高级筛选、跨 Tab 全局搜索、提醒通知、系统托盘、快捷键、导入导出、多窗口冲突处理、图片上传、附件管理、自定义编辑器插件。
 
 ## Current Project Facts / 当前项目事实
 
@@ -14,6 +14,7 @@
   - `docs/specs/quick-notes-tauri-json.md`
   - `apps/quick-notes/package.json`
   - `apps/quick-notes/src/App.svelte`
+  - `apps/quick-notes/src/lib/features/notes/NoteEditor.svelte`
   - `apps/quick-notes/src/app.css`
   - `apps/quick-notes/src-tauri/src/lib.rs`
   - `apps/quick-notes/src/lib/components/ui/collapsible/*`
@@ -24,6 +25,8 @@
   - 当前前端已有 Collapsible UI 封装，可用于已完成任务折叠区。
   - 当前 Tauri 后端 `lib.rs` 只启动默认 Builder，尚未注册 `load_store` / `save_store` 命令。
   - 当前 `app.css` 已提供语义化 Tailwind token、Inter 字体、满窗体基础尺寸和 `overflow: hidden`。
+  - 当前 `NoteEditor.svelte` 使用原生 `textarea` 和显式“保存”按钮维护草稿，尚未接入 Markdown 富编辑体验。
+  - Milkdown Crepe 官方文档要求安装 `@milkdown/crepe`，导入 `@milkdown/crepe/theme/common/style.css` 与主题样式，例如 `@milkdown/crepe/theme/frame.css`，通过 `new Crepe({ root, defaultValue })` 初始化，组件卸载或实例替换时调用 `destroy()`。
 - 相关接口/数据结构：
   - `TaskStatus = "active" | "done"`
   - `QuickTask = { id, content, status, createdAt, updatedAt, completedAt? }`
@@ -35,6 +38,7 @@
   - 可复用逻辑应放入 `core` 并优先用类封装，避免视图组件直接拼业务更新逻辑。
   - 前端组件需保持视图与逻辑分离：组件接收数据和事件，业务更新集中在 store/service 层。
   - 首期本地 JSON 不做 schema migration 和多窗口冲突处理。
+  - Crepe 只改变速记正文编辑体验，不改变 `QuickNote.content` 的 Markdown 字符串数据结构。
 
 ## Open Questions / 开放问题
 
@@ -223,6 +227,29 @@ apps/quick-notes/src/
 - ID 使用 `crypto.randomUUID()`；如运行环境不支持，执行时再补最小 fallback。
 - 模糊过滤首期采用大小写不敏感的 `includes`，不引入第三方搜索库。
 
+### Milkdown Crepe Integration
+
+职责：
+
+- 在 `NoteEditor.svelte` 中替换原生 `textarea`，使用官方 `Crepe` 类挂载到右侧编辑区 DOM 容器。
+- 通过 `defaultValue` 初始化当前速记或新增速记的 Markdown 草稿。
+- 通过 `editor.on((listener) => listener.markdownUpdated(...))` 同步 Crepe 当前 Markdown 到组件内 `draft`。
+- 保存按钮继续调用既有 `onCreateNote(content)` / `onUpdateNote(noteId, content)`，保持上层数据流和本地 JSON 保存逻辑不变。
+- 当 `note.id` 或新增态变化时销毁旧 Crepe 实例并创建新实例，避免上一条速记内容残留。
+- 组件销毁时调用 `destroy()` 释放编辑器资源。
+
+依赖与样式：
+
+- 新增依赖：`@milkdown/crepe`。
+- 样式导入：在 `NoteEditor.svelte` 或全局样式入口导入 `@milkdown/crepe/theme/common/style.css` 与 `@milkdown/crepe/theme/frame.css`。
+- 容器样式：继续使用当前 Tailwind token 控制外层边框、背景、高度和焦点区域；Crepe 内部主题只做编辑器基础样式。
+
+边界：
+
+- 不引入 `svelte5-milkdown-editor` 等社区封装，优先使用官方 Crepe API。
+- 不启用图片上传后端、附件存储或云端资源代理；若默认 ImageBlock 出现本地 blob 行为，本轮不把它扩展为持久化附件能力。
+- 不调整 `NoteService` 标题/摘要生成规则；标题和摘要仍从 Markdown 源文本第一行派生。
+
 ### `QuickNotesRepository`
 
 职责：
@@ -247,7 +274,7 @@ apps/quick-notes/src/
   - `CompletedTasks.svelte`：复用 Collapsible，默认折叠，不持久化展开状态。
   - `NotesTab.svelte`：组合左侧列表与右侧编辑区。
   - `NotesSidebar.svelte`：展示标题、摘要、更新时间、选中态和删除入口。
-  - `NoteEditor.svelte`：编辑当前速记正文，不让用户单独输入标题。
+  - `NoteEditor.svelte`：用 Milkdown Crepe 编辑当前速记 Markdown 正文，不让用户单独输入标题。
 - 复用现有组件：
   - `src/lib/components/ui/collapsible/*` 用于已完成区。
   - `src/lib/utils.ts` 中已有工具如 `cn()` 可继续复用。
@@ -261,12 +288,16 @@ apps/quick-notes/src/
 - 状态与交互：
   - 默认 activeTab 为 `tasks`。
   - 搜索只作用于当前 Tab；切换 Tab 后可清空 query，避免旧 query 影响另一个 Tab。
+  - 进行中任务行由 `TaskList.svelte` 按当前展示顺序传入序号，序号不进入数据模型、不参与保存。
+  - 进行中任务行右侧“完成”按钮调用既有 `onCompleteTask(task.id)`，与左侧 checkbox 复用同一条完成链路。
+  - 已完成任务不展示进行中序号，也不展示右侧“完成”按钮；恢复仍沿用现有 checkbox 入口。
   - 速记删除当前项后，选择排序后的下一条；无可选项时显示空编辑态。
   - 正常保存静默；保存失败在主内容区域展示轻量错误与“重试保存”。
 - 样式与 Token 实现：
   - 使用 `bg-background`、`text-foreground`、`text-muted-foreground`、`border-border`、`bg-card` 等语义 token。
   - 内容铺满 `h-dvh w-dvw`，Header 固定在顶部，主区域 `min-h-0 flex-1`。
   - 避免重阴影、玻璃、渐变文字和装饰性边条。
+  - Crepe 编辑器外层保持右侧编辑区 `min-h-0 flex-1`，内部编辑区域滚动不应撑破应用壳。
 - Icon / SVG 组件使用：
   - 首期可使用文本 action；若添加图标，优先用现有依赖或内联简洁 SVG，保持 `currentColor`。
 - 已知设计偏差：
@@ -306,15 +337,18 @@ Tauri JSON file
   - `apps/quick-notes/src/lib/components/ui/*`（按需）
   - `apps/quick-notes/src-tauri/src/lib.rs`
   - `apps/quick-notes/src-tauri/Cargo.toml`
+  - `apps/quick-notes/package.json`
+  - `apps/quick-notes/src/app.css`（仅在需要全局适配 Crepe 样式时）
 - 接口/类型：
   - 前端和 Rust 后端需保持 `QuickTask` / `QuickNote` / `QuickNotesStore` 字段一致。
   - Tauri 命令名固定为 `load_store`、`save_store`。
 - 数据/状态：
   - 本地数据文件 `quick-notes.json`。
   - 前端内存 store、activeTab、searchQuery、selectedNoteId、load error、save error。
+  - 速记编辑区 Crepe 实例生命周期和 Markdown 草稿。
 - UI/交互：
-  - 替换脚手架居中卡片为满窗体业务工作区。
   - Header Tabs、任务 Tab、速记 Tab、当前 Tab 搜索。
+  - 速记右侧编辑区从 textarea 替换为 Milkdown Crepe Markdown 编辑器。
 - 测试：
   - 核心 service 单元测试优先覆盖排序、过滤、状态流转、标题摘要。
   - Svelte/Vite 层至少跑 `check` 和 `build`。
@@ -328,6 +362,15 @@ Tauri JSON file
 5. 新增速记 Tab 组件：左侧标题摘要列表、右侧正文编辑区、新增/选择/编辑/删除。
 6. 改造 `App.svelte` 为满窗体应用壳：加载、读取失败、Header Tabs、当前 Tab 搜索、保存失败重试和组件组合。
 7. 按需求验收逐项自检，并运行最小验证命令。
+
+### Crepe 增量执行步骤
+
+1. 使用 pnpm 为 `quick-notes` workspace 增加 `@milkdown/crepe`。
+2. 在 `NoteEditor.svelte` 中按官方文档导入 `Crepe` 和主题 CSS。
+3. 将 textarea 替换为 Crepe 挂载容器，并用 Svelte 生命周期管理创建、切换和销毁。
+4. 使用 Crepe `markdownUpdated` 事件更新 `draft`，保存按钮继续走现有创建/更新回调。
+5. 如 Crepe 默认样式与应用壳高度冲突，在 `app.css` 添加最小作用域样式修正。
+6. 运行 `pnpm --filter quick-notes check` 与 `pnpm --filter quick-notes build`，并记录结果。
 
 ## Risk And Mitigation / 风险与缓解
 
@@ -343,6 +386,12 @@ Tauri JSON file
   - 缓解方式：`activeTab` 与 `searchQuery` 由 `App.svelte` 统一持有；切换 Tab 时清空 query 或按当前 Tab 重新解释 query，执行时推荐清空。
 - 风险：速记标题由正文第一行生成，长文本展示拥挤。
   - 缓解方式：`NoteService.getNoteTitle()` 和 `getNoteSummary()` 统一截断策略；UI 只展示派生结果。
+- 风险：Crepe 实例在切换速记时未销毁，导致内容残留或内存泄漏。
+  - 缓解方式：以 `creating + note.id` 作为编辑器实例 key；key 变化时先 `destroy()`，再用新 `defaultValue` 创建。
+- 风险：Crepe 的 Markdown 更新事件与保存按钮之间状态不同步。
+  - 缓解方式：`markdownUpdated` 只更新本地 `draft`；保存时统一读取 `draft.trim()`，保留空内容不可保存规则。
+- 风险：Crepe 默认图片/附件能力与本地 JSON 首期边界不一致。
+  - 缓解方式：本轮不实现上传与附件持久化；必要时在 Crepe feature 配置中关闭或限制相关能力。
 - 风险：Tauri 原生构建依赖在不同机器上不完整。
   - 缓解方式：优先运行 `pnpm --filter quick-notes check` 和 `pnpm --filter quick-notes build`；Tauri build 失败时记录系统依赖原因。
 
@@ -367,6 +416,8 @@ Tauri JSON file
   - 新增、编辑、完成、恢复、删除任务。
   - 已完成区默认折叠并展示数量。
   - 切换速记 Tab，新增、选择、编辑、删除速记。
+  - 在 Crepe 编辑器内输入 Markdown，保存后左侧标题/摘要从第一行更新。
+  - 切换不同速记和新增态，编辑器内容不残留上一条速记。
   - 速记左侧标题和摘要自动来自正文第一行。
   - 搜索只过滤当前 Tab。
   - 读取失败和保存失败能看到轻量错误与重试入口。
@@ -379,8 +430,23 @@ Tauri JSON file
 ## Execute Checkpoint / 执行检查点
 
 - 当前理解：需求已进入技术方案阶段，当前方案选择 Header Tab 独立管理任务和速记，强调逻辑与视图分离。
-- 核心目标：实现本地 JSON 持久化的轻量桌面速记工具，代码分层清楚，`TaskService` 管任务逻辑，`NoteService` 管速记逻辑，`features` 管视图交互，Tauri 后端管文件读写。
-- 下一步动作：等待用户确认技术方案后，再进入代码执行。
-- 风险：保存失败重试、速记标题派生、当前 Tab 搜索、TS/Rust 类型一致性需要执行时重点验证。
-- 验证方式：`pnpm --filter quick-notes check`、`pnpm --filter quick-notes build`、按环境尝试 `pnpm --filter quick-notes tauri:build`。
-- Execution Approval: `Pending`
+- 核心目标：在不改变本地 JSON 数据结构和上层保存流程的前提下，把速记右侧编辑区接入 Milkdown Crepe Markdown 编辑器。
+- 下一步动作：本轮 Crepe 增量实现已完成，进入 review。
+- 风险：Crepe 实例生命周期、Markdown 草稿同步、空内容保存规则仍需桌面手动验证；完整 Crepe 会带入 CodeMirror/KaTeX 等资源，当前 Vite build 存在 chunk size warning。
+- 验证方式：`pnpm --filter quick-notes check` 已通过；`pnpm --filter quick-notes build` 已通过。
+- Execution Approval: `Approved`
+
+## Implementation Result / 实现结果
+
+- 2026-06-16 17:24:
+  - 变更：为 `apps/quick-notes` 增加 `@milkdown/crepe` 依赖，并将 `NoteEditor.svelte` 的原生 `textarea` 替换为 Milkdown Crepe 编辑器。
+  - 数据：`QuickNote.content` 仍保存 Markdown 字符串，未改变 Tauri JSON 数据结构。
+  - 生命周期：以 `creating + note.id` 派生编辑器 key；切换速记或新增态时销毁旧 Crepe 实例并创建新实例；组件保存时优先读取 `crepeEditor.getMarkdown()`。
+  - 边界：关闭 `ImageBlock` 与 `AI` 功能，不实现图片上传、附件持久化或 AI 能力。
+  - 验证：`pnpm --filter quick-notes check` 通过，`svelte-check` 0 errors / 0 warnings；`pnpm --filter quick-notes build` 通过。
+  - 剩余风险：生产构建提示部分 chunk 超过 500 kB，原因是完整 Crepe 依赖带入较重编辑器能力；若后续要求优化体积，可按官方 `CrepeBuilder` 路线只引入必要 feature。
+- 2026-06-16 17:31:
+  - 变更：新增 `task-row-completion-actions.md` 作为 sdd-light 增量文档；`TaskList.svelte` 向进行中任务行传入当前展示序号；`TaskRow.svelte` 展示进行中序号并在右侧 action 区新增“完成”按钮。
+  - 数据：未改变 `QuickTask`、`QuickNotesStore` 或 Tauri JSON 结构。
+  - 链路：“完成”按钮复用 `onCompleteTask(task.id)`，与 checkbox 勾选完成保持一致。
+  - 验证：`pnpm --filter quick-notes check` 通过；`pnpm --filter quick-notes build` 通过，仍有既有 Crepe chunk size warning。

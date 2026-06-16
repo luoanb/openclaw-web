@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { Crepe } from "@milkdown/crepe";
+  import "@milkdown/crepe/theme/common/style.css";
+  import "@milkdown/crepe/theme/frame.css";
   import type { QuickNote } from "$lib/core/quick-notes-types";
 
   let {
@@ -18,23 +21,70 @@
   } = $props();
 
   let draft = $state("");
-  let currentNoteId = $state<string | null>(null);
+  let editorRoot = $state<HTMLDivElement | null>(null);
+  let crepeEditor: Crepe | null = null;
+  const editorKey = $derived(creating ? "new" : (note?.id ?? "empty"));
 
   $effect(() => {
-    if (creating && currentNoteId !== "new") {
-      currentNoteId = "new";
-      draft = "";
+    if (!editorRoot || editorKey === "empty") {
       return;
     }
 
-    if (!creating && note?.id !== currentNoteId) {
-      currentNoteId = note?.id ?? null;
-      draft = note?.content ?? "";
-    }
+    const initialContent = creating ? "" : (note?.content ?? "");
+    let disposed = false;
+    draft = initialContent;
+
+    const editor = new Crepe({
+      root: editorRoot,
+      defaultValue: initialContent,
+      features: {
+        [Crepe.Feature.ImageBlock]: false,
+        [Crepe.Feature.AI]: false,
+      },
+      featureConfigs: {
+        [Crepe.Feature.Placeholder]: {
+          text: "写下速记...",
+          mode: "block",
+        },
+      },
+    });
+
+    crepeEditor = editor;
+    editor.on((listener) => {
+      listener.markdownUpdated((_, markdown) => {
+        if (!disposed) {
+          draft = markdown;
+        }
+      });
+    });
+
+    void editor.create().catch((error: unknown) => {
+      console.error("Failed to create Milkdown Crepe editor", error);
+    });
+
+    return () => {
+      disposed = true;
+
+      if (crepeEditor === editor) {
+        crepeEditor = null;
+      }
+
+      void editor.destroy().catch((error: unknown) => {
+        console.error("Failed to destroy Milkdown Crepe editor", error);
+      });
+    };
   });
 
+  function getEditorContent() {
+    try {
+      return crepeEditor?.getMarkdown() ?? draft;
+    } catch {
+      return draft;
+    }
+  }
+
   function saveNote() {
-    const nextContent = draft.trim();
+    const nextContent = getEditorContent().trim();
 
     if (!nextContent) {
       return;
@@ -51,6 +101,8 @@
     }
   }
 </script>
+
+<!-- Crepe's frame theme is roomy by default; keep note-editor density scoped here. -->
 
 <section class="flex min-w-0 flex-1 flex-col bg-background">
   {#if note || creating}
@@ -83,11 +135,12 @@
     </div>
 
     <div class="min-h-0 flex-1 p-4">
-      <textarea
-        class="h-full w-full resize-none rounded-lg border bg-card p-4 text-sm leading-6 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
-        bind:value={draft}
-        placeholder="写下速记..."
-      ></textarea>
+      {#key editorKey}
+        <div
+          class="quick-note-crepe-editor h-full overflow-hidden rounded-lg border bg-card text-sm leading-6"
+          bind:this={editorRoot}
+        ></div>
+      {/key}
     </div>
   {:else}
     <div class="grid h-full place-items-center p-8 text-center">
@@ -100,3 +153,84 @@
     </div>
   {/if}
 </section>
+
+<style>
+  :global(.quick-note-crepe-editor .milkdown) {
+    height: 100%;
+    overflow: auto;
+    --crepe-font-default:
+      "Inter Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+    --crepe-font-title:
+      "Inter Variable", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      sans-serif;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror) {
+    min-height: 100%;
+    padding: 16px 20px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror p) {
+    font-size: 14px;
+    line-height: 22px;
+    padding: 2px 0;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror h1) {
+    margin-top: 12px;
+    font-size: 24px;
+    line-height: 32px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror h2) {
+    margin-top: 10px;
+    font-size: 21px;
+    line-height: 28px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror h3) {
+    margin-top: 8px;
+    font-size: 18px;
+    line-height: 26px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror h4),
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror h5),
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror h6) {
+    margin-top: 8px;
+    font-size: 16px;
+    line-height: 24px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror blockquote) {
+    margin: 2px 0;
+    padding-left: 16px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror li) {
+    gap: 6px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .milkdown-list-item-block li .label-wrapper) {
+    height: 24px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .milkdown-toolbar .toolbar-item),
+  :global(.quick-note-crepe-editor .milkdown .milkdown-block-handle .operation-item) {
+    width: 28px;
+    height: 28px;
+    margin: 4px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .milkdown-toolbar .toolbar-item svg),
+  :global(.quick-note-crepe-editor .milkdown .milkdown-block-handle .operation-item svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .ProseMirror pre) {
+    margin: 4px 0;
+    padding: 8px;
+  }
+</style>

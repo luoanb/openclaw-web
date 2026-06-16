@@ -21,9 +21,10 @@
 
 {#if tasks.length > 0}
   <div class="overflow-hidden rounded-lg border bg-card">
-    {#each tasks as task (task.id)}
+    {#each tasks as task, index (task.id)}
       <TaskRow
         {task}
+        position={index + 1}
         onCompleteTask={onCompleteTask}
         onRestoreTask={onRestoreTask}
         onUpdateTask={onUpdateTask}

@@ -13,6 +13,7 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@milkdown/crepe": "^7.21.2",
     "@tauri-apps/api": "^2.11.0",
     "bits-ui": "^2.18.0",
     "shadcn-svelte": "^1.2.7",
