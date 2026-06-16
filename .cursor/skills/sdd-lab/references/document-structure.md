@@ -20,12 +20,31 @@ docs/sdd-lab/YYYY-MM-DD_hh-mm_<iteration-name>/
 └── requirements.md
 ```
 
-进入技术方案生成阶段后，再创建 `technical-plan.md`：
+若需求涉及 Figma、视觉稿、页面还原、Icon 导出或设计稿文档化，在需求确认后、技术方案生成前创建或维护 `visual-design.md`：
 
 ```text
 docs/sdd-lab/YYYY-MM-DD_hh-mm_<iteration-name>/
 ├── lifecycle.md
 ├── requirements.md
+└── visual-design.md
+```
+
+进入技术方案生成阶段后，再创建 `technical-plan.md`。若当前需求不涉及视觉稿：
+
+```text
+docs/sdd-lab/YYYY-MM-DD_hh-mm_<iteration-name>/
+├── lifecycle.md
+├── requirements.md
+└── technical-plan.md
+```
+
+若当前需求涉及视觉稿：
+
+```text
+docs/sdd-lab/YYYY-MM-DD_hh-mm_<iteration-name>/
+├── lifecycle.md
+├── requirements.md
+├── visual-design.md
 └── technical-plan.md
 ```
 
@@ -40,9 +59,24 @@ docs/sdd-lab/YYYY-MM-DD_hh-mm_<iteration-name>/
 
 - `lifecycle.md`：记录状态、批准、状态流转、执行记录、验证、review、恢复锚点。
 - `requirements.md`：记录需求目标、背景、范围、非目标、验收标准、开放问题。
+- `visual-design.md`：记录 Figma 或视觉设计稿来源、页面设计事实、Icon 导出与 SVG 组件化要求；仅在需求涉及视觉设计稿时创建。
 - `technical-plan.md`：记录基于项目现状的技术方案、涉及模块、接口、步骤、风险和验证方式；只在技术方案生成阶段创建。
 
-不要把技术方案写进 `requirements.md`；不要把需求讨论堆进 `technical-plan.md`；不要把聊天流水账写进 `lifecycle.md`。
+不要把技术方案写进 `requirements.md` 或 `visual-design.md`；不要把需求讨论堆进 `technical-plan.md`；不要把聊天流水账写进 `lifecycle.md`。
+
+## 视觉设计文档
+
+`visual-design.md` 是可选阶段文件，只在当前迭代需要从 Figma 或视觉稿提取设计事实时创建。它用于沉淀设计稿事实，不用于记录实现方案。
+
+必须包含：
+
+- `来源`：只记录核心追溯信息，例如 Figma 链接、文件名、Frame / Node、版本或更新时间。
+- `页面设计`：内部结构由视觉稿内容决定，只记录稿中真实存在且对实现或验收有用的设计事实。
+- `Icon / SVG 组件导出`：需要导出的 Icon 清单、SVG 命名、组件命名、尺寸、颜色策略、目标路径、导出状态。
+
+视觉稿疑问就近记录在相关章节；影响需求或技术决策的问题同步到 `requirements.md` 或 `technical-plan.md`。
+
+若技术方案需要引用视觉稿，必须以 `visual-design.md` 为基准，而不是直接依赖聊天记录或临时截图描述。
 
 ## 状态字段
 

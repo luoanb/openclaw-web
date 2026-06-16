@@ -1,0 +1,57 @@
+<script lang="ts">
+  import type { QuickTask } from "$lib/core/quick-notes-types";
+  import CompletedTasks from "./CompletedTasks.svelte";
+  import TaskComposer from "./TaskComposer.svelte";
+  import TaskList from "./TaskList.svelte";
+
+  let {
+    activeTasks,
+    doneTasks,
+    hasQuery,
+    onCreateTask,
+    onCompleteTask,
+    onRestoreTask,
+    onUpdateTask,
+    onDeleteTask,
+  }: {
+    activeTasks: QuickTask[];
+    doneTasks: QuickTask[];
+    hasQuery: boolean;
+    onCreateTask: (content: string) => void;
+    onCompleteTask: (taskId: string) => void;
+    onRestoreTask: (taskId: string) => void;
+    onUpdateTask: (taskId: string, content: string) => void;
+    onDeleteTask: (taskId: string) => void;
+  } = $props();
+</script>
+
+<section class="flex h-full min-h-0 flex-col">
+  <TaskComposer {onCreateTask} />
+
+  <div class="min-h-0 flex-1 overflow-auto p-4">
+    <div class="mx-auto flex w-full max-w-5xl flex-col gap-4">
+      <div>
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-semibold">进行中</h2>
+          <span class="text-xs text-muted-foreground">{activeTasks.length} 项</span>
+        </div>
+        <TaskList
+          tasks={activeTasks}
+          emptyText={hasQuery ? "没有匹配的进行中任务。" : "还没有进行中的任务。"}
+          onCompleteTask={onCompleteTask}
+          onRestoreTask={onRestoreTask}
+          onUpdateTask={onUpdateTask}
+          onDeleteTask={onDeleteTask}
+        />
+      </div>
+
+      <CompletedTasks
+        tasks={doneTasks}
+        onCompleteTask={onCompleteTask}
+        onRestoreTask={onRestoreTask}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
+      />
+    </div>
+  </div>
+</section>
