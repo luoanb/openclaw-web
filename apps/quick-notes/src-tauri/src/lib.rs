@@ -109,10 +109,28 @@ fn validate_content(content: &str, label: &str) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn toggle_devtools(app: AppHandle) -> Result<(), String> {
+    #[cfg(debug_assertions)]
+    {
+        if let Some(webview) = app.get_webview_window("main") {
+            webview.open_devtools();
+            Ok(())
+        } else {
+            Err("无法获取主窗口".into())
+        }
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        Err("Devtools 功能仅在调试模式下可用".into())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![load_store, save_store])
+        .invoke_handler(tauri::generate_handler![load_store, save_store, toggle_devtools])
         .run(tauri::generate_context!())
         .expect("error while running quick-notes");
 }

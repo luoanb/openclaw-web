@@ -30,6 +30,7 @@ export const zh: Dictionary = {
   "common.save": "保存",
   "common.delete": "删除",
   "common.settings": "设置",
+  "common.devtools": "开发者工具",
   "common.language": "语言",
   "common.chinese": "中文",
   "common.english": "English",
@@ -39,6 +40,7 @@ export const zh: Dictionary = {
   "time.completedAt": "完成于",
   "error.loadFailed": "读取本地数据失败",
   "error.saveFailed": "保存本地数据失败",
+  "error.devtoolsFailed": "打开开发者工具失败",
   "error.retry": "重试读取",
   "error.retrySave": "重试保存",
 };

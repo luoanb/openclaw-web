@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import { invoke } from "@tauri-apps/api/core";
   import Icons from "./Icons.svelte";
 
   let {
@@ -12,6 +13,30 @@
 
   let isOpen = $state(false);
   let menuRef: HTMLDivElement | null = $state(null);
+  let message = $state<{ text: string; type: "success" | "error" } | null>(null);
+  let messageTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  async function toggleDevTools() {
+    try {
+      message = null;
+      // 调用 Tauri 命令
+      await invoke("toggle_devtools");
+      // 显示成功提示
+      message = { text: "✓ 按 F12 或 Ctrl+Shift+I 打开开发者工具", type: "success" };
+      if (messageTimeout) clearTimeout(messageTimeout);
+      messageTimeout = setTimeout(() => {
+        message = null;
+      }, 3000);
+    } catch (err) {
+      message = { text: t("error.devtoolsFailed"), type: "error" };
+      console.error("Failed to toggle devtools:", err);
+      // Clear message after 3 seconds
+      if (messageTimeout) clearTimeout(messageTimeout);
+      messageTimeout = setTimeout(() => {
+        message = null;
+      }, 3000);
+    }
+  }
 
   function toggle() {
     isOpen = !isOpen;
@@ -29,9 +54,27 @@
       isOpen = false;
     }
   }
+
+  function handleMenuKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      isOpen = false;
+    }
+  }
 </script>
 
 <svelte:window onclick={handleClickOutside} />
+
+{#if message}
+  {#if message.type === "error"}
+    <div class="fixed top-4 right-4 z-50 rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive shadow-sm">
+      {message.text}
+    </div>
+  {:else}
+    <div class="fixed top-4 right-4 z-50 rounded-md border border-green-600 bg-green-50 px-3 py-2 text-sm text-green-800 shadow-sm">
+      {message.text}
+    </div>
+  {/if}
+{/if}
 
 <div class="relative" bind:this={menuRef}>
   <button
@@ -44,10 +87,12 @@
   </button>
 
   {#if isOpen}
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border bg-popover py-1 shadow-md"
+      role="menu"
+      tabindex="-1"
       onclick={(e: MouseEvent) => e.stopPropagation()}
+      onkeydown={handleMenuKeydown}
     >
       <button
         class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
@@ -56,6 +101,14 @@
       >
         <Icons name="settings" class="size-4" />
         {t("common.settings")}
+      </button>
+      <button
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
+        type="button"
+        onclick={handleItemClick(toggleDevTools)}
+      >
+        <Icons name="code" class="size-4" />
+        {t("common.devtools")}
       </button>
     </div>
   {/if}

@@ -30,6 +30,7 @@ export const en: Dictionary = {
   "common.save": "Save",
   "common.delete": "Delete",
   "common.settings": "Settings",
+  "common.devtools": "Developer Tools",
   "common.language": "Language",
   "common.chinese": "中文",
   "common.english": "English",
@@ -39,6 +40,7 @@ export const en: Dictionary = {
   "time.completedAt": "Completed at",
   "error.loadFailed": "Failed to load local data",
   "error.saveFailed": "Failed to save local data",
+  "error.devtoolsFailed": "Failed to open developer tools",
   "error.retry": "Retry",
   "error.retrySave": "Retry Save",
 };
