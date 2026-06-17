@@ -8,6 +8,7 @@
 
   let {
     notes,
+    pinnedNotes,
     selectedNoteId,
     hasQuery,
     getNoteTitle,
@@ -15,8 +16,11 @@
     onSelectNote,
     onUpdateNote,
     onDeleteNote,
+    onPinNote,
+    onUnpinNote,
   }: {
     notes: QuickNote[];
+    pinnedNotes: QuickNote[];
     selectedNoteId: string | null;
     hasQuery: boolean;
     getNoteTitle: (note: QuickNote) => string;
@@ -24,6 +28,8 @@
     onSelectNote: (noteId: string) => void;
     onUpdateNote: (noteId: string, content: string) => void;
     onDeleteNote: (noteId: string) => void;
+    onPinNote: (noteId: string) => void;
+    onUnpinNote: (noteId: string) => void;
   } = $props();
 
   let creating = $state(false);
@@ -57,10 +63,14 @@
 <section class="flex h-full min-h-0">
   <NotesSidebar
     {notes}
+    {pinnedNotes}
     {selectedNoteId}
     getNoteTitle={getNoteTitle}
     onCreateNote={startCreating}
     onSelectNote={selectNote}
+    onDeleteNote={onDeleteNote}
+    onPinNote={onPinNote}
+    onUnpinNote={onUnpinNote}
   />
 
   {#if hasQuery && notes.length === 0}
@@ -78,7 +88,6 @@
       viewKey={editorViewKey}
       onCreateNote={createNote}
       onUpdateNote={onUpdateNote}
-      onDeleteNote={onDeleteNote}
     />
   {/if}
 </section>

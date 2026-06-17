@@ -16,6 +16,7 @@ export class TaskService {
         createdAt: now,
         updatedAt: now,
         completedAt: null,
+        pinnedAt: null,
       },
       ...tasks,
     ];
@@ -52,6 +53,7 @@ export class TaskService {
             status: "done",
             updatedAt: now,
             completedAt: now,
+            pinnedAt: null,
           }
         : task
     );
@@ -74,9 +76,39 @@ export class TaskService {
     return tasks.filter((task) => task.id !== taskId);
   }
 
+  static pinTask(tasks: QuickTask[], taskId: string, now: string): QuickTask[] {
+    return tasks.map((task) =>
+      task.id === taskId && task.status === "active"
+        ? {
+            ...task,
+            pinnedAt: now,
+          }
+        : task
+    );
+  }
+
+  static unpinTask(tasks: QuickTask[], taskId: string): QuickTask[] {
+    return tasks.map((task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            pinnedAt: null,
+          }
+        : task
+    );
+  }
+
   static getActiveTasks(tasks: QuickTask[], query: string): QuickTask[] {
     return TaskService.sortByUpdatedAtDesc(
       TaskService.filterTasks(tasks, query).filter((task) => task.status === "active")
+    );
+  }
+
+  static getPinnedActiveTasks(tasks: QuickTask[], query: string): QuickTask[] {
+    return TaskService.sortByPinnedAtDesc(
+      TaskService.filterTasks(tasks, query).filter(
+        (task) => task.status === "active" && Boolean(task.pinnedAt)
+      )
     );
   }
 
@@ -98,6 +130,12 @@ export class TaskService {
 
   private static sortByUpdatedAtDesc(tasks: QuickTask[]): QuickTask[] {
     return [...tasks].sort((left, right) => TaskService.compareDesc(left.updatedAt, right.updatedAt));
+  }
+
+  private static sortByPinnedAtDesc(tasks: QuickTask[]): QuickTask[] {
+    return [...tasks].sort((left, right) =>
+      TaskService.compareDesc(left.pinnedAt ?? "", right.pinnedAt ?? "")
+    );
   }
 
   private static compareDesc(left: string, right: string): number {

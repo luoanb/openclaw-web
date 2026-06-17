@@ -16,6 +16,7 @@ export class NoteService {
         content: normalizedContent,
         createdAt: now,
         updatedAt: now,
+        pinnedAt: null,
       },
       ...notes,
     ];
@@ -48,6 +49,28 @@ export class NoteService {
     return notes.filter((note) => note.id !== noteId);
   }
 
+  static pinNote(notes: QuickNote[], noteId: string, now: string): QuickNote[] {
+    return notes.map((note) =>
+      note.id === noteId
+        ? {
+            ...note,
+            pinnedAt: now,
+          }
+        : note
+    );
+  }
+
+  static unpinNote(notes: QuickNote[], noteId: string): QuickNote[] {
+    return notes.map((note) =>
+      note.id === noteId
+        ? {
+            ...note,
+            pinnedAt: null,
+          }
+        : note
+    );
+  }
+
   static getNotes(notes: QuickNote[], query: string): QuickNote[] {
     const normalizedQuery = query.trim().toLowerCase();
     const sortedNotes = [...notes].sort((left, right) =>
@@ -69,6 +92,12 @@ export class NoteService {
         content.includes(normalizedQuery)
       );
     });
+  }
+
+  static getPinnedNotes(notes: QuickNote[], query: string): QuickNote[] {
+    return NoteService.filterNotes(notes, query)
+      .filter((note) => Boolean(note.pinnedAt))
+      .sort((left, right) => NoteService.compareDesc(left.pinnedAt ?? "", right.pinnedAt ?? ""));
   }
 
   static getNoteTitle(note: QuickNote): string {
@@ -102,6 +131,30 @@ export class NoteService {
 
   private static normalizeContent(content: string): string {
     return content.trim();
+  }
+
+  private static filterNotes(notes: QuickNote[], query: string): QuickNote[] {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return notes;
+    }
+
+    return notes.filter((note) => {
+      const title = NoteService.getNoteTitle(note).toLowerCase();
+      const summary = NoteService.getNoteSummary(note).toLowerCase();
+      const content = note.content.toLowerCase();
+
+      return (
+        title.includes(normalizedQuery) ||
+        summary.includes(normalizedQuery) ||
+        content.includes(normalizedQuery)
+      );
+    });
+  }
+
+  private static compareDesc(left: string, right: string): number {
+    return right.localeCompare(left);
   }
 
   private static createId(): string {

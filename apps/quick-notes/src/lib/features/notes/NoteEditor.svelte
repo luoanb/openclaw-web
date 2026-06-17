@@ -26,7 +26,6 @@
     viewKey = 0,
     onCreateNote,
     onUpdateNote,
-    onDeleteNote,
   }: {
     note: QuickNote | null;
     title: string;
@@ -34,7 +33,6 @@
     viewKey: number;
     onCreateNote: (content: string) => void;
     onUpdateNote: (noteId: string, content: string) => void;
-    onDeleteNote: (noteId: string) => void;
   } = $props();
 
   let draft = $state("");
@@ -233,15 +231,6 @@
         >
           {t("common.save")}
         </button>
-        {#if note}
-          <button
-            class="h-8 rounded-md border px-3 text-xs text-muted-foreground hover:text-destructive"
-            type="button"
-            onclick={() => onDeleteNote(note.id)}
-          >
-            {t("common.delete")}
-          </button>
-        {/if}
       </div>
     </div>
 

@@ -7,6 +7,7 @@ export interface QuickTask {
   createdAt: string;
   updatedAt: string;
   completedAt?: string | null;
+  pinnedAt?: string | null;
 }
 
 export interface QuickNote {
@@ -14,6 +15,7 @@ export interface QuickNote {
   content: string;
   createdAt: string;
   updatedAt: string;
+  pinnedAt?: string | null;
 }
 
 export interface QuickNotesStore {

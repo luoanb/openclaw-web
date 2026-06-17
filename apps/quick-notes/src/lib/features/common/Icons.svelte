@@ -1,5 +1,18 @@
 <script lang="ts">
-  type IconName = "search" | "plus" | "more-horizontal" | "settings" | "code" | "check" | "edit" | "trash" | "close" | "chevron-down" | "chevron-up";
+  type IconName =
+    | "search"
+    | "plus"
+    | "more-horizontal"
+    | "settings"
+    | "code"
+    | "check"
+    | "edit"
+    | "trash"
+    | "pin"
+    | "pin-off"
+    | "close"
+    | "chevron-down"
+    | "chevron-up";
 
   let {
     name,
@@ -135,6 +148,40 @@
     <path d="M3 6h18" />
     <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  </svg>
+{:else if name === "pin"}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class={className}
+  >
+    <path d="M12 17v5" />
+    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.8l-1.78-.89A2 2 0 0 1 15 10.76V4h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z" />
+  </svg>
+{:else if name === "pin-off"}
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    class={className}
+  >
+    <path d="M12 17v5" />
+    <path d="M15 10.76V4h1a2 2 0 0 0 0-4H8" />
+    <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.89A2 2 0 0 0 5 15.24V16h11" />
+    <path d="m2 2 20 20" />
   </svg>
 {:else if name === "close"}
   <svg

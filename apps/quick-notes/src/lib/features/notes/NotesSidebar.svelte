@@ -1,23 +1,32 @@
 <script lang="ts">
   import type { QuickNote } from "$lib/core/quick-notes-types";
-  import { formatDateTime } from "$lib/utils";
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
   import Icons from "$lib/features/common/Icons.svelte";
+  import NoteListItem from "./NoteListItem.svelte";
+  import PinnedNotes from "./PinnedNotes.svelte";
 
   const { t } = getLocaleStore();
 
   let {
     notes,
+    pinnedNotes,
     selectedNoteId,
     getNoteTitle,
     onCreateNote,
     onSelectNote,
+    onDeleteNote,
+    onPinNote,
+    onUnpinNote,
   }: {
     notes: QuickNote[];
+    pinnedNotes: QuickNote[];
     selectedNoteId: string | null;
     getNoteTitle: (note: QuickNote) => string;
     onCreateNote: () => void;
     onSelectNote: (noteId: string) => void;
+    onDeleteNote: (noteId: string) => void;
+    onPinNote: (noteId: string) => void;
+    onUnpinNote: (noteId: string) => void;
   } = $props();
 </script>
 
@@ -38,20 +47,30 @@
   </div>
 
   <div class="min-h-0 flex-1 overflow-auto p-2">
+    <div class="mb-3">
+      <PinnedNotes
+        notes={pinnedNotes}
+        {selectedNoteId}
+        getNoteTitle={getNoteTitle}
+        onSelectNote={onSelectNote}
+        onDeleteNote={onDeleteNote}
+        onPinNote={onPinNote}
+        onUnpinNote={onUnpinNote}
+      />
+    </div>
+
     {#if notes.length > 0}
       <div class="flex flex-col gap-1">
         {#each notes as note (note.id)}
-          <button
-            class="rounded-md border px-3 py-2 text-left transition-colors hover:bg-muted"
-            class:border-border={selectedNoteId === note.id}
-            class:border-transparent={selectedNoteId !== note.id}
-            class:bg-muted={selectedNoteId === note.id}
-            type="button"
-            onclick={() => onSelectNote(note.id)}
-          >
-            <span class="block truncate text-sm font-medium">{getNoteTitle(note)}</span>
-            <span class="mt-2 block text-[0.6875rem] text-muted-foreground">{formatDateTime(note.updatedAt)}</span>
-          </button>
+          <NoteListItem
+            {note}
+            selected={selectedNoteId === note.id}
+            getNoteTitle={getNoteTitle}
+            onSelectNote={onSelectNote}
+            onDeleteNote={onDeleteNote}
+            onPinNote={onPinNote}
+            onUnpinNote={onUnpinNote}
+          />
         {/each}
       </div>
     {:else}

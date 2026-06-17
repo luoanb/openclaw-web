@@ -31,11 +31,17 @@
   const activeTasks = $derived(
     TaskService.getActiveTasks(store.tasks, activeTab === "tasks" ? searchQuery : "")
   );
+  const pinnedActiveTasks = $derived(
+    TaskService.getPinnedActiveTasks(store.tasks, activeTab === "tasks" ? searchQuery : "")
+  );
   const doneTasks = $derived(
     TaskService.getDoneTasks(store.tasks, activeTab === "tasks" ? searchQuery : "")
   );
   const visibleNotes = $derived(
     NoteService.getNotes(store.notes, activeTab === "notes" ? searchQuery : "")
+  );
+  const pinnedNotes = $derived(
+    NoteService.getPinnedNotes(store.notes, activeTab === "notes" ? searchQuery : "")
   );
   const hasQuery = $derived(searchQuery.trim().length > 0);
 
@@ -106,6 +112,16 @@
     void persist(QuickNotesStoreService.withTasks(store, tasks));
   }
 
+  function pinTask(taskId: string) {
+    const tasks = TaskService.pinTask(store.tasks, taskId, getNow());
+    void persist(QuickNotesStoreService.withTasks(store, tasks));
+  }
+
+  function unpinTask(taskId: string) {
+    const tasks = TaskService.unpinTask(store.tasks, taskId);
+    void persist(QuickNotesStoreService.withTasks(store, tasks));
+  }
+
   function createNote(content: string) {
     const notes = NoteService.createNote(store.notes, content, getNow());
     selectedNoteId = notes[0]?.id ?? null;
@@ -118,11 +134,20 @@
   }
 
   function deleteNote(noteId: string) {
-    const nextSelectedNoteId = NoteService.pickNextNoteId(store.notes, noteId);
     const notes = NoteService.deleteNote(store.notes, noteId);
-    selectedNoteId = notes.some((note) => note.id === nextSelectedNoteId)
-      ? nextSelectedNoteId
-      : (notes[0]?.id ?? null);
+    if (selectedNoteId === noteId) {
+      selectedNoteId = null;
+    }
+    void persist(QuickNotesStoreService.withNotes(store, notes));
+  }
+
+  function pinNote(noteId: string) {
+    const notes = NoteService.pinNote(store.notes, noteId, getNow());
+    void persist(QuickNotesStoreService.withNotes(store, notes));
+  }
+
+  function unpinNote(noteId: string) {
+    const notes = NoteService.unpinNote(store.notes, noteId);
     void persist(QuickNotesStoreService.withNotes(store, notes));
   }
 
@@ -220,6 +245,7 @@
       {#if activeTab === "tasks"}
         <TasksTab
           {activeTasks}
+          {pinnedActiveTasks}
           {doneTasks}
           {hasQuery}
           onCreateTask={createTask}
@@ -227,10 +253,13 @@
           onRestoreTask={restoreTask}
           onUpdateTask={updateTask}
           onDeleteTask={deleteTask}
+          onPinTask={pinTask}
+          onUnpinTask={unpinTask}
         />
       {:else}
         <NotesTab
           notes={visibleNotes}
+          {pinnedNotes}
           {selectedNoteId}
           {hasQuery}
           getNoteTitle={NoteService.getNoteTitle}
@@ -238,6 +267,8 @@
           onSelectNote={(noteId) => (selectedNoteId = noteId)}
           onUpdateNote={updateNote}
           onDeleteNote={deleteNote}
+          onPinNote={pinNote}
+          onUnpinNote={unpinNote}
         />
       {/if}
     </div>

@@ -14,6 +14,8 @@
     onRestoreTask,
     onUpdateTask,
     onDeleteTask,
+    onPinTask,
+    onUnpinTask,
   }: {
     task: QuickTask;
     done?: boolean;
@@ -22,11 +24,14 @@
     onRestoreTask: (taskId: string) => void;
     onUpdateTask: (taskId: string, content: string) => void;
     onDeleteTask: (taskId: string) => void;
+    onPinTask?: (taskId: string) => void;
+    onUnpinTask?: (taskId: string) => void;
   } = $props();
 
   let editing = $state(false);
   let draft = $state("");
   let currentTaskId = $state<string | null>(null);
+  const showPosition = $derived(!done && position !== undefined);
 
   $effect(() => {
     if (task.id !== currentTaskId) {
@@ -54,9 +59,11 @@
 </script>
 
 <div
-  class="grid items-center gap-3 border-b px-4 py-3 last:border-b-0 {done
+  class="group grid items-center gap-3 border-b px-4 py-3 last:border-b-0 focus-within:bg-muted/40 hover:bg-muted/40 {done
     ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
-    : 'grid-cols-[auto_auto_minmax(0,1fr)_auto]'}"
+    : showPosition
+      ? 'grid-cols-[auto_auto_minmax(0,1fr)_auto]'
+      : 'grid-cols-[auto_minmax(0,1fr)_auto]'}"
 >
   <input
     class="size-4 rounded border-input accent-primary"
@@ -66,7 +73,7 @@
     onchange={() => (done ? onRestoreTask(task.id) : onCompleteTask(task.id))}
   />
 
-  {#if !done}
+  {#if showPosition}
     <span class="w-6 text-right text-xs tabular-nums text-muted-foreground">
       {position}
     </span>
@@ -110,8 +117,16 @@
   </div>
 
   {#if !editing}
-    <div class="flex items-center gap-3 text-xs">
+    <div class="flex items-center gap-3 text-xs opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
       {#if !done}
+        <button
+          class="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+          type="button"
+          onclick={() => (task.pinnedAt ? onUnpinTask?.(task.id) : onPinTask?.(task.id))}
+        >
+          <Icons name={task.pinnedAt ? "pin-off" : "pin"} class="size-3.5" />
+          {task.pinnedAt ? t("common.unpin") : t("common.pin")}
+        </button>
         <button
           class="flex items-center gap-1 font-medium text-foreground hover:underline"
           type="button"

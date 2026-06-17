@@ -10,8 +10,12 @@ export class QuickNotesStoreService {
 
   static normalizeStore(store: Partial<QuickNotesStore> | null | undefined): QuickNotesStore {
     return {
-      tasks: Array.isArray(store?.tasks) ? store.tasks : [],
-      notes: Array.isArray(store?.notes) ? store.notes : [],
+      tasks: Array.isArray(store?.tasks)
+        ? store.tasks.map((task) => QuickNotesStoreService.normalizeTask(task))
+        : [],
+      notes: Array.isArray(store?.notes)
+        ? store.notes.map((note) => QuickNotesStoreService.normalizeNote(note))
+        : [],
     };
   }
 
@@ -31,8 +35,23 @@ export class QuickNotesStoreService {
 
   static prepareForSave(store: QuickNotesStore): QuickNotesStore {
     return {
-      tasks: [...store.tasks],
-      notes: [...store.notes],
+      tasks: store.tasks.map((task) => QuickNotesStoreService.normalizeTask(task)),
+      notes: store.notes.map((note) => QuickNotesStoreService.normalizeNote(note)),
+    };
+  }
+
+  private static normalizeTask(task: QuickTask): QuickTask {
+    return {
+      ...task,
+      completedAt: task.completedAt ?? null,
+      pinnedAt: task.pinnedAt ?? null,
+    };
+  }
+
+  private static normalizeNote(note: QuickNote): QuickNote {
+    return {
+      ...note,
+      pinnedAt: note.pinnedAt ?? null,
     };
   }
 }

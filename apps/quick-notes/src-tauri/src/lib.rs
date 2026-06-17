@@ -15,6 +15,7 @@ struct QuickTask {
     created_at: String,
     updated_at: String,
     completed_at: Option<String>,
+    pinned_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -31,6 +32,7 @@ struct QuickNote {
     content: String,
     created_at: String,
     updated_at: String,
+    pinned_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

@@ -9,6 +9,8 @@
     onRestoreTask,
     onUpdateTask,
     onDeleteTask,
+    onPinTask,
+    onUnpinTask,
   }: {
     tasks: QuickTask[];
     emptyText: string;
@@ -16,6 +18,8 @@
     onRestoreTask: (taskId: string) => void;
     onUpdateTask: (taskId: string, content: string) => void;
     onDeleteTask: (taskId: string) => void;
+    onPinTask: (taskId: string) => void;
+    onUnpinTask: (taskId: string) => void;
   } = $props();
 </script>
 
@@ -29,6 +33,8 @@
         onRestoreTask={onRestoreTask}
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
+        onPinTask={onPinTask}
+        onUnpinTask={onUnpinTask}
       />
     {/each}
   </div>
