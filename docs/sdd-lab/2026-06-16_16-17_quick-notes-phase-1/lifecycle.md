@@ -4,15 +4,15 @@
 status: reviewing
 result: pending
 created_at: 2026-06-16 16:17
-updated_at: 2026-06-16 17:31
+updated_at: 2026-06-17 17:59
 owner: user
 ```
 
 ## Current Summary / 当前摘要
 
-- 当前状态：`reviewing`，第一阶段实现、Crepe 编辑器增量、任务行完成交互增强均已完成，等待对照需求和技术方案 review。
-- 当前核心目标：在保持本地 JSON 数据结构和上层保存流程不变的前提下，完成进行中任务序号展示和右侧完成按钮。
-- 当前下一步：桌面手动验证任务新增、序号展示、右侧完成按钮、checkbox 完成/恢复、速记 Crepe 编辑体验。
+- 当前状态：`reviewing`，第一阶段实现、Crepe 编辑器增量、任务行完成交互增强、速记自动保存新增/修改判定修复均已完成，等待对照需求和技术方案 review。
+- 当前核心目标：在保持本地 JSON 数据结构和编辑器不重建策略不变的前提下，修复新建速记保存后仍可能反复新增的问题。
+- 当前下一步：桌面手动验证任务新增、序号展示、右侧完成按钮、checkbox 完成/恢复、速记 Crepe 新增后继续编辑不重复新增。
 - 当前卡点：Tauri build 未启动 Rust 阶段，当前终端环境找不到 `cargo`。
 - 下一步唯一动作：在具备 Rust/Cargo 的环境中补跑 `pnpm --filter quick-notes tauri:build`，并进行桌面手动验证；或确认当前 Svelte/Vite 验证证据足够进入人工 review。
 - 下一轮核心目标：完成桌面人工 review；必要时优化 Crepe bundle 体积或继续调整任务行交互细节。
@@ -83,12 +83,17 @@ owner: user
   - 涉及文件：`docs/sdd-lab/2026-06-16_16-17_quick-notes-phase-1/task-row-completion-actions.md`、`docs/sdd-lab/2026-06-16_16-17_quick-notes-phase-1/requirements.md`、`docs/sdd-lab/2026-06-16_16-17_quick-notes-phase-1/technical-plan.md`、`apps/quick-notes/src/lib/features/tasks/TaskList.svelte`、`apps/quick-notes/src/lib/features/tasks/TaskRow.svelte`
   - 状态变化：无，保持 `reviewing`（原因：增量实现完成并已运行 Svelte/Vite 验证；依据：`pnpm --filter quick-notes check` 与 `pnpm --filter quick-notes build` 通过；下一步：桌面手动验证任务行交互）
   - 偏差：无；未改任务数据结构、任务服务或 Tauri 保存链路。
+- 2026-06-17 17:59:
+  - 动作：按 `note-autosave-create-update-fix.md` 修复速记自动保存新增/修改判定；创建成功后当前编辑器实例的保存目标从 `create` 切换为 `update(note.id)`。
+  - 涉及文件：`docs/sdd-lab/2026-06-16_16-17_quick-notes-phase-1/note-autosave-create-update-fix.md`、`apps/quick-notes/src/lib/features/notes/NoteEditor.svelte`
+  - 状态变化：无，保持 `reviewing`（原因：缺陷修复完成并已运行 Svelte/Vite 验证；依据：`pnpm --filter quick-notes check` 与 `pnpm --filter quick-notes build` 通过；下一步：桌面手动验证新建速记后继续编辑不重复新增）
+  - 偏差：不引入内容去重，不改变 `QuickNote` 数据结构、本地 JSON 保存策略或 Tauri 后端命令。
 
 ## Validation / 验证
 
 - Self-check: 已检查实现分层；`core` 包含类型、整体 store、任务服务、速记服务和 repository；`features` 包含任务和速记视图组件；`App.svelte` 负责应用壳、Tab、搜索、加载和保存错误。
-- Static checks: `pnpm --filter quick-notes check` 通过，`svelte-check` 0 errors / 0 warnings；Review 阶段修复 `NoteService` 静态方法回调绑定后复跑仍通过；Crepe 增量接入后复跑仍通过；任务行完成交互增强后复跑仍通过；IDE diagnostics 无报错。
-- Runtime / Test: `pnpm --filter quick-notes build` 通过；Review 阶段修复后复跑仍通过；Crepe 增量接入后复跑仍通过；任务行完成交互增强后复跑仍通过；构建提示既有 chunk size warning；`pnpm --filter quick-notes tauri:build` 未启动 Rust 阶段，报错 `program not found` for `cargo metadata`。
+- Static checks: `pnpm --filter quick-notes check` 通过，最新结果为 `svelte-check` 0 errors / 1 warning；Review 阶段修复 `NoteService` 静态方法回调绑定后复跑仍通过；Crepe 增量接入后复跑仍通过；任务行完成交互增强后复跑仍通过；速记自动保存新增/修改判定修复后复跑仍通过。
+- Runtime / Test: `pnpm --filter quick-notes build` 通过；Review 阶段修复后复跑仍通过；Crepe 增量接入后复跑仍通过；任务行完成交互增强后复跑仍通过；速记自动保存新增/修改判定修复后复跑仍通过；构建提示既有 chunk size warning；`pnpm --filter quick-notes tauri:build` 未启动 Rust 阶段，报错 `program not found` for `cargo metadata`。
 - Human confirmation: 用户已选择方案 B，并明确要求开始落地；技术方案与执行批准均已确认。
 - 结果汇总：Svelte/TypeScript 层验证通过，Vite production build 通过；已修复速记列表运行时标题派生回调绑定问题；速记编辑区已接入 Crepe；Tauri 原生构建需在 Cargo 可用环境补跑。
 - 剩余风险：Rust/Tauri 后端命令尚未完成编译验证；任务行右侧完成按钮、序号展示、Crepe 编辑器新增/切换/保存、保存失败重试和本地 JSON 读写需通过桌面运行手动验证；完整 Crepe 当前存在 bundle 体积警告。

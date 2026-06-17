@@ -37,7 +37,7 @@
   - [x] NSIS 安装包生成成功。
   - [x] 新安装包使用重新生成后的应用图标资源。
   - [x] release 二进制已配置 Windows GUI subsystem，启动时不应再出现空白终端窗口。
-  - [ ] NSIS 安装器 exe 文件图标通过 `installerIcon` 显式使用 `icons/icon.ico`。
+  - [x] NSIS 安装器 exe 文件图标通过 `installerIcon` 显式使用 `icons/icon.ico`。
 
 ## Result / 结果
 
@@ -47,5 +47,5 @@
 C:\Users\LUOANB~1\AppData\Local\Temp\cursor-sandbox-cache\b005e4c97a8ffbffb8edcc230684afad\cargo-target\release\bundle\nsis\速记_0.0.0_x64-setup.exe
 ```
 
-- 说明：`pnpm --filter quick-notes tauri build --bundles nsis` 已完成；前端 `svelte-check` 0 errors / 0 warnings；Rust release 编译完成；NSIS 安装包生成成功。
+- 说明：`pnpm --filter quick-notes tauri build --bundles nsis` 已完成；前端 `svelte-check` 0 errors / 0 warnings；Rust release 编译完成；NSIS 安装包生成成功；2026-06-16 18:36 重新构建时已显式应用 `bundle.windows.nsis.installerIcon = "icons/icon.ico"`。
 - 剩余注意：Vite 仍提示 Crepe 相关 bundle size warning，不影响本轮图标与控制台窗口修复。

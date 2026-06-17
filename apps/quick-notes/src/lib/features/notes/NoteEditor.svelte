@@ -4,13 +4,20 @@
   import "@milkdown/crepe/theme/common/style.css";
   import "@milkdown/crepe/theme/frame.css";
   import { DiffAutoSaver } from "$lib/core/autosave/diff-auto-saver";
-import { formatDateTime } from "$lib/utils";
-import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
-
-const { t } = getLocaleStore();
+  import { formatDateTime } from "$lib/utils";
+  import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
   import type { QuickNote } from "$lib/core/quick-notes-types";
 
+  const { t } = getLocaleStore();
+
   const AUTOSAVE_INTERVAL_MS = 3000;
+
+  type SaveTarget =
+    | { mode: "create" }
+    | {
+        mode: "update";
+        noteId: string;
+      };
 
   let {
     note,
@@ -34,6 +41,7 @@ const { t } = getLocaleStore();
   let editorRoot = $state<HTMLDivElement | null>(null);
   let crepeEditor: Crepe | null = null;
   let autoSaver: DiffAutoSaver<string> | null = null;
+  let saveTarget: SaveTarget = { mode: "create" };
 
   // ── Editor lifecycle: only responds to viewKey ────────────────────────
   // viewKey is incremented ONLY on explicit user actions (select note, new).
@@ -68,7 +76,7 @@ const { t } = getLocaleStore();
 
       // Create editor
       const initialContent = isCreating ? "" : (currentNote?.content ?? "");
-      const activeNoteId = currentNote?.id ?? null;
+      saveTarget = getInitialSaveTarget(isCreating, currentNote);
       let disposed = false;
       draft = initialContent;
 
@@ -93,7 +101,7 @@ const { t } = getLocaleStore();
         intervalMs: AUTOSAVE_INTERVAL_MS,
         readSnapshot: getEditorContent,
         submitSnapshot: (content) => {
-          submitNoteContent(content, isCreating, activeNoteId);
+          submitNoteContent(content);
         },
         normalizeSnapshot: (content) => content.trim(),
         canSubmit: (content) => content.length > 0,
@@ -149,6 +157,7 @@ const { t } = getLocaleStore();
 
     untrack(() => {
       if (!isCreating && currentNote && crepeEditor && autoSaver) {
+        saveTarget = { mode: "update", noteId: currentNote.id };
         autoSaver.markCommitted(currentNote.content ?? "");
       }
     });
@@ -162,27 +171,31 @@ const { t } = getLocaleStore();
     }
   }
 
-  function submitNoteContent(content: string, isCreatingNote: boolean, noteId: string | null) {
+  function getInitialSaveTarget(isCreatingNote: boolean, currentNote: QuickNote | null): SaveTarget {
+    return !isCreatingNote && currentNote
+      ? { mode: "update", noteId: currentNote.id }
+      : { mode: "create" };
+  }
+
+  function submitNoteContent(content: string) {
     const nextContent = content.trim();
 
     if (!nextContent) {
       return;
     }
 
-    if (isCreatingNote) {
+    if (saveTarget.mode === "create") {
       onCreateNote(nextContent);
       draft = "";
       return;
     }
 
-    if (noteId) {
-      onUpdateNote(noteId, nextContent);
-    }
+    onUpdateNote(saveTarget.noteId, nextContent);
   }
 
   function saveNote() {
     const nextContent = getEditorContent().trim();
-    submitNoteContent(nextContent, creating, note?.id ?? null);
+    submitNoteContent(nextContent);
     autoSaver?.markCommitted(nextContent);
   }
 
