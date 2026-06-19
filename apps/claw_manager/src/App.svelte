@@ -2,9 +2,12 @@
   import { Icon } from "$lib/components/icon";
   import { cn } from "$lib/utils";
 
+  const baseHost = window.location.hostname.includes("nip.io") ? window.location.hostname : "admin.192.168.1.2.nip.io";
+
   const iframeServices = [
-    { label: "管理后台", icon: "dashboard" as const, page: "admin", url: "/proxy/admin/" },
-    { label: "Code", icon: "code" as const, page: "code-server", url: "https://192.168.1.2:8080/" },
+    { label: "管理后台", icon: "dashboard" as const, page: "admin", url: `https://admin.192.168.1.2.nip.io:${window.location.port}/proxy/admin/` },
+    { label: "Dev", icon: "terminal" as const, page: "dev-admin", url: `https://dev.192.168.1.2.nip.io:${window.location.port}/proxy/dev-admin/` },
+    { label: "Code", icon: "code" as const, page: "code-server", url: "https://code.192.168.1.2.nip.io:8080/" },
   ];
 
   const navItems = iframeServices.map((s) => ({ label: s.label, icon: s.icon, page: s.page }));
