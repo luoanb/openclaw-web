@@ -50,13 +50,13 @@ const proxyOptions = [
   },
   {
     path: "/proxy/code",
-    target: "http://192.168.1.2:8080",
+    target: "http://127.0.0.1:8080",
     changeOrigin: true,
     pathRewrite: { "^/proxy/code": "" },
   },
   {
     path: "/proxy/dev-admin",
-    target: "https://192.168.1.2:19001",
+    target: "https://127.0.0.1:19001",
     changeOrigin: true,
     secure: false,
     pathRewrite: { "^/proxy/dev-admin": "" },
@@ -80,7 +80,8 @@ const proxyOptions = [
 // WebSocket 转发目标配置
 const wsTargets: { path: string; target: string }[] = [
   { path: "/proxy/admin", target: "wss://192.168.1.2:18789" },
-  { path: "/proxy/dev-admin", target: "wss://192.168.1.2:19001" },
+  { path: "/proxy/dev-admin", target: "wss://127.0.0.1:19001" },
+  { path: "/proxy/code", target: "ws://127.0.0.1:8080" },
 ];
 
 for (const opts of proxyOptions) {
