@@ -1,6 +1,6 @@
 ---
 name: sdd-lab
-description: 管理 docs/sdd-lab 下的 SDD 需求迭代，把需求文档、技术方案、执行和 review 分阶段落盘。Use when the user mentions sdd-lab, SDD Lab, 需求迭代, 需求文档, 技术方案, docs/sdd-lab, or asks to continue/list/create/review an SDD iteration.
+description: 管理 docs/sdd-lab 下的 SDD 需求迭代，把需求文档、技术方案和执行记录分阶段落盘。Use when the user mentions sdd-lab, SDD Lab, 需求迭代, 需求文档, 技术方案, docs/sdd-lab, or asks to continue/list/create/inspect an SDD iteration.
 ---
 
 # SDD Lab
@@ -9,7 +9,7 @@ description: 管理 docs/sdd-lab 下的 SDD 需求迭代，把需求文档、技
 
 - `sdd-lab` 是面向需求迭代的 SDD 工作流，不是单文件 micro-spec。
 - 核心目标是拆分并固化三类核心文档：`requirements.md` 记录“要做什么和为什么”，`visual-design.md` 记录“Figma 设计稿是什么样”，`technical-plan.md` 记录“基于当前项目怎么做”。
-- `lifecycle.md` 只负责状态、批准、执行记录、验证证据、review 结论和恢复锚点。
+- `lifecycle.md` 只负责状态、当前摘要、执行记录和恢复锚点。
 - 默认中文、短输出、先对齐再推进；不要把聊天内容直接堆进文档。
 
 ## 硬约束
@@ -21,7 +21,7 @@ description: 管理 docs/sdd-lab 下的 SDD 需求迭代，把需求文档、技
 - `Requirement Before Plan`：先完成需求对齐，再生成技术方案。
 - `Visual Before Plan`：若需求涉及 Figma、视觉稿、页面还原、Icon 导出或设计稿文档化，先生成或更新 `visual-design.md`，再生成技术方案。
 - `Plan Before Execute`：先基于项目现状生成技术方案，再请求执行批准。
-- `Reverse Sync`：执行、验证、review 后必须回写 `lifecycle.md`；若需求或方案变化，先回写对应文档。
+- `Reverse Sync`：执行后必须回写 `lifecycle.md`；若需求或方案变化，先回写对应文档。
 - `Resume Ready`：暂停或收尾前留下下一步唯一动作，方便继续。
 
 ## 文档根目录
@@ -47,7 +47,7 @@ description: 管理 docs/sdd-lab 下的 SDD 需求迭代，把需求文档、技
 
 1. 读取 `docs/sdd-lab/` 下已有迭代。
 2. 按 `进行中优先 + 时间倒序` 列出当前需求列表。
-3. `进行中` 和 `已完结` 都是虚拟分组：`draft`、`planned`、`executing` 属于进行中；`reviewing`、`done` 属于已完结。
+3. `进行中` 和 `已完结` 都是虚拟分组：`draft`、`planned`、`executing` 属于进行中；`done` 属于已完结。
 4. 输出每个迭代的名称、状态、最近更新时间、下一步动作。
 5. 不擅自创建新迭代，不进入代码实现。
 
@@ -60,12 +60,11 @@ description: 管理 docs/sdd-lab 下的 SDD 需求迭代，把需求文档、技
 
 ## 状态模型
 
-状态只保留 5 个：
+状态只保留 4 个：
 
 - `draft`：需求对齐中，主要维护 `requirements.md`。
 - `planned`：需求已确认，视觉设计文档按需补齐，技术方案生成或已确认，主要维护 `visual-design.md`（如涉及视觉稿）和 `technical-plan.md`。
-- `executing`：用户已批准执行，进入代码或配置修改。
-- `reviewing`：实现完成后，对照需求文档和技术方案检查；列表展示时算已完结。
+- `executing`：用户明确确认后，进入代码或配置修改。
 - `done`：已完结。完成、取消、拒绝等差异写入 `result`，不扩展为多个终态。
 
 状态流转：
@@ -74,9 +73,7 @@ description: 管理 docs/sdd-lab 下的 SDD 需求迭代，把需求文档、技
 flowchart LR
   draft["draft: 需求对齐"] --> planned["planned: 技术方案"]
   planned --> executing["executing: 执行"]
-  executing --> reviewing["reviewing: Review"]
-  reviewing --> done["done: 完结"]
-  reviewing --> planned
+  executing --> done["done: 完结"]
   executing --> planned
   planned --> draft
 ```
@@ -85,7 +82,6 @@ flowchart LR
 
 - `planned -> draft`：技术方案阶段发现需求不清或需求变更。
 - `executing -> planned`：执行中发现技术方案不可行。
-- `reviewing -> planned`：review 发现方案偏差、实现风险或验证不足。
 
 ## 生命周期工作流
 
@@ -112,24 +108,16 @@ flowchart LR
 
 - 目标：基于项目现状和已确认需求生成技术方案。
 - 若需求涉及 Figma 或视觉稿，必须先读取并维护 `visual-design.md`，再基于需求、视觉设计文档、相关代码、接口和约束创建或更新 `technical-plan.md`。
-- 记录涉及模块、数据流、接口变化、执行步骤、风险、验证方式。
-- `Open Questions` 由 Agent 负责发现、归纳、补充事实和提出候选处理方式，但问题回答与关闭必须由用户确认。
+- 记录涉及模块、数据流、接口变化、执行步骤和风险。
+- `Open Questions` 只记录 Agent 在读取需求、设计文档和项目现状后仍无法确定、必须向用户提问确认的内容；不要记录已经明确的问题、事实或结论。
 - 方案决策由用户负责；Agent 只能提出方案对比、推荐方案和依据，不能替用户拍板。
-- 技术方案确认后，给执行 checkpoint，等待用户批准。
+- 技术方案确认后，给执行 checkpoint，等待用户明确确认继续。
 
 ### 4. 执行阶段
 
-- 前置条件：`requirements.md` 已确认，`technical-plan.md` 已形成，`lifecycle.md` 中批准状态明确。
+- 前置条件：`requirements.md` 已确认，`technical-plan.md` 已形成，用户已明确确认继续。
 - 执行中若发现需求或方案错误，暂停实现，先回写文档并回退状态。
-- 执行后记录变更摘要和验证证据。
-
-### 5. Review 阶段
-
-- 按 `requirements.md` 检查是否满足需求。
-- 若存在 `visual-design.md`，按视觉设计文档检查页面还原、视觉约束和 Icon SVG 组件导出要求。
-- 按 `technical-plan.md` 检查实现是否偏离方案。
-- 结论回写 `lifecycle.md`。
-- 发现 Bug 或偏差时，遵循 `Reverse Sync`：先修文档，再修代码。
+- 执行后记录变更摘要、状态变化和下一步。
 
 ## 输出风格
 

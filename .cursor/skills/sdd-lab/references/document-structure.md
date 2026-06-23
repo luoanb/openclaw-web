@@ -57,10 +57,10 @@ docs/sdd-lab/YYYY-MM-DD_hh-mm_<iteration-name>/
 
 ## 文件职责
 
-- `lifecycle.md`：记录状态、批准、状态流转、执行记录、验证、review、恢复锚点。
+- `lifecycle.md`：记录状态、当前摘要、执行记录和恢复锚点。
 - `requirements.md`：记录需求目标、背景、范围、非目标、验收标准、开放问题。
 - `visual-design.md`：记录 Figma 或视觉设计稿来源、页面设计事实、Icon 导出与 SVG 组件化要求；仅在需求涉及视觉设计稿时创建。
-- `technical-plan.md`：记录基于项目现状的技术方案、涉及模块、接口、步骤、风险和验证方式；只在技术方案生成阶段创建。
+- `technical-plan.md`：记录基于项目现状的技术方案、涉及模块、接口、步骤和风险；只在技术方案生成阶段创建。
 
 不要把技术方案写进 `requirements.md` 或 `visual-design.md`；不要把需求讨论堆进 `technical-plan.md`；不要把聊天流水账写进 `lifecycle.md`。
 
@@ -83,7 +83,7 @@ docs/sdd-lab/YYYY-MM-DD_hh-mm_<iteration-name>/
 `lifecycle.md` 中必须维护：
 
 ```yaml
-status: draft | planned | executing | reviewing | done
+status: draft | planned | executing | done
 result: pending | completed | cancelled | rejected
 updated_at: YYYY-MM-DD hh:mm
 ```
@@ -95,7 +95,7 @@ updated_at: YYYY-MM-DD hh:mm
 `进行中` 和 `已完结` 是展示时的虚拟分组，不写入文件：
 
 - 进行中：`draft`、`planned`、`executing`
-- 已完结：`reviewing`、`done`
+- 已完结：`done`
 
 默认列表排序：
 
@@ -109,21 +109,20 @@ updated_at: YYYY-MM-DD hh:mm
 主路径：
 
 ```text
-draft -> planned -> executing -> reviewing -> done
+draft -> planned -> executing -> done
 ```
 
 回退路径：
 
 - `planned -> draft`：技术方案阶段发现需求不清、范围变化或验收标准不成立。
 - `executing -> planned`：执行阶段发现技术方案不可行或风险显著变化。
-- `reviewing -> planned`：review 发现方案偏差、实现风险或验证证据不足。
 
 状态变化必须同步写入 `lifecycle.md` 的 `Transition Log`，至少记录：
 
 - 变更前状态
 - 变更后状态
 - 变更原因
-- 依据或证据
+- 依据
 - 下一步动作
 
 ## 默认列表示例
@@ -132,11 +131,10 @@ draft -> planned -> executing -> reviewing -> done
 
 ```text
 进行中
-- 2026-05-20_11-30_canvas-revision-sync | planned | 下一步：确认技术方案后请求执行批准
+- 2026-05-20_11-30_canvas-revision-sync | planned | 下一步：确认技术方案后等待用户继续指令
 - 2026-05-18_16-10_auth-error-copy | draft | 下一步：补齐验收标准
 
 已完结
-- 2026-05-19_14-20_bulk-import | reviewing | 下一步：完成 review 结论并回写 lifecycle
 - 2026-05-10_09-00_runtime-compat | done/completed
 ```
 

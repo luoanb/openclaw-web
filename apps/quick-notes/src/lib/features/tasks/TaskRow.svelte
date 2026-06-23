@@ -9,8 +9,10 @@
   let {
     task,
     done = false,
+    deprecated = false,
     position,
     onCompleteTask,
+    onDeprecateTask,
     onRestoreTask,
     onUpdateTask,
     onDeleteTask,
@@ -19,8 +21,10 @@
   }: {
     task: QuickTask;
     done?: boolean;
+    deprecated?: boolean;
     position?: number;
     onCompleteTask: (taskId: string) => void;
+    onDeprecateTask?: (taskId: string) => void;
     onRestoreTask: (taskId: string) => void;
     onUpdateTask: (taskId: string, content: string) => void;
     onDeleteTask: (taskId: string) => void;
@@ -31,7 +35,8 @@
   let editing = $state(false);
   let draft = $state("");
   let currentTaskId = $state<string | null>(null);
-  const showPosition = $derived(!done && position !== undefined);
+  const archived = $derived(done || deprecated);
+  const showPosition = $derived(!archived && position !== undefined);
 
   $effect(() => {
     if (task.id !== currentTaskId) {
@@ -59,7 +64,7 @@
 </script>
 
 <div
-  class="group grid items-center gap-3 border-b px-4 py-3 last:border-b-0 focus-within:bg-muted/40 hover:bg-muted/40 {done
+  class="group grid items-center gap-3 border-b px-4 py-3 last:border-b-0 focus-within:bg-muted/40 hover:bg-muted/40 {archived
     ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
     : showPosition
       ? 'grid-cols-[auto_auto_minmax(0,1fr)_auto]'
@@ -68,9 +73,9 @@
   <input
     class="size-4 rounded border-input accent-primary"
     type="checkbox"
-    checked={done}
-    aria-label={done ? t("tasks.action.restore") : t("tasks.action.complete")}
-    onchange={() => (done ? onRestoreTask(task.id) : onCompleteTask(task.id))}
+    checked={archived}
+    aria-label={archived ? t("tasks.action.restore") : t("tasks.action.complete")}
+    onchange={() => (archived ? onRestoreTask(task.id) : onCompleteTask(task.id))}
   />
 
   {#if showPosition}
@@ -105,20 +110,24 @@
         </button>
       </form>
     {:else}
-      <p class="truncate text-sm {done ? 'text-muted-foreground line-through' : 'text-foreground'}">
+      <p class="truncate text-sm {archived ? 'text-muted-foreground line-through' : 'text-foreground'}">
         {task.content}
       </p>
       <p class="mt-1 text-xs text-muted-foreground">
-        {done
-          ? `${t("time.completedAt")} ${formatDateTime(task.completedAt ?? task.updatedAt)}`
-          : `${t("time.updatedAt")} ${formatDateTime(task.updatedAt)}`}
+        {#if done}
+          {`${t("time.completedAt")} ${formatDateTime(task.completedAt ?? task.updatedAt)}`}
+        {:else if deprecated}
+          {`${t("time.deprecatedAt")} ${formatDateTime(task.updatedAt)}`}
+        {:else}
+          {`${t("time.updatedAt")} ${formatDateTime(task.updatedAt)}`}
+        {/if}
       </p>
     {/if}
   </div>
 
   {#if !editing}
     <div class="flex items-center gap-3 text-xs opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-      {#if !done}
+      {#if !archived}
         <button
           class="flex items-center gap-1 text-muted-foreground hover:text-foreground"
           type="button"
@@ -134,6 +143,14 @@
         >
           <Icons name="check" class="size-3.5" />
           {t("tasks.action.complete")}
+        </button>
+        <button
+          class="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+          type="button"
+          onclick={() => onDeprecateTask?.(task.id)}
+        >
+          <Icons name="archive" class="size-3.5" />
+          {t("tasks.action.deprecate")}
         </button>
       {/if}
       <button class="flex items-center gap-1 text-muted-foreground hover:text-foreground" type="button" onclick={startEditing}>

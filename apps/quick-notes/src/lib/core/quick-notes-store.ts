@@ -1,5 +1,7 @@
 import type { QuickNote, QuickNotesStore, QuickTask } from "./quick-notes-types";
 
+const VALID_TASK_STATUSES = new Set<QuickTask["status"]>(["active", "done", "deprecated"]);
+
 export class QuickNotesStoreService {
   static createEmptyStore(): QuickNotesStore {
     return {
@@ -41,6 +43,10 @@ export class QuickNotesStoreService {
   }
 
   private static normalizeTask(task: QuickTask): QuickTask {
+    if (!VALID_TASK_STATUSES.has(task.status)) {
+      throw new Error(`无效的任务状态：${task.status}`);
+    }
+
     return {
       ...task,
       completedAt: task.completedAt ?? null,

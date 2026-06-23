@@ -6,6 +6,7 @@
     tasks,
     emptyText,
     onCompleteTask,
+    onDeprecateTask,
     onRestoreTask,
     onUpdateTask,
     onDeleteTask,
@@ -15,6 +16,7 @@
     tasks: QuickTask[];
     emptyText: string;
     onCompleteTask: (taskId: string) => void;
+    onDeprecateTask: (taskId: string) => void;
     onRestoreTask: (taskId: string) => void;
     onUpdateTask: (taskId: string, content: string) => void;
     onDeleteTask: (taskId: string) => void;
@@ -30,6 +32,7 @@
         {task}
         position={index + 1}
         onCompleteTask={onCompleteTask}
+        onDeprecateTask={onDeprecateTask}
         onRestoreTask={onRestoreTask}
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}

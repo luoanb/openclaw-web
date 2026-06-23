@@ -10,6 +10,7 @@
   } = $props();
 
   const { t } = getLocaleStore();
+  const isDev = import.meta.env.DEV;
 
   let isOpen = $state(false);
   let menuRef: HTMLDivElement | null = $state(null);
@@ -19,10 +20,8 @@
   async function toggleDevTools() {
     try {
       message = null;
-      // 调用 Tauri 命令
       await invoke("toggle_devtools");
-      // 显示成功提示
-      message = { text: "✓ 按 F12 或 Ctrl+Shift+I 打开开发者工具", type: "success" };
+      message = { text: t("devtools.openHint"), type: "success" };
       if (messageTimeout) clearTimeout(messageTimeout);
       messageTimeout = setTimeout(() => {
         message = null;
@@ -30,7 +29,6 @@
     } catch (err) {
       message = { text: t("error.devtoolsFailed"), type: "error" };
       console.error("Failed to toggle devtools:", err);
-      // Clear message after 3 seconds
       if (messageTimeout) clearTimeout(messageTimeout);
       messageTimeout = setTimeout(() => {
         message = null;
@@ -102,14 +100,16 @@
         <Icons name="settings" class="size-4" />
         {t("common.settings")}
       </button>
-      <button
-        class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
-        type="button"
-        onclick={handleItemClick(toggleDevTools)}
-      >
-        <Icons name="code" class="size-4" />
-        {t("common.devtools")}
-      </button>
+      {#if isDev}
+        <button
+          class="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted"
+          type="button"
+          onclick={handleItemClick(toggleDevTools)}
+        >
+          <Icons name="code" class="size-4" />
+          {t("common.devtools")}
+        </button>
+      {/if}
     </div>
   {/if}
 </div>

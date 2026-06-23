@@ -61,12 +61,26 @@ export class TaskService {
 
   static restoreTask(tasks: QuickTask[], taskId: string, now: string): QuickTask[] {
     return tasks.map((task) =>
-      task.id === taskId
+      task.id === taskId && (task.status === "done" || task.status === "deprecated")
         ? {
             ...task,
             status: "active",
             updatedAt: now,
             completedAt: null,
+          }
+        : task
+    );
+  }
+
+  static deprecateTask(tasks: QuickTask[], taskId: string, now: string): QuickTask[] {
+    return tasks.map((task) =>
+      task.id === taskId && task.status === "active"
+        ? {
+            ...task,
+            status: "deprecated",
+            updatedAt: now,
+            completedAt: null,
+            pinnedAt: null,
           }
         : task
     );
@@ -115,6 +129,12 @@ export class TaskService {
   static getDoneTasks(tasks: QuickTask[], query: string): QuickTask[] {
     return [...TaskService.filterTasks(tasks, query).filter((task) => task.status === "done")].sort(
       (left, right) => TaskService.compareDesc(left.completedAt ?? "", right.completedAt ?? "")
+    );
+  }
+
+  static getDeprecatedTasks(tasks: QuickTask[], query: string): QuickTask[] {
+    return TaskService.sortByUpdatedAtDesc(
+      TaskService.filterTasks(tasks, query).filter((task) => task.status === "deprecated")
     );
   }
 

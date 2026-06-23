@@ -37,6 +37,9 @@
   const doneTasks = $derived(
     TaskService.getDoneTasks(store.tasks, activeTab === "tasks" ? searchQuery : "")
   );
+  const deprecatedTasks = $derived(
+    TaskService.getDeprecatedTasks(store.tasks, activeTab === "tasks" ? searchQuery : "")
+  );
   const visibleNotes = $derived(
     NoteService.getNotes(store.notes, activeTab === "notes" ? searchQuery : "")
   );
@@ -107,6 +110,11 @@
     void persist(QuickNotesStoreService.withTasks(store, tasks));
   }
 
+  function deprecateTask(taskId: string) {
+    const tasks = TaskService.deprecateTask(store.tasks, taskId, getNow());
+    void persist(QuickNotesStoreService.withTasks(store, tasks));
+  }
+
   function deleteTask(taskId: string) {
     const tasks = TaskService.deleteTask(store.tasks, taskId);
     void persist(QuickNotesStoreService.withTasks(store, tasks));
@@ -149,6 +157,11 @@
   function unpinNote(noteId: string) {
     const notes = NoteService.unpinNote(store.notes, noteId);
     void persist(QuickNotesStoreService.withNotes(store, notes));
+  }
+
+  async function handleImport(nextStore: QuickNotesStore) {
+    selectedNoteId = NoteService.getNotes(nextStore.notes, "")[0]?.id ?? null;
+    await persist(nextStore);
   }
 
   function getNow(): string {
@@ -247,9 +260,11 @@
           {activeTasks}
           {pinnedActiveTasks}
           {doneTasks}
+          {deprecatedTasks}
           {hasQuery}
           onCreateTask={createTask}
           onCompleteTask={completeTask}
+          onDeprecateTask={deprecateTask}
           onRestoreTask={restoreTask}
           onUpdateTask={updateTask}
           onDeleteTask={deleteTask}
@@ -275,4 +290,9 @@
   {/if}
 </main>
 
-<SettingsModal open={settingsOpen} onClose={() => (settingsOpen = false)} />
+<SettingsModal
+  open={settingsOpen}
+  {store}
+  onClose={() => (settingsOpen = false)}
+  onImport={handleImport}
+/>

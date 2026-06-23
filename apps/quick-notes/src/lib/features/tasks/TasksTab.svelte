@@ -2,6 +2,7 @@
   import type { QuickTask } from "$lib/core/quick-notes-types";
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
   import CompletedTasks from "./CompletedTasks.svelte";
+  import DeprecatedTasks from "./DeprecatedTasks.svelte";
   import PinnedTasks from "./PinnedTasks.svelte";
   import TaskComposer from "./TaskComposer.svelte";
   import TaskList from "./TaskList.svelte";
@@ -12,9 +13,11 @@
     activeTasks,
     pinnedActiveTasks,
     doneTasks,
+    deprecatedTasks,
     hasQuery,
     onCreateTask,
     onCompleteTask,
+    onDeprecateTask,
     onRestoreTask,
     onUpdateTask,
     onDeleteTask,
@@ -24,9 +27,11 @@
     activeTasks: QuickTask[];
     pinnedActiveTasks: QuickTask[];
     doneTasks: QuickTask[];
+    deprecatedTasks: QuickTask[];
     hasQuery: boolean;
     onCreateTask: (content: string) => void;
     onCompleteTask: (taskId: string) => void;
+    onDeprecateTask: (taskId: string) => void;
     onRestoreTask: (taskId: string) => void;
     onUpdateTask: (taskId: string, content: string) => void;
     onDeleteTask: (taskId: string) => void;
@@ -43,6 +48,7 @@
       <PinnedTasks
         tasks={pinnedActiveTasks}
         onCompleteTask={onCompleteTask}
+        onDeprecateTask={onDeprecateTask}
         onRestoreTask={onRestoreTask}
         onUpdateTask={onUpdateTask}
         onDeleteTask={onDeleteTask}
@@ -59,6 +65,7 @@
           tasks={activeTasks}
           emptyText={hasQuery ? t("tasks.empty.search") : t("tasks.empty.active")}
           onCompleteTask={onCompleteTask}
+          onDeprecateTask={onDeprecateTask}
           onRestoreTask={onRestoreTask}
           onUpdateTask={onUpdateTask}
           onDeleteTask={onDeleteTask}
@@ -69,6 +76,14 @@
 
       <CompletedTasks
         tasks={doneTasks}
+        onCompleteTask={onCompleteTask}
+        onRestoreTask={onRestoreTask}
+        onUpdateTask={onUpdateTask}
+        onDeleteTask={onDeleteTask}
+      />
+
+      <DeprecatedTasks
+        tasks={deprecatedTasks}
         onCompleteTask={onCompleteTask}
         onRestoreTask={onRestoreTask}
         onUpdateTask={onUpdateTask}

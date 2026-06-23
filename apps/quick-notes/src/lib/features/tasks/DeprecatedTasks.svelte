@@ -14,21 +14,15 @@
   let {
     tasks,
     onCompleteTask,
-    onDeprecateTask,
     onRestoreTask,
     onUpdateTask,
     onDeleteTask,
-    onPinTask,
-    onUnpinTask,
   }: {
     tasks: QuickTask[];
     onCompleteTask: (taskId: string) => void;
-    onDeprecateTask: (taskId: string) => void;
     onRestoreTask: (taskId: string) => void;
     onUpdateTask: (taskId: string, content: string) => void;
     onDeleteTask: (taskId: string) => void;
-    onPinTask: (taskId: string) => void;
-    onUnpinTask: (taskId: string) => void;
   } = $props();
 
   let open = $state(false);
@@ -37,7 +31,7 @@
 <Collapsible bind:open class="overflow-hidden rounded-lg border bg-card">
   <CollapsibleTrigger class="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium">
     <span>
-      {t("common.pinned")}
+      {t("tasks.deprecated")}
       <span class="ml-1 rounded bg-muted px-1.5 py-0.5 text-xs">{tasks.length}</span>
     </span>
     <Icons name={open ? "chevron-up" : "chevron-down"} class="size-4 text-muted-foreground" />
@@ -47,17 +41,15 @@
       {#each tasks as task (task.id)}
         <TaskRow
           {task}
+          deprecated
           onCompleteTask={onCompleteTask}
-          onDeprecateTask={onDeprecateTask}
           onRestoreTask={onRestoreTask}
           onUpdateTask={onUpdateTask}
           onDeleteTask={onDeleteTask}
-          onPinTask={onPinTask}
-          onUnpinTask={onUnpinTask}
         />
       {/each}
     {:else}
-      <div class="px-4 py-6 text-sm text-muted-foreground">{t("tasks.empty.pinned")}</div>
+      <div class="px-4 py-6 text-sm text-muted-foreground">{t("tasks.empty.deprecated")}</div>
     {/if}
   </CollapsibleContent>
 </Collapsible>

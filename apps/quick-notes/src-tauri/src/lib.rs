@@ -23,6 +23,7 @@ struct QuickTask {
 enum TaskStatus {
     Active,
     Done,
+    Deprecated,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

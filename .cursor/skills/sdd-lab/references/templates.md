@@ -17,46 +17,14 @@ owner: user
 
 ## Current Summary / 当前摘要
 
+- 批准状态：
 - 当前状态：
 - 当前核心目标：
-- 当前下一步：
-- 当前卡点：
 - 下一步唯一动作：
-- 下一轮核心目标：
-
-## Approval / 批准状态
-
-- Requirements confirmed: `Pending` / `Approved`
-- Visual design confirmed: `Pending` / `Approved` / `Not Applicable`
-- Technical plan confirmed: `Pending` / `Approved`
-- Execution approval: `Pending` / `Approved`
-- Approved by:
-- Approved at:
 
 ## Execution Log / 执行记录
 
-- YYYY-MM-DD hh:mm:
-  - 动作：
-  - 涉及文件：
-  - 状态变化：无 / `<from> -> <to>`（原因：；依据：；下一步：）
-  - 偏差：
-
-## Validation / 验证
-
-- Self-check:
-- Static checks:
-- Runtime / Test:
-- Human confirmation:
-- 结果汇总：
-- 剩余风险：
-
-## Review / 复盘
-
-- Requirements fidelity:
-- Technical-plan fidelity:
-- Quality:
-- Risk:
-- 结论：
+- 1. YYYY-MM-DD hh:mm: 简述本次动作、状态变化或偏差。
 ````
 
 ## `requirements.md`
@@ -126,8 +94,9 @@ owner: user
 
 ## Open Questions / 开放问题
 
-- [ ] Q1 待决策问题：
+- [ ] Q1 需要向用户确认的问题：
   - 触发来源：需求 / 当前代码现状 / 方案拟定
+  - 无法确定的内容：
   - 影响范围：
   - 候选处理：
   - 用户回答/确认：
@@ -194,21 +163,12 @@ owner: user
 - 风险：
   - 缓解方式：
 
-## Validation Plan / 验证计划
-
-- 静态检查：
-- 单元/集成测试：
-- 手动验证：
-- 验收证据：
-
 ## Execute Checkpoint / 执行检查点
 
 - 当前理解：
 - 核心目标：
 - 下一步动作：
 - 风险：
-- 验证方式：
-- Execution Approval: `Pending` / `Approved`
 ```
 
 ## `visual-design.md`
@@ -251,9 +211,9 @@ owner: user
 - 若需求涉及视觉稿，技术方案生成前必须先完成必要的 `visual-design.md`；若存在 `visual-design.md`，技术方案必须引用它作为页面设计和 Icon 导出的设计基线。
 - `technical-plan.md` 中使用 `Component Design / 组件设计` 承接视觉稿，记录组件拆分和实现映射，不重复抄写 `visual-design.md` 的页面设计事实。
 - 技术拟定阶段支持多方案并行记录；小改动可以只保留一个方案，但需要写明跳过多方案对比的原因。
-- `Open Questions` 必须使用稳定序号，例如 `Q1`、`Q2`，便于后续引用、回答、关闭和回写。
-- `Open Questions` 不只来自需求阶段；整理代码现状、拟定方案、做技术决策时发现的新问题，也必须先记录并交由用户回答或确认后关闭。
+- `technical-plan.md` 的 `Open Questions` 只记录 Agent 在读取需求、设计文档和项目现状后仍无法确定、必须向用户提问确认的内容；不要记录已经明确的问题、事实或结论。
+- `Open Questions` 必须使用稳定序号，例如 `Q1`、`Q2`，问题表述要能直接发给用户回答，便于后续引用、回答、关闭和回写。
+- `Open Questions` 不只来自需求阶段；整理代码现状、拟定方案、做技术决策时出现无法自行判断的内容，也必须先提问并交由用户回答或确认后关闭。
 - 方案决策必须由用户完成；Agent 可以整理事实、列出候选方案、给出推荐和依据，但不能替用户拍板。
 - 方案确认前，`Decision / 方案决策` 必须说明用户选定方案、选择原因，以及 `Open Questions` 是否关闭或仍需用户确认。
 - 执行阶段发现偏差时，先更新对应文档，再继续实现。
-- Review 阶段以 `requirements.md`、`visual-design.md`（如存在）和 `technical-plan.md` 为基准，不以聊天记忆为基准。

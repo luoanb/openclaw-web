@@ -1,4 +1,4 @@
-export type TaskStatus = "active" | "done";
+export type TaskStatus = "active" | "done" | "deprecated";
 
 export interface QuickTask {
   id: string;
