@@ -11,6 +11,7 @@
   const { t } = getLocaleStore();
 
   const AUTOSAVE_INTERVAL_MS = 3000;
+  const MAX_EXPORT_FILENAME_LENGTH = 64;
 
   type SaveTarget =
     | { mode: "create" }
@@ -40,6 +41,7 @@
   let crepeEditor: Crepe | null = null;
   let autoSaver: DiffAutoSaver<string> | null = null;
   let saveTarget: SaveTarget = { mode: "create" };
+  let actionFeedback = $state<{ text: string; type: "success" | "error" } | null>(null);
 
   // ── Editor lifecycle: only responds to viewKey ────────────────────────
   // viewKey is incremented ONLY on explicit user actions (select note, new).
@@ -197,6 +199,64 @@
     autoSaver?.markCommitted(nextContent);
   }
 
+  async function copyNoteContent() {
+    const content = getEditorContent();
+
+    if (!content.trim()) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(content);
+      actionFeedback = { text: t("notes.copySuccess"), type: "success" };
+    } catch {
+      actionFeedback = { text: t("notes.copyFailed"), type: "error" };
+    }
+  }
+
+  function exportNoteMarkdown() {
+    const content = getEditorContent();
+
+    if (!content.trim()) {
+      return;
+    }
+
+    try {
+      const filename = getExportFilename(content);
+      downloadMarkdown(content, filename);
+      actionFeedback = {
+        text: t("notes.exportSuccess", { filename }),
+        type: "success",
+      };
+    } catch {
+      actionFeedback = { text: t("notes.exportFailed"), type: "error" };
+    }
+  }
+
+  function downloadMarkdown(content: string, filename: string) {
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function getExportFilename(content: string) {
+    const source = title || content.split(/\r?\n/).find((line) => line.trim()) || t("notes.exportDefaultName");
+    const sanitized = source
+      .replace(/^#+\s*/, "")
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, MAX_EXPORT_FILENAME_LENGTH)
+      .replace(/[.\s-]+$/g, "");
+
+    return `${sanitized || t("notes.exportDefaultName")}.md`;
+  }
+
   function disposeEditor() {
     autoSaver?.dispose({ flush: true });
     autoSaver = null;
@@ -227,12 +287,37 @@
           class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
           type="button"
           disabled={!draft.trim()}
+          onclick={() => void copyNoteContent()}
+        >
+          {t("common.copyContent")}
+        </button>
+        <button
+          class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
+          type="button"
+          disabled={!draft.trim()}
+          onclick={exportNoteMarkdown}
+        >
+          {t("common.export")}
+        </button>
+        <button
+          class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
+          type="button"
+          disabled={!draft.trim()}
           onclick={saveNote}
         >
           {t("common.save")}
         </button>
       </div>
     </div>
+    {#if actionFeedback}
+      <p
+        class="border-b px-4 py-2 text-xs"
+        class:text-destructive={actionFeedback.type === "error"}
+        class:text-green-700={actionFeedback.type === "success"}
+      >
+        {actionFeedback.text}
+      </p>
+    {/if}
 
     <div class="min-h-0 flex-1 p-4">
       {#key viewKey}
