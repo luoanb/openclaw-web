@@ -74,8 +74,11 @@
     class="size-4 rounded border-input accent-primary"
     type="checkbox"
     checked={archived}
-    aria-label={archived ? t("tasks.action.restore") : t("tasks.action.complete")}
-    onchange={() => (archived ? onRestoreTask(task.id) : onCompleteTask(task.id))}
+    aria-label={archived
+      ? t("tasks.action.restore")
+      : t("tasks.action.complete")}
+    onchange={() =>
+      archived ? onRestoreTask(task.id) : onCompleteTask(task.id)}
   />
 
   {#if showPosition}
@@ -98,7 +101,10 @@
           bind:value={draft}
           aria-label={t("tasks.editPlaceholder")}
         />
-        <button class="text-xs font-medium text-foreground hover:underline" type="submit">
+        <button
+          class="text-xs font-medium text-foreground hover:underline"
+          type="submit"
+        >
           {t("common.save")}
         </button>
         <button
@@ -110,7 +116,12 @@
         </button>
       </form>
     {:else}
-      <p class="truncate text-sm {archived ? 'text-muted-foreground line-through' : 'text-foreground'}">
+      <p
+        title={task.content}
+        class="truncate text-sm {archived
+          ? 'text-muted-foreground line-through'
+          : 'text-foreground'}"
+      >
         {task.content}
       </p>
       <p class="mt-1 text-xs text-muted-foreground">
@@ -126,12 +137,15 @@
   </div>
 
   {#if !editing}
-    <div class="flex items-center gap-3 text-xs opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+    <div
+      class="flex items-center gap-3 text-xs opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+    >
       {#if !archived}
         <button
           class="flex items-center gap-1 text-muted-foreground hover:text-foreground"
           type="button"
-          onclick={() => (task.pinnedAt ? onUnpinTask?.(task.id) : onPinTask?.(task.id))}
+          onclick={() =>
+            task.pinnedAt ? onUnpinTask?.(task.id) : onPinTask?.(task.id)}
         >
           <Icons name={task.pinnedAt ? "pin-off" : "pin"} class="size-3.5" />
           {task.pinnedAt ? t("common.unpin") : t("common.pin")}
@@ -153,7 +167,11 @@
           {t("tasks.action.deprecate")}
         </button>
       {/if}
-      <button class="flex items-center gap-1 text-muted-foreground hover:text-foreground" type="button" onclick={startEditing}>
+      <button
+        class="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+        type="button"
+        onclick={startEditing}
+      >
         <Icons name="edit" class="size-3.5" />
         {t("tasks.action.edit")}
       </button>
