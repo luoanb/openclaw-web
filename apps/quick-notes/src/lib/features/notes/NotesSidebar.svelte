@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { QuickNote } from "$lib/core/quick-notes-types";
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import { cn } from "$lib/utils";
   import Icons from "$lib/features/common/Icons.svelte";
   import NoteListItem from "./NoteListItem.svelte";
   import PinnedNotes from "./PinnedNotes.svelte";
@@ -17,6 +18,8 @@
     onDeleteNote,
     onPinNote,
     onUnpinNote,
+    class: className = "",
+    headerInsetEnd = false,
   }: {
     notes: QuickNote[];
     pinnedNotes: QuickNote[];
@@ -27,11 +30,13 @@
     onDeleteNote: (noteId: string) => void;
     onPinNote: (noteId: string) => void;
     onUnpinNote: (noteId: string) => void;
+    class?: string;
+    headerInsetEnd?: boolean;
   } = $props();
 </script>
 
-<aside class="flex w-80 shrink-0 flex-col border-r bg-card/60">
-  <div class="flex items-center justify-between border-b p-3">
+<aside class={cn("flex w-80 shrink-0 flex-col border-r bg-card/60", className)}>
+  <div class={cn("flex items-center justify-between gap-3 border-b p-3", headerInsetEnd && "pr-12")}>
     <div>
       <h2 class="text-sm font-semibold">{t("tab.notes")}</h2>
       <p class="text-xs text-muted-foreground">{notes.length} {t("notes.emptyCount")}</p>

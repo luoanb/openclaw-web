@@ -3,7 +3,7 @@
 | 属性 | 内容 |
 |------|------|
 | 状态 | 待审核 |
-| PRD | `docs/prd/prd-quick-notes-light.md` |
+| PRD / SDD | `docs/prd/prd-quick-notes-light.md`；CLI 需求与方案见 `docs/sdd-lab/2026-07-02_16-18_quick-notes-cli/requirements.md` 与 `docs/sdd-lab/2026-07-02_16-18_quick-notes-cli/technical-plan.md` |
 | 应用目录 | `apps/quick-notes` |
 
 ## 技术选择
@@ -15,9 +15,9 @@
 
 ## 当前实施边界
 
-- 已允许：先搭建 `apps/quick-notes` 的 Tauri + Svelte/Vite 框架。
-- 未允许：实现 TODO、速记、本地 JSON 读写命令、前端业务 store 与业务页面交互。
-- 下方数据模型与 Tauri 命令是后续业务实现契约，需在 PRD/技术方案审核通过后再落代码。
+- 已实施：`apps/quick-notes` 的 Tauri + Svelte/Vite 框架、TODO/速记页面交互、本地 JSON 读写命令、前端业务 store 与业务服务。
+- 已实施：任务支持进行中、已完成、已废弃与置顶；速记支持置顶。
+- 待实施：CLI 命令入口与命令行读写流程，需求见 `docs/prd/prd-quick-notes-cli-light.md`。
 
 ## 数据文件
 
@@ -39,7 +39,7 @@
 ## 数据模型
 
 ```ts
-type TaskStatus = "active" | "done";
+type TaskStatus = "active" | "done" | "deprecated";
 
 interface QuickTask {
   id: string;
@@ -48,6 +48,7 @@ interface QuickTask {
   createdAt: string;
   updatedAt: string;
   completedAt?: string | null;
+  pinnedAt?: string | null;
 }
 
 interface QuickNote {
@@ -55,6 +56,7 @@ interface QuickNote {
   content: string;
   createdAt: string;
   updatedAt: string;
+  pinnedAt?: string | null;
 }
 
 interface QuickNotesStore {
@@ -69,6 +71,8 @@ interface QuickNotesStore {
 - `createdAt`、`updatedAt`、`completedAt` 均使用 ISO 字符串。
 - 完成任务时设置 `status = "done"` 与 `completedAt`。
 - 恢复任务时设置 `status = "active"` 并清空 `completedAt`。
+- 废弃任务时设置 `status = "deprecated"`，清空 `completedAt`，并取消置顶。
+- 置顶时写入 `pinnedAt`，取消置顶时清空 `pinnedAt`。
 
 ## Tauri 命令
 
@@ -76,6 +80,7 @@ interface QuickNotesStore {
 |------|------|------|------|
 | `load_store` | 无 | `QuickNotesStore` | 读取 JSON；文件不存在则返回空数据。 |
 | `save_store` | `store: QuickNotesStore` | `QuickNotesStore` | 校验后写入 JSON，并返回已保存的数据。 |
+| `toggle_devtools` | 无 | `void` | 调试模式下打开主窗口 DevTools；发布模式返回错误。 |
 
 错误处理：
 
@@ -155,3 +160,4 @@ sudo apt install -y build-essential pkg-config libwebkit2gtk-4.1-dev libxdo-dev 
 |------|------|
 | 2026-06-16 | 初稿；定义 Tauri command、JSON 数据模型与写入策略。当前仅完成框架搭建，业务实现待审核后推进。 |
 | 2026-06-16 | Windows 初始化续跑；补充最小 MSVC Build Tools 安装方式，并记录 `tauri:*` 脚本与缺失图标资源两个初始化缺口。 |
+| 2026-07-02 | 反写当前实现契约；更新实施边界，补充 `deprecated`、`pinnedAt` 与 `toggle_devtools`，并关联 quick-notes CLI Light PRD。 |

@@ -8,6 +8,7 @@
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
   import { NoteOutlineService, type NoteOutlineItem } from "$lib/core/notes/note-outline-service";
   import type { QuickNote } from "$lib/core/quick-notes-types";
+  import Icon from "$lib/features/common/Icons.svelte";
   import NoteOutlineDrawer from "./NoteOutlineDrawer.svelte";
   import NoteOutlinePanel from "./NoteOutlinePanel.svelte";
 
@@ -30,6 +31,7 @@
     viewKey = 0,
     onCreateNote,
     onUpdateNote,
+    onOpenNotesList,
   }: {
     note: QuickNote | null;
     title: string;
@@ -37,6 +39,7 @@
     viewKey: number;
     onCreateNote: (content: string) => void;
     onUpdateNote: (noteId: string, content: string) => void;
+    onOpenNotesList?: () => void;
   } = $props();
 
   let draft = $state("");
@@ -301,22 +304,26 @@
 <section class="flex min-w-0 flex-1 flex-col bg-background">
   {#if note || creating}
     <div class="flex items-center justify-between border-b p-4">
-      <div class="min-w-0">
-        <h2 class="truncate text-sm font-semibold">{creating ? t("notes.addNote") : title}</h2>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {formatDateTime(note?.updatedAt ?? "")}
-        </p>
+      <div class="flex min-w-0 items-center gap-2">
+        {#if onOpenNotesList}
+          <button
+            class="inline-flex size-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 md:hidden"
+            type="button"
+            aria-label={t("notes.openList")}
+            title={t("notes.openList")}
+            onclick={onOpenNotesList}
+          >
+            <Icon name="panel-left" class="size-4" />
+          </button>
+        {/if}
+        <div class="min-w-0">
+          <h2 class="truncate text-sm font-semibold">{creating ? t("notes.addNote") : title}</h2>
+          <p class="mt-1 text-xs text-muted-foreground">
+            {formatDateTime(note?.updatedAt ?? "")}
+          </p>
+        </div>
       </div>
       <div class="flex items-center gap-2">
-        <button
-          class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 xl:hidden"
-          type="button"
-          onclick={() => {
-            outlineDrawerOpen = true;
-          }}
-        >
-          {t("notes.outline")}
-        </button>
         <button
           class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
           type="button"
@@ -326,12 +333,12 @@
           {t("common.copyContent")}
         </button>
         <button
-          class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
+          class="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/80 disabled:opacity-50"
           type="button"
           disabled={!draft.trim()}
           onclick={exportNoteMarkdown}
         >
-          {t("common.export")}
+          {t("notes.exportFile")}
         </button>
         <button
           class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
@@ -353,13 +360,26 @@
       </p>
     {/if}
 
-    <div class="flex min-h-0 flex-1 gap-0 p-4">
+    <div class="relative flex min-h-0 flex-1 gap-0 p-4">
+      <button
+        class="absolute right-7 top-7 z-30 inline-flex size-8 items-center justify-center rounded-md border bg-card/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 xl:hidden"
+        type="button"
+        aria-label={t("notes.outline")}
+        title={t("notes.outline")}
+        onclick={() => {
+          outlineDrawerOpen = true;
+        }}
+      >
+        <Icon name="list" class="size-4" />
+      </button>
       <div class="min-w-0 flex-1">
         {#key viewKey}
-          <div
-            class="quick-note-crepe-editor h-full overflow-hidden rounded-lg border bg-card text-sm leading-6 xl:rounded-r-none"
-            bind:this={editorRoot}
-          ></div>
+          <div class="relative h-full">
+            <div
+              class="quick-note-crepe-editor h-full overflow-hidden rounded-lg border bg-card text-sm leading-6 xl:rounded-r-none"
+              bind:this={editorRoot}
+            ></div>
+          </div>
         {/key}
       </div>
       <NoteOutlinePanel
@@ -374,7 +394,18 @@
       onSelect={scrollToOutlineItem}
     />
   {:else}
-    <div class="grid h-full place-items-center p-8 text-center">
+    <div class="relative grid h-full place-items-center p-8 text-center">
+      {#if onOpenNotesList}
+        <button
+          class="absolute left-4 top-4 inline-flex size-8 items-center justify-center rounded-md border text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 md:hidden"
+          type="button"
+          aria-label={t("notes.openList")}
+          title={t("notes.openList")}
+          onclick={onOpenNotesList}
+        >
+          <Icon name="panel-left" class="size-4" />
+        </button>
+      {/if}
       <div>
         <h2 class="text-sm font-semibold">{t("notes.selectorEmpty")}</h2>
         <p class="mt-2 max-w-sm text-sm text-muted-foreground">

@@ -1,8 +1,10 @@
 <script lang="ts">
   import type { QuickNote } from "$lib/core/quick-notes-types";
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import Icon from "$lib/features/common/Icons.svelte";
   import NoteEditor from "./NoteEditor.svelte";
   import NotesSidebar from "./NotesSidebar.svelte";
+  import NotesSidebarDrawer from "./NotesSidebarDrawer.svelte";
 
   const { t } = getLocaleStore();
 
@@ -33,6 +35,7 @@
   } = $props();
 
   let creating = $state(false);
+  let notesDrawerOpen = $state(false);
   const selectedNote = $derived(notes.find((note) => note.id === selectedNoteId) ?? null);
 
   // ── Editor view key ───────────────────────────────────────────────────
@@ -58,6 +61,10 @@
     onCreateNote(content);
     // editorViewKey stays unchanged → editor survives across creating→saved
   }
+
+  function openNotesDrawer() {
+    notesDrawerOpen = true;
+  }
 </script>
 
 <section class="flex h-full min-h-0">
@@ -71,10 +78,33 @@
     onDeleteNote={onDeleteNote}
     onPinNote={onPinNote}
     onUnpinNote={onUnpinNote}
+    class="hidden md:flex"
+  />
+
+  <NotesSidebarDrawer
+    bind:open={notesDrawerOpen}
+    {notes}
+    {pinnedNotes}
+    {selectedNoteId}
+    getNoteTitle={getNoteTitle}
+    onCreateNote={startCreating}
+    onSelectNote={selectNote}
+    onDeleteNote={onDeleteNote}
+    onPinNote={onPinNote}
+    onUnpinNote={onUnpinNote}
   />
 
   {#if hasQuery && notes.length === 0}
-    <div class="grid min-w-0 flex-1 place-items-center p-8 text-center">
+    <div class="relative grid min-w-0 flex-1 place-items-center p-8 text-center">
+      <button
+        class="absolute left-4 top-4 inline-flex size-8 items-center justify-center rounded-md border text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 md:hidden"
+        type="button"
+        aria-label={t("notes.openList")}
+        title={t("notes.openList")}
+        onclick={openNotesDrawer}
+      >
+        <Icon name="panel-left" class="size-4" />
+      </button>
       <div>
         <h2 class="text-sm font-semibold">{t("notes.searchEmpty")}</h2>
         <p class="mt-2 text-sm text-muted-foreground">{t("notes.searchEmptyHint")}</p>
@@ -88,6 +118,7 @@
       viewKey={editorViewKey}
       onCreateNote={createNote}
       onUpdateNote={onUpdateNote}
+      onOpenNotesList={openNotesDrawer}
     />
   {/if}
 </section>
