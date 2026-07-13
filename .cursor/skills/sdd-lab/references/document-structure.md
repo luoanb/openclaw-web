@@ -58,11 +58,11 @@ docs/sdd-lab/YYYY-MM-DD_hh-mm_<iteration-name>/
 ## 文件职责
 
 - `lifecycle.md`：记录状态、当前摘要、执行记录和恢复锚点。
-- `requirements.md`：记录需求目标、背景、范围、非目标、验收标准、开放问题。
-- `visual-design.md`：记录 Figma 或视觉设计稿来源、页面设计事实、Icon 导出与 SVG 组件化要求；仅在需求涉及视觉设计稿时创建。
-- `technical-plan.md`：记录基于项目现状的技术方案、涉及模块、接口、步骤和风险；只在技术方案生成阶段创建。
+- `requirements.md`：记录需求目标、背景、范围、非目标、验收标准、开放问题；若用户提供了 Figma / 视觉稿链接，用可选章节 `Referenced Designs / 引用设计稿` 集中追溯，不把长链接列表内嵌进 Scope。
+- `visual-design.md`：记录 Figma 或视觉设计稿来源、页面设计事实、Icon 导出与 SVG 组件化要求；仅在需求涉及视觉设计稿时创建。其 `来源` 应承接 `requirements.md` 的 `Referenced Designs`。
+- `technical-plan.md`：记录基于项目现状的技术方案、涉及模块、接口、步骤和风险；只在技术方案生成阶段创建。若有对外 / 跨模块契约变更，用可选章节 `API Design / API 设计` 固化目标契约（与 `Current Project Facts` 中的现有接口事实分离）。
 
-不要把技术方案写进 `requirements.md` 或 `visual-design.md`；不要把需求讨论堆进 `technical-plan.md`；不要把聊天流水账写进 `lifecycle.md`。
+不要把技术方案写进 `requirements.md` 或 `visual-design.md`；不要把需求讨论堆进 `technical-plan.md`；不要把聊天流水账写进 `lifecycle.md`。不要在需求阶段用“以 Figma 为准”替代具体设计稿链接。
 
 ## 视觉设计文档
 

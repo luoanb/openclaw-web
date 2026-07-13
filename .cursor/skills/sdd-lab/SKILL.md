@@ -91,6 +91,7 @@ flowchart LR
 - 只创建或更新 `requirements.md` 和必要的 `lifecycle.md`。
 - 不创建 `technical-plan.md`，占位文件也不需要。
 - 记录目标、背景、范围、非目标、验收标准、开放问题。
+- 若用户提供了 Figma / 视觉稿链接，写入 `requirements.md` 可选章节 `Referenced Designs / 引用设计稿`（用途 / Node / 链接）；不要只写“以 Figma 为准”，也不要把长链接列表内嵌进 Scope。
 - 用户确认需求边界后，状态可从 `draft` 进入 `planned`。
 
 ### 2. 视觉设计文档生成阶段
@@ -108,7 +109,7 @@ flowchart LR
 
 - 目标：基于项目现状和已确认需求生成技术方案。
 - 若需求涉及 Figma 或视觉稿，必须先读取并维护 `visual-design.md`，再基于需求、视觉设计文档、相关代码、接口和约束创建或更新 `technical-plan.md`。
-- 记录涉及模块、数据流、接口变化、执行步骤和风险。
+- 记录涉及模块、数据流、接口变化、执行步骤和风险；若有对外 / 跨模块契约变更，在 `technical-plan.md` 的可选章节 `API Design / API 设计` 中固化目标契约。
 - `Open Questions` 只记录 Agent 在读取需求、设计文档和项目现状后仍无法确定、必须向用户提问确认的内容；不要记录已经明确的问题、事实或结论。
 - 方案决策由用户负责；Agent 只能提出方案对比、推荐方案和依据，不能替用户拍板。
 - 技术方案确认后，给执行 checkpoint，等待用户明确确认继续。
