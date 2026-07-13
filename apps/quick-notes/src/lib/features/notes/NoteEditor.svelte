@@ -6,7 +6,10 @@
   import { DiffAutoSaver } from "$lib/core/autosave/diff-auto-saver";
   import { formatDateTime } from "$lib/utils";
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import { NoteOutlineService, type NoteOutlineItem } from "$lib/core/notes/note-outline-service";
   import type { QuickNote } from "$lib/core/quick-notes-types";
+  import NoteOutlineDrawer from "./NoteOutlineDrawer.svelte";
+  import NoteOutlinePanel from "./NoteOutlinePanel.svelte";
 
   const { t } = getLocaleStore();
 
@@ -42,6 +45,8 @@
   let autoSaver: DiffAutoSaver<string> | null = null;
   let saveTarget: SaveTarget = { mode: "create" };
   let actionFeedback = $state<{ text: string; type: "success" | "error" } | null>(null);
+  let outlineDrawerOpen = $state(false);
+  const outlineItems = $derived(NoteOutlineService.extract(draft));
 
   // ── Editor lifecycle: only responds to viewKey ────────────────────────
   // viewKey is incremented ONLY on explicit user actions (select note, new).
@@ -277,6 +282,18 @@
       });
     }
   }
+
+  function scrollToOutlineItem(item: NoteOutlineItem) {
+    const headings = Array.from(editorRoot?.querySelectorAll<HTMLElement>(
+      ".ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4, .ProseMirror h5, .ProseMirror h6",
+    ) ?? []).filter((heading) => heading.textContent?.trim());
+    const target = headings[item.index];
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth";
+
+    target?.scrollIntoView({ block: "start", behavior });
+  }
 </script>
 
 <!-- Crepe's frame theme is roomy by default; keep note-editor density scoped here. -->
@@ -291,6 +308,15 @@
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <button
+          class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 xl:hidden"
+          type="button"
+          onclick={() => {
+            outlineDrawerOpen = true;
+          }}
+        >
+          {t("notes.outline")}
+        </button>
         <button
           class="h-8 rounded-md border px-3 text-xs font-medium hover:bg-muted disabled:opacity-50"
           type="button"
@@ -327,14 +353,26 @@
       </p>
     {/if}
 
-    <div class="min-h-0 flex-1 p-4">
-      {#key viewKey}
-        <div
-          class="quick-note-crepe-editor h-full overflow-hidden rounded-lg border bg-card text-sm leading-6"
-          bind:this={editorRoot}
-        ></div>
-      {/key}
+    <div class="flex min-h-0 flex-1 gap-0 p-4">
+      <div class="min-w-0 flex-1">
+        {#key viewKey}
+          <div
+            class="quick-note-crepe-editor h-full overflow-hidden rounded-lg border bg-card text-sm leading-6 xl:rounded-r-none"
+            bind:this={editorRoot}
+          ></div>
+        {/key}
+      </div>
+      <NoteOutlinePanel
+        items={outlineItems}
+        onSelect={scrollToOutlineItem}
+        class="hidden w-60 rounded-r-lg border-y border-r xl:flex"
+      />
     </div>
+    <NoteOutlineDrawer
+      bind:open={outlineDrawerOpen}
+      items={outlineItems}
+      onSelect={scrollToOutlineItem}
+    />
   {:else}
     <div class="grid h-full place-items-center p-8 text-center">
       <div>
@@ -372,18 +410,21 @@
 
   :global(.quick-note-crepe-editor .milkdown .ProseMirror h1) {
     margin-top: 12px;
+    scroll-margin-top: 56px;
     font-size: 24px;
     line-height: 32px;
   }
 
   :global(.quick-note-crepe-editor .milkdown .ProseMirror h2) {
     margin-top: 10px;
+    scroll-margin-top: 56px;
     font-size: 21px;
     line-height: 28px;
   }
 
   :global(.quick-note-crepe-editor .milkdown .ProseMirror h3) {
     margin-top: 8px;
+    scroll-margin-top: 56px;
     font-size: 18px;
     line-height: 26px;
   }
@@ -392,6 +433,7 @@
   :global(.quick-note-crepe-editor .milkdown .ProseMirror h5),
   :global(.quick-note-crepe-editor .milkdown .ProseMirror h6) {
     margin-top: 8px;
+    scroll-margin-top: 56px;
     font-size: 16px;
     line-height: 24px;
   }
