@@ -130,6 +130,16 @@
 - `schedule: WorklogScheduleConfig`：定时触发配置。
 - `lastRun?: WorklogRunSummary | null`：最近一次运行结果。
 
+### Frontend Runtime State / 前端运行态
+
+- `initDialogOpen: boolean`：初始化配置弹窗是否打开。
+- `zentaoVerified: boolean`：本次会话禅道基础连接是否验证成功。
+- `selectedRepositoryIds: string[]`：日常打卡中本次参与仓库 ID 列表，不替代仓库登记配置。
+- `projectsState: "idle" | "loading" | "ready" | "error"`：项目候选加载状态。
+- `executionsState: "idle" | "loading" | "ready" | "error"`：迭代候选加载状态。
+- `previewState: "idle" | "loading" | "ready" | "error"`：打开预览状态；内部包含 Git 抓取和任务草稿生成。
+- `submitState: "idle" | "loading" | "ready" | "error"`：提交打卡状态。
+
 ### `WorklogRepositoryConfig`
 
 - `id: string`：仓库配置 ID。
@@ -343,6 +353,7 @@
 - 改动类型：新增
 - 改动内容：
   - 处理 UI 状态归一化、选择状态、过滤、结果聚合。
+  - 新增初始化和日常配置判断方法：`isZentaoConnectionConfigured`、`isDailyConfigComplete`、`getSelectedRepositories`、`canEnableSchedule`。
 - 设计约束：
   - 业务逻辑用 class 封装，符合 `core` 编码约定。
 - 验收点：
@@ -366,14 +377,19 @@
 
 - 改动类型：新增
 - 改动内容：
-  - 实现三栏布局：仓库与日期、提交预览、禅道打卡。
-  - 接入配置读写、抓取提交、预览、创建并完成任务和定时状态。
-  - 左栏提供仓库/定时配置保存入口；右栏提供禅道配置保存入口，两个入口均保存同一份 `WorklogConfig`。
+  - 进入页面时，如果已保存禅道地址、账号和密码，则自动验证连接；验证成功不打开初始化弹窗，验证失败才打开弹窗。
+  - 实现初始化配置弹窗；禅道地址、账号、密码缺失时自动打开。
+  - 初始化弹窗标题为“初始化配置”；密码右侧提供“验证”按钮，负责验证连接与保存配置，不关闭弹窗。
+  - 初始化弹窗底部保留“保存”按钮；验证成功后启用，点击后保存当前初始化配置并关闭弹窗；仓库配置可在弹窗内维护但不阻塞关闭。
+  - 日常页面进入后自动拉取项目；如果保存了项目 ID，则自动拉取对应迭代。
+  - 日常页面提供日期、项目、迭代、任务类型、工时、任务名模板、本次参与仓库多选和定时触发。
+  - `打开预览` 按钮合并 Git 抓取与任务草稿生成。
+  - `提交打卡` 按钮创建并完成禅道任务。
 - 设计约束：
   - 遵循 `visual-design.md`。
   - 错误就近展示，不默认弹窗。
 - 验收点：
-  - 可完整走通手动抓取、创建任务、完成任务路径。
+  - 可完整走通初始化验证、自动加载项目/迭代、打开预览、提交打卡路径。
 
 ### Step 4. 定时触发
 
@@ -382,7 +398,7 @@
 - 改动类型：修改
 - 改动内容：
   - 第一版使用应用运行时 timer。
-  - 定时触发只在配置完整、禅道验证通过且用户启用时运行。
+  - 定时触发只在项目、迭代、至少一个参与仓库、禅道验证通过且用户启用时运行。
   - 记录最近一次运行摘要。
 - 设计约束：
   - 应用关闭后不执行自动同步；该限制需在 UI 文案说明。

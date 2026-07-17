@@ -109,4 +109,39 @@ export class WorklogService {
 
     return `成功 ${success} 个，失败 ${failed} 个`;
   }
+
+  static isZentaoConnectionConfigured(config: WorklogConfig): boolean {
+    return (
+      config.zentao.baseUrl.trim().length > 0 &&
+      config.zentao.account.trim().length > 0 &&
+      config.zentao.password.trim().length > 0
+    );
+  }
+
+  static getSelectedRepositories(
+    config: WorklogConfig,
+    selectedRepositoryIds: string[]
+  ): WorklogRepositoryConfig[] {
+    const selectedIds = new Set(selectedRepositoryIds);
+
+    return config.repositories
+      .filter((repository) => selectedIds.has(repository.id))
+      .map((repository) => ({
+        ...repository,
+        enabled: true,
+      }));
+  }
+
+  static isDailyConfigComplete(config: WorklogConfig, selectedRepositoryIds: string[]): boolean {
+    return (
+      WorklogService.isZentaoConnectionConfigured(config) &&
+      Boolean(config.zentao.projectId) &&
+      Boolean(config.zentao.executionId) &&
+      selectedRepositoryIds.length > 0
+    );
+  }
+
+  static canEnableSchedule(config: WorklogConfig, selectedRepositoryIds: string[]): boolean {
+    return WorklogService.isDailyConfigComplete(config, selectedRepositoryIds);
+  }
 }
