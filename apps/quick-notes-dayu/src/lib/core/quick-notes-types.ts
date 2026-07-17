@@ -1,0 +1,26 @@
+export type TaskStatus = "active" | "done" | "deprecated";
+
+export interface QuickTask {
+  id: string;
+  content: string;
+  status: TaskStatus;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
+  pinnedAt?: string | null;
+}
+
+export interface QuickNote {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  pinnedAt?: string | null;
+}
+
+export interface QuickNotesStore {
+  tasks: QuickTask[];
+  notes: QuickNote[];
+}
+
+export type QuickNotesTab = "tasks" | "notes" | "worklog";

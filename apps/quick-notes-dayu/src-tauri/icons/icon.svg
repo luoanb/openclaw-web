@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title>quick-notes icon</title>
+  <defs>
+    <linearGradient id="bg" x1="80" y1="64" x2="432" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8fafc" />
+      <stop offset="1" stop-color="#dbeafe" />
+    </linearGradient>
+    <linearGradient id="mark" x1="142" y1="124" x2="382" y2="388" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563eb" />
+      <stop offset="1" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+  <rect x="104" y="92" width="304" height="328" rx="40" fill="#ffffff" stroke="#bfdbfe" stroke-width="16" />
+  <path
+    d="M160 178h192M160 242h156M160 306h104"
+    fill="none"
+    stroke="#94a3b8"
+    stroke-linecap="round"
+    stroke-width="24"
+  />
+  <path d="M322 316l-38 54 90-76-36 4 24-54-84 78 44-6z" fill="url(#mark)" />
+</svg>
