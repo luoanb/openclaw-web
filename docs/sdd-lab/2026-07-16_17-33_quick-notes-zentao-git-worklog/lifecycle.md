@@ -4,16 +4,16 @@
 status: done
 result: completed
 created_at: 2026-07-16 17:33
-updated_at: 2026-07-17 11:42
+updated_at: 2026-07-17 12:19
 owner: user
 ```
 
 ## Current Summary / 当前摘要
 
-- 批准状态：用户已批准“初始化配置门禁 + 日常打卡流程”重构计划；实现与验证已完成。
+- 批准状态：用户已批准将初始化配置改为 Tab 内双 view 交互；实现与验证已完成。
 - 当前状态：`done`，结果为 `completed`。
-- 当前核心目标：将【禅道打卡】重构为先完成禅道初始化验证，再进入自动加载项目/迭代、仓库多选、打开预览、提交打卡的日常流程。
-- 下一步唯一动作：使用真实禅道 18.13 地址和本地/WSL 仓库做桌面手动验证。
+- 当前核心目标：【禅道打卡】Tab 内使用初始化配置 view 与打卡 view；未验证时停留初始化 view，验证通过后进入打卡 view，并可在两个 view 之间任意切换。
+- 下一步唯一动作：在正在运行的桌面应用中手动确认首次进入、验证成功跳转和双 view 切换体验。
 
 ## Execution Log / 执行记录
 
@@ -32,6 +32,10 @@ owner: user
 - 13. 2026-07-17 10:58: 修正初始化验证体验：如果已保存禅道地址、账号和密码，进入 Tab 后自动验证；验证成功不弹初始化窗口，验证失败才弹窗。初始化弹窗内新增独立“验证并保存”操作，只验证保存不关闭；底部保留“进入日常打卡”按钮，验证成功后才可关闭弹窗。
 - 14. 2026-07-17 11:20: 修复流程重构时遗漏的任务名模板配置；任务名模板恢复为日常配置字段，支持变量提示，并在变更后自动保存。
 - 15. 2026-07-17 11:42: 调整初始化弹窗文案与按钮语义：标题改为“初始化配置”；密码右侧放置“验证”按钮，功能仍为验证并保存且不关闭弹窗；移除备注说明行；底部按钮改为“保存”，功能为保存当前初始化配置并关闭弹窗。
+- 16. 2026-07-17 12:13: 用户指出当前初始化配置弹窗实际为全窗口遮罩，会阻塞所有 Tab；已回写需求和技术方案，明确门禁仅阻塞【禅道打卡】Tab 内容区，验证通过后展示关闭入口，并获准修改代码。
+- 17. 2026-07-17 12:13: 完成修正：`WorklogTab` 根内容区增加定位上下文，初始化遮罩从全窗口 `fixed inset-0` 改为 Tab 内容区 `absolute inset-0`；验证通过后标题区展示“关闭”按钮，复用保存并关闭逻辑。
+- 18. 2026-07-17 12:15: 修正初始化弹窗视觉细节：关闭入口改为右上角 X 图标按钮，Tab 内蒙版改为常规半透明黑色遮罩，避免文字关闭按钮和浅色蒙版造成交互误读。
+- 19. 2026-07-17 12:19: 用户明确要求改为两个 view：无配置时使用初始化 view，初始化好后进入打卡 view，并允许两个 view 任意切换。已回写需求、视觉和技术方案，并移除代码中的初始化 dialog/overlay，实现 `activeView = init | clockIn`。
 
 ## Validation / 验证
 
@@ -55,6 +59,16 @@ owner: user
 - 2026-07-17 11:42 初始化弹窗文案修正：
   - `pnpm --filter ./apps/quick-notes-dayu check`：通过，0 errors / 0 warnings。
   - IDE diagnostics：新增/修改文件无 linter errors。
+- 2026-07-17 12:13 初始化门禁范围修正：
+  - `pnpm --filter ./apps/quick-notes-dayu check`：通过，0 errors / 0 warnings。
+  - IDE diagnostics：新增/修改文件无 linter errors。
+- 2026-07-17 12:15 初始化弹窗视觉细节修正：
+  - `pnpm --filter ./apps/quick-notes-dayu check`：通过，0 errors / 0 warnings。
+  - IDE diagnostics：新增/修改文件无 linter errors。
+- 2026-07-17 12:19 初始化双 view 修正：
+  - `pnpm --filter ./apps/quick-notes-dayu check`：通过，0 errors / 0 warnings。
+  - IDE diagnostics：新增/修改文件无 linter errors。
+  - 代码残留检查：`WorklogTab.svelte` 中无 `initDialogOpen`、`role="dialog"`、`aria-modal`、`overlay`、`蒙版`、`遮罩` 残留。
 - 未覆盖风险：未连接真实禅道 18.13 实例验证 Token、项目/迭代候选接口、创建任务和完成任务；未用真实 WSL 仓库做桌面运行验证。
 
 ## Transition Log / 状态流转记录

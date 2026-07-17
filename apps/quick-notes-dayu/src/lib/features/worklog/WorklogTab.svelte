@@ -28,6 +28,7 @@
   ];
 
   type AsyncState = "idle" | "loading" | "ready" | "error";
+  type WorklogView = "init" | "clockIn";
 
   let { searchQuery }: { searchQuery: string } = $props();
 
@@ -39,7 +40,7 @@
   let previewState = $state<AsyncState>("idle");
   let submitState = $state<AsyncState>("idle");
   let initValidationState = $state<AsyncState>("idle");
-  let initDialogOpen = $state(false);
+  let activeView = $state<WorklogView>("init");
   let zentaoVerified = $state(false);
   let initValidationMessage = $state("");
   let statusMessage = $state("");
@@ -94,7 +95,7 @@
       if (WorklogService.isZentaoConnectionConfigured(config)) {
         void autoValidateZentaoConfig();
       } else {
-        initDialogOpen = true;
+        activeView = "init";
       }
     } catch (error) {
       errorMessage = getErrorMessage(error, "读取禅道打卡配置失败");
@@ -118,24 +119,24 @@
 
       if (!result.ok) {
         zentaoVerified = false;
-        initDialogOpen = true;
+        activeView = "init";
         initValidationState = "error";
         return;
       }
 
       zentaoVerified = true;
-      initDialogOpen = false;
+      activeView = "clockIn";
       initValidationState = "ready";
       void loadProjects(true);
     } catch (error) {
       zentaoVerified = false;
-      initDialogOpen = true;
+      activeView = "init";
       initValidationState = "error";
       initValidationMessage = getErrorMessage(error, "自动验证禅道连接失败");
     }
   }
 
-  async function validateAndSaveInitConfig({ closeOnSuccess = false } = {}) {
+  async function validateAndSaveInitConfig() {
     if (!WorklogService.isZentaoConnectionConfigured(config)) {
       initValidationMessage = "请先填写禅道地址、账号和密码。";
       return;
@@ -158,9 +159,7 @@
       zentaoVerified = true;
       await saveConfig("初始化配置已验证并保存");
       initValidationState = "ready";
-      if (closeOnSuccess) {
-        initDialogOpen = false;
-      }
+      activeView = "clockIn";
       void loadProjects(true);
     } catch (error) {
       initValidationMessage = getErrorMessage(error, "验证禅道连接失败");
@@ -168,7 +167,7 @@
     }
   }
 
-  async function saveAndCloseInitDialog() {
+  async function saveInitConfigAndOpenClockIn() {
     if (!zentaoVerified) {
       return;
     }
@@ -176,7 +175,7 @@
     initValidationState = "loading";
     try {
       await saveConfig("初始化配置已保存");
-      initDialogOpen = false;
+      activeView = "clockIn";
       initValidationState = "ready";
     } catch (error) {
       initValidationMessage = getErrorMessage(error, "保存初始化配置失败");
@@ -397,16 +396,43 @@
     <div class="border-b bg-card/70 p-4">
       <div class="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-sm font-semibold">今日打卡</h2>
+          <h2 class="text-sm font-semibold">{activeView === "init" ? "初始化配置" : "今日打卡"}</h2>
           <p class="text-xs text-muted-foreground">
-            项目会自动拉取；选择日常配置后打开预览，再提交打卡。
+            {activeView === "init"
+              ? "先完成禅道连接验证；仓库可以现在登记，也可以稍后补充。"
+              : "项目会自动拉取；选择日常配置后打开预览，再提交打卡。"}
           </p>
         </div>
-        <button class="h-8 rounded-md border px-3 text-xs font-medium" type="button" onclick={() => (initDialogOpen = true)}>
-          管理初始化配置
-        </button>
+        <div class="flex rounded-md border bg-background p-0.5">
+          <button
+            class="h-7 rounded px-3 text-xs font-medium transition-colors"
+            class:bg-primary={activeView === "init"}
+            class:text-primary-foreground={activeView === "init"}
+            class:text-muted-foreground={activeView !== "init"}
+            type="button"
+            onclick={() => (activeView = "init")}
+          >
+            初始化配置
+          </button>
+          <button
+            class="h-7 rounded px-3 text-xs font-medium transition-colors disabled:opacity-50"
+            class:bg-primary={activeView === "clockIn"}
+            class:text-primary-foreground={activeView === "clockIn"}
+            class:text-muted-foreground={activeView !== "clockIn"}
+            type="button"
+            onclick={() => {
+              if (zentaoVerified) {
+                activeView = "clockIn";
+              }
+            }}
+            disabled={!zentaoVerified}
+          >
+            打卡
+          </button>
+        </div>
       </div>
 
+      {#if activeView === "clockIn"}
       <div class="grid grid-cols-[140px_minmax(140px,1fr)_minmax(140px,1fr)_120px_96px_160px] gap-2">
         <label class="block text-xs font-medium text-muted-foreground">
           日期
@@ -530,8 +556,139 @@
           可用变量：{"{date}"}、{"{repo}"}、{"{message}"}、{"{hash}"}、{"{shortHash}"}、{"{author}"}、{"{count}"}
         </span>
       </label>
+      {/if}
     </div>
 
+    {#if activeView === "init"}
+      <div class="min-h-0 flex-1 overflow-auto p-6">
+        <div class="mx-auto max-w-4xl rounded-xl border bg-card shadow-sm">
+          <div class="border-b p-4">
+            <h3 class="text-base font-semibold">初始化配置</h3>
+            <p class="mt-1 text-sm text-muted-foreground">
+              先验证禅道连接。仓库可以现在登记，也可以稍后补充。
+            </p>
+          </div>
+
+          <div class="space-y-5 p-4">
+            <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3">
+              <label class="block text-xs font-medium text-muted-foreground">
+                禅道地址
+                <input
+                  class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+                  value={config.zentao.baseUrl}
+                  placeholder="https://zentao.example.com"
+                  oninput={(event) => updateInitZentaoConfig({ baseUrl: event.currentTarget.value })}
+                />
+              </label>
+              <label class="block text-xs font-medium text-muted-foreground">
+                账号
+                <input
+                  class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+                  value={config.zentao.account}
+                  placeholder="admin"
+                  oninput={(event) => updateInitZentaoConfig({ account: event.currentTarget.value })}
+                />
+              </label>
+              <label class="block text-xs font-medium text-muted-foreground">
+                密码
+                <input
+                  class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+                  value={config.zentao.password}
+                  type="password"
+                  oninput={(event) => updateInitZentaoConfig({ password: event.currentTarget.value })}
+                />
+              </label>
+              <button
+                class="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                type="button"
+                onclick={() => void validateAndSaveInitConfig()}
+                disabled={initValidationState === "loading"}
+              >
+                {initValidationState === "loading" ? "验证中..." : "验证"}
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-semibold">仓库地址</h3>
+                <p class="text-xs text-muted-foreground">仓库不影响进入打卡 view，用于日常打卡时多选。</p>
+              </div>
+              <div class="flex gap-2">
+                <button class="h-8 rounded-md border px-3 text-xs font-medium" type="button" onclick={() => addRepository("windows")}>
+                  添加 Windows
+                </button>
+                <button class="h-8 rounded-md border px-3 text-xs font-medium" type="button" onclick={() => addRepository("wsl")}>
+                  添加 WSL
+                </button>
+              </div>
+            </div>
+
+            <div class="space-y-3">
+              {#each config.repositories as repository (repository.id)}
+                <div class="rounded-lg border bg-background p-3">
+                  <div class="mb-2 flex items-center justify-between gap-2">
+                    <input
+                      class="h-8 flex-1 rounded-md border bg-card px-2 text-sm"
+                      value={repository.name}
+                      placeholder="仓库名称"
+                      oninput={(event) => updateRepository(repository.id, { name: event.currentTarget.value })}
+                    />
+                    <button class="text-xs text-destructive hover:underline" type="button" onclick={() => removeRepository(repository.id)}>
+                      {t("common.delete")}
+                    </button>
+                  </div>
+
+                  {#if repository.environment === "windows"}
+                    <input
+                      class="h-8 w-full rounded-md border bg-card px-2 font-mono text-xs"
+                      value={repository.windowsPath ?? ""}
+                      placeholder="D:\work-space\repo"
+                      oninput={(event) =>
+                        updateRepository(repository.id, { windowsPath: event.currentTarget.value })}
+                    />
+                  {:else}
+                    <div class="grid grid-cols-[120px_minmax(0,1fr)] gap-2">
+                      <input
+                        class="h-8 rounded-md border bg-card px-2 text-xs"
+                        value={repository.wslDistro ?? ""}
+                        placeholder="Ubuntu"
+                        oninput={(event) =>
+                          updateRepository(repository.id, { wslDistro: event.currentTarget.value })}
+                      />
+                      <input
+                        class="h-8 rounded-md border bg-card px-2 font-mono text-xs"
+                        value={repository.wslPath ?? ""}
+                        placeholder="/home/me/repo"
+                        oninput={(event) =>
+                          updateRepository(repository.id, { wslPath: event.currentTarget.value })}
+                      />
+                    </div>
+                  {/if}
+                </div>
+              {/each}
+            </div>
+
+            {#if initValidationMessage}
+              <p class="rounded-md border bg-muted/40 px-3 py-2 text-xs">{initValidationMessage}</p>
+            {/if}
+
+            <div class="flex items-center justify-between border-t pt-4">
+              <p class="text-xs text-muted-foreground">
+                {zentaoVerified ? "连接已验证，可以进入打卡 view。" : "验证成功并保存后才能进入打卡 view。"}
+              </p>
+              <button
+                class="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground disabled:opacity-50"
+                type="button"
+                onclick={() => void saveInitConfigAndOpenClockIn()}
+                disabled={!zentaoVerified || initValidationState === "loading"}
+              >
+                进入打卡
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    {:else}
     <div class="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)_320px]">
       <aside class="min-h-0 overflow-auto border-r bg-card/50 p-4">
         <div class="mb-3 flex items-center justify-between">
@@ -706,138 +863,6 @@
         {/if}
       </aside>
     </div>
+    {/if}
   </section>
-
-  {#if initDialogOpen}
-    <div class="fixed inset-0 z-50 grid place-items-center bg-background/80 p-6">
-      <section class="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl border bg-card shadow-lg">
-        <header class="border-b p-4">
-          <h2 class="text-base font-semibold">初始化配置</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            先验证禅道连接。仓库可以现在登记，也可以稍后补充。
-          </p>
-        </header>
-
-        <div class="min-h-0 overflow-auto p-4">
-          <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3">
-            <label class="block text-xs font-medium text-muted-foreground">
-              禅道地址
-              <input
-                class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
-                value={config.zentao.baseUrl}
-                placeholder="https://zentao.example.com"
-                oninput={(event) => updateInitZentaoConfig({ baseUrl: event.currentTarget.value })}
-              />
-            </label>
-            <label class="block text-xs font-medium text-muted-foreground">
-              账号
-              <input
-                class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
-                value={config.zentao.account}
-                placeholder="admin"
-                oninput={(event) => updateInitZentaoConfig({ account: event.currentTarget.value })}
-              />
-            </label>
-            <label class="block text-xs font-medium text-muted-foreground">
-              密码
-              <input
-                class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
-                value={config.zentao.password}
-                type="password"
-                oninput={(event) => updateInitZentaoConfig({ password: event.currentTarget.value })}
-              />
-            </label>
-            <button
-              class="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground disabled:opacity-50"
-              type="button"
-              onclick={() => void validateAndSaveInitConfig()}
-              disabled={initValidationState === "loading"}
-            >
-              {initValidationState === "loading" ? "验证中..." : "验证"}
-            </button>
-          </div>
-
-          <div class="mt-5 flex items-center justify-between">
-            <div>
-              <h3 class="text-sm font-semibold">仓库地址</h3>
-              <p class="text-xs text-muted-foreground">仓库不影响初始化关闭，用于日常打卡时多选。</p>
-            </div>
-            <div class="flex gap-2">
-              <button class="h-8 rounded-md border px-3 text-xs font-medium" type="button" onclick={() => addRepository("windows")}>
-                添加 Windows
-              </button>
-              <button class="h-8 rounded-md border px-3 text-xs font-medium" type="button" onclick={() => addRepository("wsl")}>
-                添加 WSL
-              </button>
-            </div>
-          </div>
-
-          <div class="mt-3 space-y-3">
-            {#each config.repositories as repository (repository.id)}
-              <div class="rounded-lg border bg-background p-3">
-                <div class="mb-2 flex items-center justify-between gap-2">
-                  <input
-                    class="h-8 flex-1 rounded-md border bg-card px-2 text-sm"
-                    value={repository.name}
-                    placeholder="仓库名称"
-                    oninput={(event) => updateRepository(repository.id, { name: event.currentTarget.value })}
-                  />
-                  <button class="text-xs text-destructive hover:underline" type="button" onclick={() => removeRepository(repository.id)}>
-                    {t("common.delete")}
-                  </button>
-                </div>
-
-                {#if repository.environment === "windows"}
-                  <input
-                    class="h-8 w-full rounded-md border bg-card px-2 font-mono text-xs"
-                    value={repository.windowsPath ?? ""}
-                    placeholder="D:\work-space\repo"
-                    oninput={(event) =>
-                      updateRepository(repository.id, { windowsPath: event.currentTarget.value })}
-                  />
-                {:else}
-                  <div class="grid grid-cols-[120px_minmax(0,1fr)] gap-2">
-                    <input
-                      class="h-8 rounded-md border bg-card px-2 text-xs"
-                      value={repository.wslDistro ?? ""}
-                      placeholder="Ubuntu"
-                      oninput={(event) =>
-                        updateRepository(repository.id, { wslDistro: event.currentTarget.value })}
-                    />
-                    <input
-                      class="h-8 rounded-md border bg-card px-2 font-mono text-xs"
-                      value={repository.wslPath ?? ""}
-                      placeholder="/home/me/repo"
-                      oninput={(event) =>
-                        updateRepository(repository.id, { wslPath: event.currentTarget.value })}
-                    />
-                  </div>
-                {/if}
-              </div>
-            {/each}
-          </div>
-
-          {#if initValidationMessage}
-            <p class="mt-4 rounded-md border bg-muted/40 px-3 py-2 text-xs">{initValidationMessage}</p>
-          {/if}
-        </div>
-
-        <footer class="flex items-center justify-between border-t p-4">
-          <p class="text-xs text-muted-foreground">
-            {zentaoVerified ? "连接已验证，可以进入日常打卡。" : "验证成功并保存后才能关闭初始化配置。"}
-          </p>
-          <div class="flex gap-2">
-            <button
-              class="h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground disabled:opacity-50"
-              type="button"
-              onclick={() => void saveAndCloseInitDialog()}
-              disabled={!zentaoVerified || initValidationState === "loading"}
-            >
-              保存
-            </button>
-          </div>
-        </footer>
-      </section>
-    </div>
-  {/if}
 {/if}
