@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "identifier": "com.openclaw.quicknotesdayu",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "npm run dev",
     "devUrl": "http://127.0.0.1:1420",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"

@@ -71,6 +71,12 @@
   const canEnableSchedule = $derived(
     WorklogService.canEnableSchedule(config, selectedRepositoryIds)
   );
+  const allTasksSucceeded = $derived(
+    taskResults.length > 0 && taskResults.every((item) => item.ok)
+  );
+  const someTasksFailed = $derived(
+    taskResults.some((item) => !item.ok) && taskResults.some((item) => item.ok)
+  );
 
   onMount(() => {
     void loadConfig();
@@ -400,7 +406,7 @@
           <p class="text-xs text-muted-foreground">
             {activeView === "init"
               ? "先完成禅道连接验证；仓库可以现在登记，也可以稍后补充。"
-              : "项目会自动拉取；选择日常配置后打开预览，再提交打卡。"}
+              : "左侧完成配置，右侧按顺序预览并提交打卡。"}
           </p>
         </div>
         <div class="flex rounded-md border bg-background p-0.5">
@@ -431,132 +437,6 @@
           </button>
         </div>
       </div>
-
-      {#if activeView === "clockIn"}
-      <div class="grid grid-cols-[140px_minmax(140px,1fr)_minmax(140px,1fr)_120px_96px_160px] gap-2">
-        <label class="block text-xs font-medium text-muted-foreground">
-          日期
-          <input class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm" type="date" bind:value={date} />
-        </label>
-
-        <label class="block text-xs font-medium text-muted-foreground">
-          项目
-          <select
-            class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
-            value={config.zentao.projectId ?? ""}
-            disabled={projectsState === "loading"}
-            onchange={(event) => {
-              const projectId = Number(event.currentTarget.value) || null;
-              updateZentaoConfig({ projectId, executionId: null });
-              executions = [];
-              void persistDailyConfig();
-              if (projectId) {
-                void loadExecutions(projectId);
-              }
-            }}
-          >
-            <option value="">{projectsState === "loading" ? "项目加载中..." : "选择项目"}</option>
-            {#each projects as project (project.id)}
-              <option value={project.id}>{project.name}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="block text-xs font-medium text-muted-foreground">
-          迭代
-          <select
-            class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
-            value={config.zentao.executionId ?? ""}
-            disabled={!config.zentao.projectId || executionsState === "loading"}
-            onchange={(event) => {
-              updateZentaoConfig({ executionId: Number(event.currentTarget.value) || null });
-              void persistDailyConfig();
-            }}
-          >
-            <option value="">{executionsState === "loading" ? "迭代加载中..." : "选择迭代"}</option>
-            {#each executions as execution (execution.id)}
-              <option value={execution.id}>{execution.name}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="block text-xs font-medium text-muted-foreground">
-          类型
-          <select
-            class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
-            value={config.zentao.taskType}
-            onchange={(event) => {
-              updateZentaoConfig({ taskType: event.currentTarget.value });
-              void persistDailyConfig();
-            }}
-          >
-            {#each TASK_TYPE_OPTIONS as option (option.value)}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="block text-xs font-medium text-muted-foreground">
-          工时
-          <input
-            class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
-            value={config.zentao.estimate}
-            min="0"
-            step="0.5"
-            type="number"
-            onchange={(event) => {
-              updateZentaoConfig({ estimate: Number(event.currentTarget.value) || 0 });
-              void persistDailyConfig();
-            }}
-          />
-        </label>
-
-        <label class="block text-xs font-medium text-muted-foreground">
-          定时
-          <div class="mt-1 flex h-8 items-center gap-2 rounded-md border bg-background px-2">
-            <input
-              type="checkbox"
-              checked={config.schedule.enabled}
-              disabled={!canEnableSchedule}
-              onchange={(event) => {
-                updateSchedule({ enabled: event.currentTarget.checked });
-                void persistDailyConfig();
-              }}
-            />
-            <input
-              class="min-w-0 flex-1 bg-transparent text-xs outline-none disabled:opacity-50"
-              type="time"
-              value={config.schedule.time}
-              disabled={!canEnableSchedule}
-              onchange={(event) => {
-                updateSchedule({ time: event.currentTarget.value });
-                void persistDailyConfig();
-              }}
-            />
-          </div>
-        </label>
-      </div>
-
-      {#if !canEnableSchedule}
-        <p class="mt-2 text-xs text-muted-foreground">选择项目、迭代和至少一个参与仓库后，才可以开启定时打卡。</p>
-      {/if}
-
-      <label class="mt-3 block text-xs font-medium text-muted-foreground">
-        任务名模板
-        <input
-          class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
-          value={config.zentao.titleTemplate}
-          placeholder={"[{date}] {repo} 禅道打卡"}
-          onchange={(event) => {
-            updateZentaoConfig({ titleTemplate: event.currentTarget.value });
-            void persistDailyConfig("任务名模板已保存");
-          }}
-        />
-        <span class="mt-1 block text-[11px] text-muted-foreground">
-          可用变量：{"{date}"}、{"{repo}"}、{"{message}"}、{"{hash}"}、{"{shortHash}"}、{"{author}"}、{"{count}"}
-        </span>
-      </label>
-      {/if}
     </div>
 
     {#if activeView === "init"}
@@ -689,180 +569,323 @@
         </div>
       </div>
     {:else}
-    <div class="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)_320px]">
-      <aside class="min-h-0 overflow-auto border-r bg-card/50 p-4">
-        <div class="mb-3 flex items-center justify-between">
-          <h3 class="text-sm font-semibold">本次参与仓库</h3>
-          <span class="text-xs text-muted-foreground">{selectedRepositoryIds.length}/{config.repositories.length}</span>
-        </div>
-
-        {#if config.repositories.length === 0}
-          <div class="rounded-lg border border-dashed bg-card/60 p-4 text-sm text-muted-foreground">
-            还没有仓库。打开初始化配置添加 Windows 或 WSL 仓库。
+      <div class="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)]">
+        <!-- 左栏：配置集中 -->
+        <aside class="min-h-0 overflow-auto border-r bg-card/50 p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-sm font-semibold">打卡配置</h3>
+            {#if !dailyConfigComplete}
+              <span class="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">未完成</span>
+            {/if}
           </div>
-        {:else}
-          <div class="space-y-2">
-            {#each config.repositories as repository (repository.id)}
-              <label class="block rounded-lg border bg-card p-3">
-                <div class="flex items-start gap-2">
-                  <input
-                    class="mt-1"
-                    type="checkbox"
-                    checked={selectedRepositoryIds.includes(repository.id)}
-                    onchange={(event) => toggleRepository(repository.id, event.currentTarget.checked)}
-                  />
-                  <div class="min-w-0">
-                    <p class="truncate font-medium">{repository.name}</p>
-                    <p class="truncate font-mono text-[11px] text-muted-foreground">
-                      {repository.environment === "wsl"
-                        ? `${repository.wslDistro ?? "WSL"}:${repository.wslPath ?? ""}`
-                        : repository.windowsPath}
-                    </p>
-                  </div>
-                </div>
+
+          <div class="space-y-3 rounded-lg border bg-card p-3">
+            <label class="block text-xs font-medium text-muted-foreground">
+              日期
+              <input class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm" type="date" bind:value={date} />
+            </label>
+
+            <label class="block text-xs font-medium text-muted-foreground">
+              项目
+              <select
+                class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+                value={config.zentao.projectId ?? ""}
+                disabled={projectsState === "loading"}
+                onchange={(event) => {
+                  const projectId = Number(event.currentTarget.value) || null;
+                  updateZentaoConfig({ projectId, executionId: null });
+                  executions = [];
+                  void persistDailyConfig();
+                  if (projectId) {
+                    void loadExecutions(projectId);
+                  }
+                }}
+              >
+                <option value="">{projectsState === "loading" ? "项目加载中..." : "选择项目"}</option>
+                {#each projects as project (project.id)}
+                  <option value={project.id}>{project.name}</option>
+                {/each}
+              </select>
+            </label>
+
+            <label class="block text-xs font-medium text-muted-foreground">
+              迭代
+              <select
+                class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+                value={config.zentao.executionId ?? ""}
+                disabled={!config.zentao.projectId || executionsState === "loading"}
+                onchange={(event) => {
+                  updateZentaoConfig({ executionId: Number(event.currentTarget.value) || null });
+                  void persistDailyConfig();
+                }}
+              >
+                <option value="">{executionsState === "loading" ? "迭代加载中..." : "选择迭代"}</option>
+                {#each executions as execution (execution.id)}
+                  <option value={execution.id}>{execution.name}</option>
+                {/each}
+              </select>
+            </label>
+
+            <div class="grid grid-cols-2 gap-2">
+              <label class="block text-xs font-medium text-muted-foreground">
+                类型
+                <select
+                  class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+                  value={config.zentao.taskType}
+                  onchange={(event) => {
+                    updateZentaoConfig({ taskType: event.currentTarget.value });
+                    void persistDailyConfig();
+                  }}
+                >
+                  {#each TASK_TYPE_OPTIONS as option (option.value)}
+                    <option value={option.value}>{option.label}</option>
+                  {/each}
+                </select>
               </label>
-            {/each}
-          </div>
-        {/if}
-      </aside>
 
-      <main class="min-h-0 overflow-auto border-r p-4">
-        <div class="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h3 class="text-sm font-semibold">打卡预览</h3>
-            <p class="text-xs text-muted-foreground">
-              {previewState === "loading" ? "正在抓取提交并生成预览..." : `${visibleCommits.length} commits`}
-            </p>
-          </div>
-          <button
-            class="h-8 rounded-md border px-3 text-xs font-medium disabled:opacity-50"
-            type="button"
-            onclick={() => void openPreview()}
-            disabled={previewState === "loading" || !dailyConfigComplete}
-          >
-            打开预览
-          </button>
-        </div>
-
-        {#if previewState === "idle"}
-          <div class="rounded-lg border border-dashed bg-card/60 px-4 py-8 text-center text-muted-foreground">
-            选择日常配置后点击“打开预览”，系统会自动抓取 Git 提交并生成禅道任务。
-          </div>
-        {:else if scanResults.length > 0}
-          <div class="space-y-4">
-            {#each scanResults as result (result.repositoryId)}
-              <section class="overflow-hidden rounded-lg border bg-card">
-                <div class="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
-                  <div>
-                    <h4 class="text-sm font-medium">{result.repositoryName}</h4>
-                    <p class:text-destructive={!result.ok} class="text-xs text-muted-foreground">{result.message}</p>
-                  </div>
-                  <span class="text-xs text-muted-foreground">{result.commits.length}</span>
-                </div>
-                {#if result.commits.length > 0}
-                  <div class="divide-y">
-                    {#each result.commits as commit (commit.hash)}
-                      <div class="grid grid-cols-[72px_minmax(0,1fr)_72px] gap-3 px-3 py-2 text-xs">
-                        <span class="font-mono text-muted-foreground">{commit.committedAt.slice(11, 16)}</span>
-                        <div class="min-w-0">
-                          <p class="truncate text-foreground">{commit.message}</p>
-                          <p class="truncate text-muted-foreground">{commit.authorName} · {commit.repositoryName}</p>
-                        </div>
-                        <span class="font-mono text-muted-foreground">{commit.shortHash}</span>
-                      </div>
-                    {/each}
-                  </div>
-                {/if}
-              </section>
-            {/each}
-          </div>
-        {:else}
-          <div class="rounded-lg border border-dashed bg-card/60 px-4 py-8 text-center text-muted-foreground">
-            这一天没有可同步的提交。
-          </div>
-        {/if}
-
-        {#if taskDrafts.length > 0}
-          <section class="mt-4 rounded-lg border bg-card p-3">
-            <h4 class="text-sm font-medium">待创建并完成</h4>
-            {#each taskDrafts as task (task.id)}
-              <div class="mt-3 border-t pt-3 text-xs">
-                <p class="font-medium">{task.name}</p>
-                <p class="mt-1 text-muted-foreground">
-                  {task.date} · {task.taskType} · 预计 {task.estimate}h · {task.assignedTo}
-                </p>
-                <pre class="mt-2 max-h-36 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-2 font-mono text-[11px]">{task.desc}</pre>
-              </div>
-            {/each}
-          </section>
-        {/if}
-      </main>
-
-      <aside class="min-h-0 overflow-auto bg-card/50 p-4">
-        <div class="mb-4">
-          <h3 class="text-sm font-semibold">提交打卡</h3>
-          <p class="text-xs text-muted-foreground">创建任务后立即完成。</p>
-        </div>
-
-        <div class="space-y-3 rounded-lg border bg-card p-3 text-xs">
-          <div class="flex items-center justify-between">
-            <span class="text-muted-foreground">禅道连接</span>
-            <span>{WorklogService.isZentaoConnectionConfigured(config) ? "已配置" : "未配置"}</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-muted-foreground">项目/迭代</span>
-            <span>{config.zentao.projectId && config.zentao.executionId ? "已选择" : "未完成"}</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-muted-foreground">参与仓库</span>
-            <span>{selectedRepositoryIds.length} 个</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-muted-foreground">预览任务</span>
-            <span>{taskDrafts.length} 个</span>
-          </div>
-        </div>
-
-        <button
-          class="mt-4 h-9 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:opacity-50"
-          type="button"
-          onclick={() => void submitClockIn()}
-          disabled={submitState === "loading" || taskDrafts.length === 0}
-        >
-          {submitState === "loading" ? "提交中..." : "提交打卡"}
-        </button>
-
-        {#if statusMessage}
-          <p class="mt-4 rounded-md border bg-muted/40 px-3 py-2 text-xs">{statusMessage}</p>
-        {/if}
-        {#if errorMessage}
-          <p class="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            {errorMessage}
-          </p>
-        {/if}
-
-        {#if config.lastRun}
-          <section class="mt-4 rounded-lg border bg-card p-3">
-            <h4 class="text-sm font-medium">最近一次打卡</h4>
-            <p class="mt-2 text-xs text-muted-foreground">{config.lastRun.message}</p>
-            <p class="mt-1 text-xs text-muted-foreground">{config.lastRun.ranAt}</p>
-          </section>
-        {/if}
-
-        {#if taskResults.length > 0}
-          <section class="mt-4 rounded-lg border bg-card p-3">
-            <h4 class="text-sm font-medium">打卡结果</h4>
-            <div class="mt-2 space-y-2">
-              {#each taskResults as result (result.draftId)}
-                <p class:text-destructive={!result.ok} class="text-xs text-muted-foreground">
-                  {result.ok ? "成功" : "失败"} {result.taskId ? `#${result.taskId}` : ""} · {result.message}
-                </p>
-              {/each}
+              <label class="block text-xs font-medium text-muted-foreground">
+                工时
+                <input
+                  class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+                  value={config.zentao.estimate}
+                  min="0"
+                  step="0.5"
+                  type="number"
+                  onchange={(event) => {
+                    updateZentaoConfig({ estimate: Number(event.currentTarget.value) || 0 });
+                    void persistDailyConfig();
+                  }}
+                />
+              </label>
             </div>
-          </section>
-        {/if}
-      </aside>
-    </div>
+
+            <label class="block text-xs font-medium text-muted-foreground">
+              定时打卡
+              <div class="mt-1 flex h-8 items-center justify-between gap-2 rounded-md border bg-background px-2">
+                <div class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={config.schedule.enabled}
+                    disabled={!canEnableSchedule}
+                    onchange={(event) => {
+                      updateSchedule({ enabled: event.currentTarget.checked });
+                      void persistDailyConfig();
+                    }}
+                  />
+                  <span class="text-xs text-foreground">{config.schedule.enabled ? "已开启" : "已关闭"}</span>
+                </div>
+                <input
+                  class="min-w-0 flex-1 bg-transparent text-right text-xs outline-none disabled:opacity-50"
+                  type="time"
+                  value={config.schedule.time}
+                  disabled={!canEnableSchedule}
+                  onchange={(event) => {
+                    updateSchedule({ time: event.currentTarget.value });
+                    void persistDailyConfig();
+                  }}
+                />
+              </div>
+              {#if !canEnableSchedule}
+                <span class="mt-1 block text-[11px] text-muted-foreground">需先选项目、迭代和至少一个参与仓库</span>
+              {/if}
+            </label>
+          </div>
+
+          <div class="mt-3 rounded-lg border bg-card p-3">
+            <label class="block text-xs font-medium text-muted-foreground">
+              任务名模板
+              <input
+                class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+                value={config.zentao.titleTemplate}
+                placeholder={"[{date}] {repo} 禅道打卡"}
+                onchange={(event) => {
+                  updateZentaoConfig({ titleTemplate: event.currentTarget.value });
+                  void persistDailyConfig("任务名模板已保存");
+                }}
+              />
+              <span class="mt-1 block text-[11px] text-muted-foreground">
+                可用变量：{"{date}"}、{"{repo}"}、{"{message}"}、{"{hash}"}、{"{shortHash}"}、{"{author}"}、{"{count}"}
+              </span>
+            </label>
+          </div>
+        </aside>
+
+        <!-- 右栏：主流程面板 -->
+        <main class="flex min-h-0 flex-col">
+          <!-- ① 参与仓库 横向多选 -->
+          <div class="border-b bg-card/40 p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-semibold">参与仓库</h3>
+                <p class="text-xs text-muted-foreground">勾选本次打卡涉及的仓库，作为生成任务的来源。</p>
+              </div>
+              <span class="text-xs text-muted-foreground">{selectedRepositoryIds.length}/{config.repositories.length}</span>
+            </div>
+
+            {#if config.repositories.length === 0}
+              <div class="rounded-lg border border-dashed bg-card/60 p-4 text-sm text-muted-foreground">
+                还没有仓库。打开初始化配置添加 Windows 或 WSL 仓库。
+              </div>
+            {:else}
+              <div class="flex flex-wrap gap-2">
+                {#each config.repositories as repository (repository.id)}
+                  <label
+                    class="flex cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-colors has-checked:border-primary has-checked:bg-primary/5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedRepositoryIds.includes(repository.id)}
+                      onchange={(event) => toggleRepository(repository.id, event.currentTarget.checked)}
+                    />
+                    <div class="min-w-0">
+                      <p class="text-xs font-medium leading-tight">{repository.name}</p>
+                      <p class="truncate font-mono text-[10px] text-muted-foreground">
+                        {repository.environment === "wsl"
+                          ? `${repository.wslDistro ?? "WSL"}:${repository.wslPath ?? ""}`
+                          : repository.windowsPath}
+                      </p>
+                    </div>
+                  </label>
+                {/each}
+              </div>
+            {/if}
+          </div>
+
+          <!-- 主流程滚动区 -->
+          <div class="min-h-0 flex-1 overflow-auto p-4">
+            <!-- ② 打开预览 主按钮 -->
+            <div class="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 class="text-sm font-semibold">打卡预览</h3>
+                <p class="text-xs text-muted-foreground">
+                  {previewState === "loading" ? "正在抓取提交并生成预览..." : `${visibleCommits.length} commits`}
+                </p>
+              </div>
+              <button
+                class="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
+                type="button"
+                onclick={() => void openPreview()}
+                disabled={previewState === "loading" || !dailyConfigComplete}
+              >
+                {previewState === "loading" ? "预览中..." : "打开预览"}
+              </button>
+            </div>
+
+            {#if !dailyConfigComplete}
+              <p class="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                请先在左侧完成日期、项目、迭代，并在上方勾选至少一个参与仓库，即可打开预览。
+              </p>
+            {/if}
+
+            {#if previewState === "idle"}
+              <div class="rounded-lg border border-dashed bg-card/60 px-4 py-8 text-center text-muted-foreground">
+                完成配置后点击“打开预览”，系统会自动抓取 Git 提交并生成禅道任务。
+              </div>
+            {:else if scanResults.length > 0}
+              <div class="space-y-4">
+                {#each scanResults as result (result.repositoryId)}
+                  <section class="overflow-hidden rounded-lg border bg-card">
+                    <div class="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
+                      <div>
+                        <h4 class="text-sm font-medium">{result.repositoryName}</h4>
+                        <p class:text-destructive={!result.ok} class="text-xs text-muted-foreground">{result.message}</p>
+                      </div>
+                      <span class="text-xs text-muted-foreground">{result.commits.length}</span>
+                    </div>
+                    {#if result.commits.length > 0}
+                      <div class="divide-y">
+                        {#each result.commits as commit (commit.hash)}
+                          <div class="grid grid-cols-[72px_minmax(0,1fr)_72px] gap-3 px-3 py-2 text-xs">
+                            <span class="font-mono text-muted-foreground">{commit.committedAt.slice(11, 16)}</span>
+                            <div class="min-w-0">
+                              <p class="truncate text-foreground">{commit.message}</p>
+                              <p class="truncate text-muted-foreground">{commit.authorName} · {commit.repositoryName}</p>
+                            </div>
+                            <span class="font-mono text-muted-foreground">{commit.shortHash}</span>
+                          </div>
+                        {/each}
+                      </div>
+                    {/if}
+                  </section>
+                {/each}
+              </div>
+            {:else}
+              <div class="rounded-lg border border-dashed bg-card/60 px-4 py-8 text-center text-muted-foreground">
+                这一天没有可同步的提交。
+              </div>
+            {/if}
+
+            {#if taskDrafts.length > 0}
+              <section class="mt-4 rounded-lg border bg-card p-3">
+                <h4 class="text-sm font-medium">待创建并完成（{taskDrafts.length}）</h4>
+                {#each taskDrafts as task (task.id)}
+                  <div class="mt-3 border-t pt-3 text-xs">
+                    <p class="font-medium">{task.name}</p>
+                    <p class="mt-1 text-muted-foreground">
+                      {task.date} · {task.taskType} · 预计 {task.estimate}h · {task.assignedTo}
+                    </p>
+                    <pre class="mt-2 max-h-36 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-2 font-mono text-[11px]">{task.desc}</pre>
+                  </div>
+                {/each}
+              </section>
+            {/if}
+          </div>
+
+          <!-- ③ 提交打卡 sticky 底部 + 结果 -->
+          <div class="border-t bg-card/70 p-4">
+            <button
+              class="h-10 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
+              type="button"
+              onclick={() => void submitClockIn()}
+              disabled={submitState === "loading" || taskDrafts.length === 0}
+            >
+              {submitState === "loading" ? "提交中..." : taskDrafts.length > 0 ? `提交打卡（${taskDrafts.length} 个任务）` : "提交打卡"}
+            </button>
+
+            {#if statusMessage && !errorMessage}
+              <p class="mt-3 rounded-md border bg-muted/40 px-3 py-2 text-xs">{statusMessage}</p>
+            {/if}
+            {#if errorMessage}
+              <p class="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                {errorMessage}
+              </p>
+            {/if}
+
+            {#if allTasksSucceeded}
+              <div class="mt-3 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-600">
+                <span aria-hidden="true">✓</span>
+                <span>打卡成功</span>
+              </div>
+            {:else if someTasksFailed}
+              <div class="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-600">
+                部分打卡失败，请查看下方明细。
+              </div>
+            {/if}
+
+            {#if taskResults.length > 0}
+              <section class="mt-3 rounded-lg border bg-card p-3">
+                <h4 class="text-sm font-medium">打卡结果</h4>
+                <div class="mt-2 space-y-2">
+                  {#each taskResults as result (result.draftId)}
+                    <p class:text-destructive={!result.ok} class:text-emerald-600={result.ok} class="flex items-start gap-1.5 text-xs text-muted-foreground">
+                      <span>{result.ok ? "✓" : "✕"}</span>
+                      <span>{result.ok ? "成功" : "失败"} {result.taskId ? `#${result.taskId}` : ""} · {result.message}</span>
+                    </p>
+                  {/each}
+                </div>
+              </section>
+            {/if}
+
+            {#if config.lastRun}
+              <section class="mt-3 rounded-lg border bg-card p-3">
+                <h4 class="text-sm font-medium">最近一次打卡</h4>
+                <p class="mt-2 text-xs text-muted-foreground">{config.lastRun.message}</p>
+                <p class="mt-1 text-xs text-muted-foreground">{config.lastRun.ranAt}</p>
+              </section>
+            {/if}
+          </div>
+        </main>
+      </div>
     {/if}
   </section>
 {/if}
