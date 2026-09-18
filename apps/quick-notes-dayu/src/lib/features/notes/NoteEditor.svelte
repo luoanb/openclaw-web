@@ -108,6 +108,13 @@
             text: t("notes.placeholder"),
             mode: "block",
           },
+          // Crepe defaults to a 16px gap between the block and its handle, which
+          // pushes the handle out of the editor. Keep it close to the content.
+          [Crepe.Feature.BlockEdit]: {
+            blockHandle: {
+              getOffset: () => 4,
+            },
+          },
         },
       });
 
@@ -360,9 +367,9 @@
       </p>
     {/if}
 
-    <div class="relative flex min-h-0 flex-1 gap-0 p-4">
+    <div class="relative flex min-h-0 flex-1 gap-0">
       <button
-        class="absolute right-7 top-7 z-30 inline-flex size-8 items-center justify-center rounded-md border bg-card/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 xl:hidden"
+        class="absolute right-3 top-3 z-30 inline-flex size-8 items-center justify-center rounded-md border bg-card/95 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 xl:hidden"
         type="button"
         aria-label={t("notes.outline")}
         title={t("notes.outline")}
@@ -376,7 +383,7 @@
         {#key viewKey}
           <div class="relative h-full">
             <div
-              class="quick-note-crepe-editor h-full overflow-hidden rounded-lg border bg-card text-sm leading-6 xl:rounded-r-none"
+              class="quick-note-crepe-editor h-full overflow-hidden bg-card text-sm leading-6"
               bind:this={editorRoot}
             ></div>
           </div>
@@ -385,7 +392,7 @@
       <NoteOutlinePanel
         items={outlineItems}
         onSelect={scrollToOutlineItem}
-        class="hidden w-60 rounded-r-lg border-y border-r xl:flex"
+        class="hidden w-60 xl:flex"
       />
     </div>
     <NoteOutlineDrawer
@@ -430,7 +437,8 @@
 
   :global(.quick-note-crepe-editor .milkdown .ProseMirror) {
     min-height: 100%;
-    padding: 16px 20px;
+    /* Left side is wider than the right one: it holds the block handle. */
+    padding: 16px 40px 16px 48px;
   }
 
   :global(.quick-note-crepe-editor .milkdown .ProseMirror p) {
@@ -482,17 +490,37 @@
     height: 24px;
   }
 
-  :global(.quick-note-crepe-editor .milkdown .milkdown-toolbar .toolbar-item),
-  :global(.quick-note-crepe-editor .milkdown .milkdown-block-handle .operation-item) {
+  :global(.quick-note-crepe-editor .milkdown .milkdown-toolbar .toolbar-item) {
     width: 28px;
     height: 28px;
     margin: 4px;
   }
 
-  :global(.quick-note-crepe-editor .milkdown .milkdown-toolbar .toolbar-item svg),
-  :global(.quick-note-crepe-editor .milkdown .milkdown-block-handle .operation-item svg) {
+  :global(.quick-note-crepe-editor .milkdown .milkdown-toolbar .toolbar-item svg) {
     width: 20px;
     height: 20px;
+  }
+
+  /* Block handle lives entirely inside the ProseMirror left gutter (48px):
+     2 x 20px buttons, no gap and no margin. */
+  :global(.quick-note-crepe-editor .milkdown .milkdown-block-handle) {
+    gap: 0;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .milkdown-block-handle .operation-item) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    padding: 0;
+  }
+
+  :global(.quick-note-crepe-editor .milkdown .milkdown-block-handle .operation-item svg) {
+    display: block;
+    width: 16px;
+    height: 16px;
   }
 
   :global(.quick-note-crepe-editor .milkdown .ProseMirror pre) {
