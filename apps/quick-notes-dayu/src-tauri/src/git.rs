@@ -9,6 +9,22 @@ const FIELD_SEPARATOR: char = '\u{1f}';
 const RECORD_SEPARATOR: char = '\u{1e}';
 const GIT_FORMAT: &str = "%H%x1f%h%x1f%an%x1f%ae%x1f%aI%x1f%s%x1e";
 
+/// Build a command that never pops up a console window. Without
+/// `CREATE_NO_WINDOW` (0x0800_0000) the spawned `git`/`wsl.exe` process briefly
+/// flashes a terminal window on Windows.
+fn new_command(program: &str) -> Command {
+    let mut command = Command::new(program);
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    command
+}
+
 pub fn validate_repository(config: &WorklogRepositoryConfig) -> RepositoryValidationResult {
     match run_git(config, &["rev-parse", "--is-inside-work-tree"]) {
         Ok(output) if output.trim() == "true" => RepositoryValidationResult {
@@ -83,7 +99,7 @@ fn run_git(config: &WorklogRepositoryConfig, git_args: &[&str]) -> Result<String
                 .windows_path
                 .as_deref()
                 .ok_or_else(|| "请填写 Windows 仓库路径".to_string())?;
-            let mut command = Command::new("git");
+            let mut command = new_command("git");
             command.arg("-C").arg(path).args(git_args);
             command.output()
         }
@@ -96,7 +112,7 @@ fn run_git(config: &WorklogRepositoryConfig, git_args: &[&str]) -> Result<String
                 .wsl_path
                 .as_deref()
                 .ok_or_else(|| "请填写 WSL 仓库路径".to_string())?;
-            let mut command = Command::new("wsl.exe");
+            let mut command = new_command("wsl.exe");
             command
                 .arg("-d")
                 .arg(distro)

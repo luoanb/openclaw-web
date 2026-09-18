@@ -14,7 +14,7 @@ pnpm tauri build --bundles deb 2>&1
 
 DEB_DIR="src-tauri/target/release/bundle/deb"
 DEB_FILE=$(ls "$DEB_DIR"/*.deb 2>/dev/null | head -1)
-DEB_BASENAME="quick-notes_0.0.0_amd64.deb"
+DEB_BASENAME="quick-notes_0.1.0_amd64.deb"
 DEB_OUT="$DEB_DIR/$DEB_BASENAME"
 
 echo "=== 3. Post-process .deb ==="
