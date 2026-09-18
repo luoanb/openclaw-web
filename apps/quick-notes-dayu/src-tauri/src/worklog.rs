@@ -8,6 +8,10 @@ use crate::zentao;
 #[serde(rename_all = "camelCase")]
 pub struct WorklogConfig {
     pub repositories: Vec<WorklogRepositoryConfig>,
+    /// Repository ids the user picked for the daily clock-in. `None` means the
+    /// user has never made a choice, so the UI falls back to selecting all.
+    #[serde(default)]
+    pub selected_repository_ids: Option<Vec<String>>,
     pub zentao: ZentaoConfig,
     pub schedule: WorklogScheduleConfig,
     pub last_run: Option<WorklogRunSummary>,
@@ -17,6 +21,7 @@ impl Default for WorklogConfig {
     fn default() -> Self {
         Self {
             repositories: Vec::new(),
+            selected_repository_ids: None,
             zentao: ZentaoConfig::default(),
             schedule: WorklogScheduleConfig::default(),
             last_run: None,

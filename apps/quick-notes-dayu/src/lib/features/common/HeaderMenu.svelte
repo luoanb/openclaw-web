@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import { toast } from "$lib/core/toast/toast.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import Icons from "./Icons.svelte";
 
@@ -14,25 +15,14 @@
 
   let isOpen = $state(false);
   let menuRef: HTMLDivElement | null = $state(null);
-  let message = $state<{ text: string; type: "success" | "error" } | null>(null);
-  let messageTimeout: ReturnType<typeof setTimeout> | null = null;
 
   async function toggleDevTools() {
     try {
-      message = null;
       await invoke("toggle_devtools");
-      message = { text: t("devtools.openHint"), type: "success" };
-      if (messageTimeout) clearTimeout(messageTimeout);
-      messageTimeout = setTimeout(() => {
-        message = null;
-      }, 3000);
+      toast(t("devtools.openHint"), { variant: "success" });
     } catch (err) {
-      message = { text: t("error.devtoolsFailed"), type: "error" };
+      toast(t("error.devtoolsFailed"), { variant: "error" });
       console.error("Failed to toggle devtools:", err);
-      if (messageTimeout) clearTimeout(messageTimeout);
-      messageTimeout = setTimeout(() => {
-        message = null;
-      }, 3000);
     }
   }
 
@@ -61,18 +51,6 @@
 </script>
 
 <svelte:window onclick={handleClickOutside} />
-
-{#if message}
-  {#if message.type === "error"}
-    <div class="fixed top-4 right-4 z-50 rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive shadow-sm">
-      {message.text}
-    </div>
-  {:else}
-    <div class="fixed top-4 right-4 z-50 rounded-md border border-green-600 bg-green-50 px-3 py-2 text-sm text-green-800 shadow-sm">
-      {message.text}
-    </div>
-  {/if}
-{/if}
 
 <div class="relative" bind:this={menuRef}>
   <button

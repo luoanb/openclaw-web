@@ -4,6 +4,7 @@
   import "@milkdown/crepe/theme/common/style.css";
   import "@milkdown/crepe/theme/frame.css";
   import { DiffAutoSaver } from "$lib/core/autosave/diff-auto-saver";
+  import { toast } from "$lib/core/toast/toast.svelte";
   import { formatDateTime } from "$lib/utils";
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
   import { NoteOutlineService, type NoteOutlineItem } from "$lib/core/notes/note-outline-service";
@@ -12,7 +13,8 @@
   import NoteOutlineDrawer from "./NoteOutlineDrawer.svelte";
   import NoteOutlinePanel from "./NoteOutlinePanel.svelte";
 
-  const { t } = getLocaleStore();
+  const localeStore = getLocaleStore();
+  const { t } = localeStore;
 
   const AUTOSAVE_INTERVAL_MS = 3000;
   const MAX_EXPORT_FILENAME_LENGTH = 64;
@@ -47,7 +49,6 @@
   let crepeEditor: Crepe | null = null;
   let autoSaver: DiffAutoSaver<string> | null = null;
   let saveTarget: SaveTarget = { mode: "create" };
-  let actionFeedback = $state<{ text: string; type: "success" | "error" } | null>(null);
   let outlineDrawerOpen = $state(false);
   const outlineItems = $derived(NoteOutlineService.extract(draft));
 
@@ -60,13 +61,22 @@
   // to prevent Svelte 5's auto-tracking from making the effect re-run on
   // every prop change.
   let currentCleanup: (() => void) | null = null;
+  // View key of the last editor build. When a rebuild happens without the view
+  // key changing (e.g. a language switch), the in-progress draft is kept
+  // instead of falling back to the last saved content.
+  let lastViewKey = -1;
 
   $effect(() => {
-    // Force-track viewKey and editorRoot only
+    // Force-track viewKey, editorRoot and locale only
     void viewKey;
+    void localeStore.locale;
     const root = editorRoot;
 
     untrack(() => {
+      const keepsDraft = viewKey === lastViewKey;
+      const liveContent = keepsDraft ? getEditorContent() : null;
+      lastViewKey = viewKey;
+
       // Clear any previous setup
       disposeEditor();
 
@@ -83,7 +93,7 @@
       }
 
       // Create editor
-      const initialContent = isCreating ? "" : (currentNote?.content ?? "");
+      const initialContent = liveContent ?? (isCreating ? "" : (currentNote?.content ?? ""));
       saveTarget = getInitialSaveTarget(isCreating, currentNote);
       let disposed = false;
       draft = initialContent;
@@ -110,10 +120,17 @@
           },
           // Crepe defaults to a 16px gap between the block and its handle, which
           // pushes the handle out of the editor. Keep it close to the content.
+          // The block-edit menu labels must be passed explicitly, otherwise
+          // Crepe keeps its built-in English text.
           [Crepe.Feature.BlockEdit]: {
             blockHandle: {
               getOffset: () => 4,
             },
+            ...buildBlockEditLabels(),
+          },
+          // TopBar's heading selector defaults to "Paragraph" + "Heading 1..6".
+          [Crepe.Feature.TopBar]: {
+            headingOptions: buildHeadingOptions(),
           },
         },
       });
@@ -200,6 +217,52 @@
       : { mode: "create" };
   }
 
+  // Crepe ships English block-type labels and offers no locale option, so the
+  // slash/block menu labels are supplied from the app dictionary.
+  function buildBlockEditLabels() {
+    return {
+      textGroup: {
+        label: t("editor.group.text"),
+        text: { label: t("editor.block.text") },
+        h1: { label: t("editor.block.heading1") },
+        h2: { label: t("editor.block.heading2") },
+        h3: { label: t("editor.block.heading3") },
+        h4: { label: t("editor.block.heading4") },
+        h5: { label: t("editor.block.heading5") },
+        h6: { label: t("editor.block.heading6") },
+        quote: { label: t("editor.block.quote") },
+        divider: { label: t("editor.block.divider") },
+      },
+      listGroup: {
+        label: t("editor.group.list"),
+        bulletList: { label: t("editor.block.bulletList") },
+        orderedList: { label: t("editor.block.orderedList") },
+        taskList: { label: t("editor.block.taskList") },
+      },
+      advancedGroup: {
+        label: t("editor.group.advanced"),
+        image: { label: t("editor.block.image") },
+        codeBlock: { label: t("editor.block.codeBlock") },
+        table: { label: t("editor.block.table") },
+        math: { label: t("editor.block.math") },
+      },
+    };
+  }
+
+  // Crepe's TopBar heading selector ships "Paragraph" + "Heading 1..6" and has
+  // no locale option, so the options are rebuilt from the app dictionary.
+  function buildHeadingOptions() {
+    return [
+      { label: t("editor.block.paragraph"), level: null },
+      { label: t("editor.block.heading1"), level: 1 },
+      { label: t("editor.block.heading2"), level: 2 },
+      { label: t("editor.block.heading3"), level: 3 },
+      { label: t("editor.block.heading4"), level: 4 },
+      { label: t("editor.block.heading5"), level: 5 },
+      { label: t("editor.block.heading6"), level: 6 },
+    ];
+  }
+
   function submitNoteContent(content: string) {
     const nextContent = content.trim();
 
@@ -231,9 +294,9 @@
 
     try {
       await navigator.clipboard.writeText(content);
-      actionFeedback = { text: t("notes.copySuccess"), type: "success" };
+      toast(t("notes.copySuccess"), { variant: "success" });
     } catch {
-      actionFeedback = { text: t("notes.copyFailed"), type: "error" };
+      toast(t("notes.copyFailed"), { variant: "error" });
     }
   }
 
@@ -247,12 +310,9 @@
     try {
       const filename = getExportFilename(content);
       downloadMarkdown(content, filename);
-      actionFeedback = {
-        text: t("notes.exportSuccess", { filename }),
-        type: "success",
-      };
+      toast(t("notes.exportSuccess", { filename }), { variant: "success" });
     } catch {
-      actionFeedback = { text: t("notes.exportFailed"), type: "error" };
+      toast(t("notes.exportFailed"), { variant: "error" });
     }
   }
 
@@ -357,15 +417,6 @@
         </button>
       </div>
     </div>
-    {#if actionFeedback}
-      <p
-        class="border-b px-4 py-2 text-xs"
-        class:text-destructive={actionFeedback.type === "error"}
-        class:text-green-700={actionFeedback.type === "success"}
-      >
-        {actionFeedback.text}
-      </p>
-    {/if}
 
     <div class="relative flex min-h-0 flex-1 gap-0">
       <button

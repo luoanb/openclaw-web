@@ -1,16 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import MultiSelect from "$lib/components/ui/multi-select/multi-select.svelte";
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import { toast } from "$lib/core/toast/toast.svelte";
   import { WorklogRepository } from "$lib/core/worklog/worklog-repository";
   import { WorklogService } from "$lib/core/worklog/worklog-service";
   import type {
+    GitCommitRecord,
     RepositoryScanResult,
     WorklogConfig,
     WorklogRepositoryConfig,
     ZentaoExecutionOption,
     ZentaoProjectOption,
     ZentaoTaskDraft,
-    ZentaoTaskResult,
   } from "$lib/core/worklog/worklog-types";
 
   const { t } = getLocaleStore();
@@ -43,15 +45,16 @@
   let activeView = $state<WorklogView>("init");
   let zentaoVerified = $state(false);
   let initValidationMessage = $state("");
-  let statusMessage = $state("");
-  let errorMessage = $state<string | null>(null);
+  let loadErrorMessage = $state<string | null>(null);
   let selectedRepositoryIds = $state<string[]>([]);
   let scanResults = $state<RepositoryScanResult[]>([]);
+  let selectedCommitKeys = $state<string[]>([]);
   let taskDrafts = $state<ZentaoTaskDraft[]>([]);
-  let taskResults = $state<ZentaoTaskResult[]>([]);
   let projects = $state<ZentaoProjectOption[]>([]);
   let executions = $state<ZentaoExecutionOption[]>([]);
   let lastAutoRunDate = $state<string | null>(null);
+  // Guards against out-of-order task-draft regeneration.
+  let draftRequestId = 0;
 
   const anyBusy = $derived(
     loadState === "loading" ||
@@ -60,22 +63,37 @@
       previewState === "loading" ||
       submitState === "loading"
   );
+  const repositoryOptions = $derived(
+    config.repositories.map((repository) => ({
+      value: repository.id,
+      label: repository.name,
+      hint:
+        repository.environment === "wsl"
+          ? `${repository.wslDistro ?? "WSL"}:${repository.wslPath ?? ""}`
+          : (repository.windowsPath ?? ""),
+    }))
+  );
   const selectedRepositories = $derived(
     WorklogService.getSelectedRepositories(config, selectedRepositoryIds)
   );
   const commits = $derived(WorklogService.flattenCommits(scanResults));
-  const visibleCommits = $derived(WorklogService.filterCommits(commits, searchQuery));
+  // Search narrows what is listed; the checkboxes decide what gets clocked in.
+  const visibleScanResults = $derived(
+    scanResults
+      .map((result) => ({
+        ...result,
+        commits: WorklogService.filterCommits(result.commits, searchQuery),
+      }))
+      .filter((result) => result.commits.length > 0)
+  );
+  const selectedCommitCount = $derived(
+    WorklogService.selectCommits(commits, selectedCommitKeys).length
+  );
   const dailyConfigComplete = $derived(
     WorklogService.isDailyConfigComplete(config, selectedRepositoryIds)
   );
   const canEnableSchedule = $derived(
     WorklogService.canEnableSchedule(config, selectedRepositoryIds)
-  );
-  const allTasksSucceeded = $derived(
-    taskResults.length > 0 && taskResults.every((item) => item.ok)
-  );
-  const someTasksFailed = $derived(
-    taskResults.some((item) => !item.ok) && taskResults.some((item) => item.ok)
   );
 
   onMount(() => {
@@ -90,11 +108,11 @@
 
   async function loadConfig() {
     loadState = "loading";
-    errorMessage = null;
+    loadErrorMessage = null;
 
     try {
       config = WorklogService.normalizeConfig(await WorklogRepository.loadConfig());
-      selectedRepositoryIds = config.repositories.map((repository) => repository.id);
+      selectedRepositoryIds = WorklogService.resolveSelectedRepositoryIds(config);
       zentaoVerified = false;
       loadState = "ready";
 
@@ -104,72 +122,75 @@
         activeView = "init";
       }
     } catch (error) {
-      errorMessage = getErrorMessage(error, "读取禅道打卡配置失败");
+      loadErrorMessage = getErrorMessage(error, "读取禅道打卡配置失败");
       loadState = "error";
     }
   }
 
-  async function saveConfig(message = "配置已保存") {
+  async function saveConfig() {
     config = WorklogService.normalizeConfig(await WorklogRepository.saveConfig(config));
-    statusMessage = message;
   }
 
   async function autoValidateZentaoConfig() {
     initValidationState = "loading";
     initValidationMessage = "正在验证已保存的禅道连接...";
-    errorMessage = null;
 
     try {
       const result = await WorklogRepository.validateZentaoConfig(config.zentao);
-      initValidationMessage = result.message;
+      initValidationMessage = "";
 
       if (!result.ok) {
         zentaoVerified = false;
         activeView = "init";
         initValidationState = "error";
+        toast(result.message, { variant: "error" });
         return;
       }
 
       zentaoVerified = true;
       activeView = "clockIn";
       initValidationState = "ready";
+      toast(result.message, { variant: "success" });
       void loadProjects(true);
     } catch (error) {
       zentaoVerified = false;
       activeView = "init";
       initValidationState = "error";
-      initValidationMessage = getErrorMessage(error, "自动验证禅道连接失败");
+      initValidationMessage = "";
+      toast(getErrorMessage(error, "自动验证禅道连接失败"), { variant: "error" });
     }
   }
 
   async function validateAndSaveInitConfig() {
     if (!WorklogService.isZentaoConnectionConfigured(config)) {
-      initValidationMessage = "请先填写禅道地址、账号和密码。";
+      toast("请先填写禅道地址、账号和密码。", { variant: "warning" });
       return;
     }
 
     initValidationState = "loading";
     initValidationMessage = "正在验证禅道连接...";
-    errorMessage = null;
 
     try {
       const result = await WorklogRepository.validateZentaoConfig(config.zentao);
-      initValidationMessage = result.message;
+      initValidationMessage = "";
 
       if (!result.ok) {
         zentaoVerified = false;
         initValidationState = "error";
+        toast(result.message, { variant: "error" });
         return;
       }
 
       zentaoVerified = true;
-      await saveConfig("初始化配置已验证并保存");
+      await saveConfig();
       initValidationState = "ready";
       activeView = "clockIn";
+      toast(result.message, { variant: "success" });
       void loadProjects(true);
     } catch (error) {
-      initValidationMessage = getErrorMessage(error, "验证禅道连接失败");
+      initValidationMessage = "";
       initValidationState = "error";
+      toast(getErrorMessage(error, "验证禅道连接失败"), { variant: "error" });
     }
   }
 
@@ -180,12 +201,12 @@
 
     initValidationState = "loading";
     try {
-      await saveConfig("初始化配置已保存");
+      await saveConfig();
       activeView = "clockIn";
       initValidationState = "ready";
     } catch (error) {
-      initValidationMessage = getErrorMessage(error, "保存初始化配置失败");
       initValidationState = "error";
+      toast(getErrorMessage(error, "保存初始化配置失败"), { variant: "error" });
     }
   }
 
@@ -195,7 +216,6 @@
     }
 
     projectsState = "loading";
-    errorMessage = null;
 
     try {
       projects = await WorklogRepository.listZentaoProjects(config.zentao);
@@ -206,13 +226,12 @@
       }
     } catch (error) {
       projectsState = "error";
-      errorMessage = getErrorMessage(error, "自动拉取禅道项目失败");
+      toast(getErrorMessage(error, "自动拉取禅道项目失败"), { variant: "error" });
     }
   }
 
   async function loadExecutions(projectId: number) {
     executionsState = "loading";
-    errorMessage = null;
 
     try {
       executions = await WorklogRepository.listZentaoExecutions({
@@ -222,19 +241,17 @@
       executionsState = "ready";
     } catch (error) {
       executionsState = "error";
-      errorMessage = getErrorMessage(error, "自动拉取禅道迭代失败");
+      toast(getErrorMessage(error, "自动拉取禅道迭代失败"), { variant: "error" });
     }
   }
 
   async function openPreview() {
     if (!dailyConfigComplete) {
-      errorMessage = "请先选择项目、迭代和本次参与仓库。";
+      toast("请先选择项目、迭代和本次参与仓库。", { variant: "warning" });
       return;
     }
 
     previewState = "loading";
-    errorMessage = null;
-    taskResults = [];
 
     try {
       const scan = await WorklogRepository.scanGitCommits({
@@ -242,29 +259,76 @@
         date,
       });
       scanResults = scan.results;
-
-      const scannedCommits = WorklogService.flattenCommits(scan.results);
-      taskDrafts = await WorklogRepository.previewZentaoTasks({
-        config: config.zentao,
-        date,
-        commits: WorklogService.filterCommits(scannedCommits, searchQuery),
-      });
+      selectedCommitKeys = WorklogService.flattenCommits(scan.results).map((commit) =>
+        WorklogService.commitKey(commit)
+      );
+      await generateTaskDrafts(scan.results);
       previewState = "ready";
-      statusMessage = `已生成 ${taskDrafts.length} 个待打卡任务`;
+      toast(`已生成 ${taskDrafts.length} 个待打卡任务`, { variant: "success" });
     } catch (error) {
       previewState = "error";
-      errorMessage = getErrorMessage(error, "打开预览失败");
+      toast(getErrorMessage(error, "打开预览失败"), { variant: "error" });
     }
+  }
+
+  /**
+   * Rebuild the task drafts from the currently checked commits. Any manual edit
+   * made to a draft is discarded here, which matches the flow of "pick commits
+   * first, then edit the generated task".
+   */
+  async function generateTaskDrafts(results: RepositoryScanResult[]) {
+    const requestId = ++draftRequestId;
+    const commits = WorklogService.selectCommits(
+      WorklogService.flattenCommits(results),
+      selectedCommitKeys
+    );
+
+    if (commits.length === 0) {
+      if (requestId === draftRequestId) {
+        taskDrafts = [];
+      }
+      return;
+    }
+
+    const drafts = await WorklogRepository.previewZentaoTasks({
+      config: config.zentao,
+      date,
+      commits,
+    });
+
+    if (requestId !== draftRequestId) {
+      return;
+    }
+
+    taskDrafts = drafts;
+  }
+
+  async function toggleCommit(commit: GitCommitRecord, checked: boolean) {
+    const key = WorklogService.commitKey(commit);
+    selectedCommitKeys = checked
+      ? [...new Set([...selectedCommitKeys, key])]
+      : selectedCommitKeys.filter((item) => item !== key);
+
+    try {
+      await generateTaskDrafts(scanResults);
+    } catch (error) {
+      toast(getErrorMessage(error, "生成打卡任务失败"), { variant: "error" });
+    }
+  }
+
+  function updateTaskDraft(draftId: string, patch: Partial<ZentaoTaskDraft>) {
+    taskDrafts = taskDrafts.map((draft) =>
+      draft.id === draftId ? { ...draft, ...patch } : draft
+    );
   }
 
   async function submitClockIn() {
     if (taskDrafts.length === 0) {
-      errorMessage = "请先打开预览。";
+      toast("请先打开预览。", { variant: "warning" });
       return;
     }
 
     submitState = "loading";
-    errorMessage = null;
 
     try {
       const result = await WorklogRepository.createAndFinishZentaoTasks({
@@ -272,20 +336,35 @@
         tasks: taskDrafts,
         finishedAt: WorklogService.nowForZentao(),
       });
-      taskResults = result.results;
+      const summary = WorklogService.summarizeTaskResults(result.results);
+      const successCount = result.results.filter((item) => item.ok).length;
+      const details = result.results
+        .map(
+          (item) =>
+            `${item.ok ? "成功" : "失败"}${item.taskId ? ` #${item.taskId}` : ""} · ${item.message}`
+        )
+        .join("\n");
       config = {
         ...config,
         lastRun: {
-          status: result.results.every((item) => item.ok) ? "success" : "partial-failed",
+          status: successCount === result.results.length ? "success" : "partial-failed",
           ranAt: new Date().toISOString(),
-          message: WorklogService.summarizeTaskResults(result.results),
+          message: summary,
         },
       };
-      await saveConfig(WorklogService.summarizeTaskResults(result.results));
+      await saveConfig();
       submitState = "ready";
+
+      if (successCount === result.results.length) {
+        toast(`打卡成功\n${details}`, { variant: "success" });
+      } else if (successCount === 0) {
+        toast(`打卡失败\n${details}`, { variant: "error" });
+      } else {
+        toast(`部分打卡失败\n${details}`, { variant: "warning" });
+      }
     } catch (error) {
       submitState = "error";
-      errorMessage = getErrorMessage(error, "提交打卡失败");
+      toast(getErrorMessage(error, "提交打卡失败"), { variant: "error" });
     }
   }
 
@@ -313,11 +392,11 @@
 
   function addRepository(environment: WorklogRepositoryConfig["environment"]) {
     const repository = WorklogService.createRepository(environment);
+    setSelectedRepositories([...selectedRepositoryIds, repository.id]);
     config = {
       ...config,
       repositories: [...config.repositories, repository],
     };
-    selectedRepositoryIds = [...selectedRepositoryIds, repository.id];
   }
 
   function updateRepository(repositoryId: string, patch: Partial<WorklogRepositoryConfig>) {
@@ -334,15 +413,18 @@
       ...config,
       repositories: config.repositories.filter((repository) => repository.id !== repositoryId),
     };
-    selectedRepositoryIds = selectedRepositoryIds.filter((id) => id !== repositoryId);
+    setSelectedRepositories(selectedRepositoryIds.filter((id) => id !== repositoryId));
   }
 
-  function toggleRepository(repositoryId: string, checked: boolean) {
-    selectedRepositoryIds = checked
-      ? [...new Set([...selectedRepositoryIds, repositoryId])]
-      : selectedRepositoryIds.filter((id) => id !== repositoryId);
+  function setSelectedRepositories(repositoryIds: string[]) {
+    selectedRepositoryIds = repositoryIds;
+    config = { ...config, selectedRepositoryIds: repositoryIds };
     taskDrafts = [];
-    taskResults = [];
+  }
+
+  function persistSelectedRepositories(repositoryIds: string[]) {
+    setSelectedRepositories(repositoryIds);
+    void persistDailyConfig();
   }
 
   function updateZentaoConfig(patch: Partial<WorklogConfig["zentao"]>) {
@@ -354,7 +436,6 @@
       },
     };
     taskDrafts = [];
-    taskResults = [];
   }
 
   function updateSchedule(patch: Partial<WorklogConfig["schedule"]>) {
@@ -372,11 +453,11 @@
     zentaoVerified = false;
   }
 
-  async function persistDailyConfig(message = "日常配置已保存") {
+  async function persistDailyConfig() {
     try {
-      await saveConfig(message);
+      await saveConfig();
     } catch (error) {
-      errorMessage = getErrorMessage(error, "保存日常配置失败");
+      toast(getErrorMessage(error, "保存日常配置失败"), { variant: "error" });
     }
   }
 
@@ -386,12 +467,12 @@
 </script>
 
 {#if loadState === "loading"}
-  <section class="grid h-full place-items-center text-sm text-muted-foreground">读取禅道打卡配置...</section>
+  <section class="grid h-full place-items-center text-sm text-muted-foreground">读取禅道配置...</section>
 {:else if loadState === "error"}
   <section class="grid h-full place-items-center p-6 text-center">
     <div class="max-w-sm rounded-lg border bg-card p-5">
       <h2 class="text-sm font-semibold">读取配置失败</h2>
-      <p class="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
+      <p class="mt-2 text-sm text-muted-foreground">{loadErrorMessage}</p>
       <button class="mt-4 h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground" type="button" onclick={() => void loadConfig()}>
         {t("error.retry")}
       </button>
@@ -626,6 +707,29 @@
               </select>
             </label>
 
+            <div class="block text-xs font-medium text-muted-foreground">
+              参与仓库
+              <div class="mt-1">
+                {#if config.repositories.length === 0}
+                  <p
+                    class="rounded-md border border-dashed bg-background px-2 py-2 text-[11px] text-muted-foreground"
+                  >
+                    还没有仓库，请先在初始化配置中添加。
+                  </p>
+                {:else}
+                  <MultiSelect
+                    options={repositoryOptions}
+                    value={selectedRepositoryIds}
+                    placeholder="选择本次参与的仓库"
+                    onValueChange={persistSelectedRepositories}
+                  />
+                  <span class="mt-1 block text-[11px] text-muted-foreground">
+                    已选 {selectedRepositoryIds.length}/{config.repositories.length}
+                  </span>
+                {/if}
+              </div>
+            </div>
+
             <div class="grid grid-cols-2 gap-2">
               <label class="block text-xs font-medium text-muted-foreground">
                 类型
@@ -697,10 +801,10 @@
               <input
                 class="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
                 value={config.zentao.titleTemplate}
-                placeholder={"[{date}] {repo} 禅道打卡"}
+                placeholder={"[{date}] {repo} 禅道"}
                 onchange={(event) => {
                   updateZentaoConfig({ titleTemplate: event.currentTarget.value });
-                  void persistDailyConfig("任务名模板已保存");
+                  void persistDailyConfig();
                 }}
               />
               <span class="mt-1 block text-[11px] text-muted-foreground">
@@ -712,68 +816,21 @@
 
         <!-- 右栏：主流程面板 -->
         <main class="flex min-h-0 flex-col">
-          <!-- ① 参与仓库 横向多选 -->
-          <div class="border-b bg-card/40 p-4">
-            <div class="mb-3 flex items-center justify-between">
-              <div>
-                <h3 class="text-sm font-semibold">参与仓库</h3>
-                <p class="text-xs text-muted-foreground">勾选本次打卡涉及的仓库，作为生成任务的来源。</p>
-              </div>
-              <span class="text-xs text-muted-foreground">{selectedRepositoryIds.length}/{config.repositories.length}</span>
-            </div>
-
-            {#if config.repositories.length === 0}
-              <div class="rounded-lg border border-dashed bg-card/60 p-4 text-sm text-muted-foreground">
-                还没有仓库。打开初始化配置添加 Windows 或 WSL 仓库。
-              </div>
-            {:else}
-              <div class="flex flex-wrap gap-2">
-                {#each config.repositories as repository (repository.id)}
-                  <label
-                    class="flex cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-colors has-checked:border-primary has-checked:bg-primary/5"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedRepositoryIds.includes(repository.id)}
-                      onchange={(event) => toggleRepository(repository.id, event.currentTarget.checked)}
-                    />
-                    <div class="min-w-0">
-                      <p class="text-xs font-medium leading-tight">{repository.name}</p>
-                      <p class="truncate font-mono text-[10px] text-muted-foreground">
-                        {repository.environment === "wsl"
-                          ? `${repository.wslDistro ?? "WSL"}:${repository.wslPath ?? ""}`
-                          : repository.windowsPath}
-                      </p>
-                    </div>
-                  </label>
-                {/each}
-              </div>
-            {/if}
-          </div>
-
           <!-- 主流程滚动区 -->
           <div class="min-h-0 flex-1 overflow-auto p-4">
-            <!-- ② 打开预览 主按钮 -->
-            <div class="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h3 class="text-sm font-semibold">打卡预览</h3>
-                <p class="text-xs text-muted-foreground">
-                  {previewState === "loading" ? "正在抓取提交并生成预览..." : `${visibleCommits.length} commits`}
-                </p>
-              </div>
-              <button
-                class="h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
-                type="button"
-                onclick={() => void openPreview()}
-                disabled={previewState === "loading" || !dailyConfigComplete}
-              >
-                {previewState === "loading" ? "预览中..." : "打开预览"}
-              </button>
+            <!-- ② 打卡预览 信息 -->
+            <div class="mb-4">
+              <h3 class="text-sm font-semibold">打卡预览</h3>
+              <p class="text-xs text-muted-foreground">
+                {previewState === "loading"
+                  ? "正在抓取提交并生成预览..."
+                  : `已选 ${selectedCommitCount}/${commits.length} commits`}
+              </p>
             </div>
 
             {#if !dailyConfigComplete}
               <p class="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                请先在左侧完成日期、项目、迭代，并在上方勾选至少一个参与仓库，即可打开预览。
+                请先在左侧完成日期、项目、迭代和参与仓库，即可打开预览。
               </p>
             {/if}
 
@@ -781,9 +838,9 @@
               <div class="rounded-lg border border-dashed bg-card/60 px-4 py-8 text-center text-muted-foreground">
                 完成配置后点击“打开预览”，系统会自动抓取 Git 提交并生成禅道任务。
               </div>
-            {:else if scanResults.length > 0}
+            {:else if visibleScanResults.length > 0}
               <div class="space-y-4">
-                {#each scanResults as result (result.repositoryId)}
+                {#each visibleScanResults as result (result.repositoryId)}
                   <section class="overflow-hidden rounded-lg border bg-card">
                     <div class="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                       <div>
@@ -795,19 +852,30 @@
                     {#if result.commits.length > 0}
                       <div class="divide-y">
                         {#each result.commits as commit (commit.hash)}
-                          <div class="grid grid-cols-[72px_minmax(0,1fr)_72px] gap-3 px-3 py-2 text-xs">
+                          <label
+                            class="grid cursor-pointer grid-cols-[auto_72px_minmax(0,1fr)_72px] items-center gap-3 px-3 py-2 text-xs transition-colors hover:bg-muted/40"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedCommitKeys.includes(WorklogService.commitKey(commit))}
+                              onchange={(event) => void toggleCommit(commit, event.currentTarget.checked)}
+                            />
                             <span class="font-mono text-muted-foreground">{commit.committedAt.slice(11, 16)}</span>
                             <div class="min-w-0">
                               <p class="truncate text-foreground">{commit.message}</p>
                               <p class="truncate text-muted-foreground">{commit.authorName} · {commit.repositoryName}</p>
                             </div>
                             <span class="font-mono text-muted-foreground">{commit.shortHash}</span>
-                          </div>
+                          </label>
                         {/each}
                       </div>
                     {/if}
                   </section>
                 {/each}
+              </div>
+            {:else if commits.length > 0}
+              <div class="rounded-lg border border-dashed bg-card/60 px-4 py-8 text-center text-muted-foreground">
+                没有匹配的提交。
               </div>
             {:else}
               <div class="rounded-lg border border-dashed bg-card/60 px-4 py-8 text-center text-muted-foreground">
@@ -818,71 +886,57 @@
             {#if taskDrafts.length > 0}
               <section class="mt-4 rounded-lg border bg-card p-3">
                 <h4 class="text-sm font-medium">待创建并完成（{taskDrafts.length}）</h4>
+                <p class="mt-1 text-[11px] text-muted-foreground">
+                  可直接编辑任务名与描述；调整上方提交勾选会按勾选内容重新生成。
+                </p>
                 {#each taskDrafts as task (task.id)}
                   <div class="mt-3 border-t pt-3 text-xs">
-                    <p class="font-medium">{task.name}</p>
+                    <input
+                      class="h-8 w-full rounded-md border bg-background px-2 text-sm"
+                      aria-label="任务名"
+                      value={task.name}
+                      oninput={(event) => updateTaskDraft(task.id, { name: event.currentTarget.value })}
+                    />
                     <p class="mt-1 text-muted-foreground">
                       {task.date} · {task.taskType} · 预计 {task.estimate}h · {task.assignedTo}
                     </p>
-                    <pre class="mt-2 max-h-36 overflow-auto whitespace-pre-wrap rounded-md bg-muted/50 p-2 font-mono text-[11px]">{task.desc}</pre>
+                    <textarea
+                      class="mt-2 max-h-80 w-full resize-y overflow-auto rounded-md border bg-muted/50 p-2 font-mono text-[11px]"
+                      aria-label="任务描述"
+                      rows="10"
+                      value={task.desc}
+                      oninput={(event) =>
+                        updateTaskDraft(task.id, {
+                          desc: event.currentTarget.value,
+                          finishComment: event.currentTarget.value,
+                        })}
+                    ></textarea>
                   </div>
                 {/each}
               </section>
             {/if}
           </div>
 
-          <!-- ③ 提交打卡 sticky 底部 + 结果 -->
+          <!-- ③ 预览 + 提交打卡 sticky 底部 + 结果 -->
           <div class="border-t bg-card/70 p-4">
-            <button
-              class="h-10 w-full rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
-              type="button"
-              onclick={() => void submitClockIn()}
-              disabled={submitState === "loading" || taskDrafts.length === 0}
-            >
-              {submitState === "loading" ? "提交中..." : taskDrafts.length > 0 ? `提交打卡（${taskDrafts.length} 个任务）` : "提交打卡"}
-            </button>
-
-            {#if statusMessage && !errorMessage}
-              <p class="mt-3 rounded-md border bg-muted/40 px-3 py-2 text-xs">{statusMessage}</p>
-            {/if}
-            {#if errorMessage}
-              <p class="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                {errorMessage}
-              </p>
-            {/if}
-
-            {#if allTasksSucceeded}
-              <div class="mt-3 flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-600">
-                <span aria-hidden="true">✓</span>
-                <span>打卡成功</span>
-              </div>
-            {:else if someTasksFailed}
-              <div class="mt-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-600">
-                部分打卡失败，请查看下方明细。
-              </div>
-            {/if}
-
-            {#if taskResults.length > 0}
-              <section class="mt-3 rounded-lg border bg-card p-3">
-                <h4 class="text-sm font-medium">打卡结果</h4>
-                <div class="mt-2 space-y-2">
-                  {#each taskResults as result (result.draftId)}
-                    <p class:text-destructive={!result.ok} class:text-emerald-600={result.ok} class="flex items-start gap-1.5 text-xs text-muted-foreground">
-                      <span>{result.ok ? "✓" : "✕"}</span>
-                      <span>{result.ok ? "成功" : "失败"} {result.taskId ? `#${result.taskId}` : ""} · {result.message}</span>
-                    </p>
-                  {/each}
-                </div>
-              </section>
-            {/if}
-
-            {#if config.lastRun}
-              <section class="mt-3 rounded-lg border bg-card p-3">
-                <h4 class="text-sm font-medium">最近一次打卡</h4>
-                <p class="mt-2 text-xs text-muted-foreground">{config.lastRun.message}</p>
-                <p class="mt-1 text-xs text-muted-foreground">{config.lastRun.ranAt}</p>
-              </section>
-            {/if}
+            <div class="flex items-center justify-end gap-2">
+              <button
+                class="h-10 rounded-md border px-4 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50"
+                type="button"
+                onclick={() => void openPreview()}
+                disabled={previewState === "loading" || !dailyConfigComplete}
+              >
+                {previewState === "loading" ? "预览中..." : "打开预览"}
+              </button>
+              <button
+                class="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-50"
+                type="button"
+                onclick={() => void submitClockIn()}
+                disabled={submitState === "loading" || taskDrafts.length === 0}
+              >
+                {submitState === "loading" ? "提交中..." : taskDrafts.length > 0 ? `提交打卡（${taskDrafts.length} 个任务）` : "提交打卡"}
+              </button>
+            </div>
           </div>
         </main>
       </div>

@@ -5,6 +5,7 @@
     type ImportMode,
   } from "$lib/core/data-sync/quick-notes-data-sync";
   import { getLocaleStore } from "$lib/core/i18n/store.svelte.js";
+  import { toast } from "$lib/core/toast/toast.svelte";
   import type { QuickNotesStore } from "$lib/core/quick-notes-types";
   import Icons from "$lib/features/common/Icons.svelte";
 
@@ -25,7 +26,6 @@
 
   let importMode = $state<ImportMode>("append");
   let conflictResolution = $state<ConflictResolution>("keepCurrent");
-  let feedback = $state<{ text: string; type: "success" | "error" } | null>(null);
   let overwriteConfirmOpen = $state(false);
   let pendingImport = $state<{ merged: QuickNotesStore; imported: QuickNotesStore } | null>(null);
   let fileInputRef = $state<HTMLInputElement | null>(null);
@@ -62,9 +62,9 @@
   function handleExport() {
     try {
       QuickNotesDataSyncService.downloadJson(store);
-      feedback = { text: t("settings.exportSuccess"), type: "success" };
+      toast(t("settings.exportSuccess"), { variant: "success" });
     } catch {
-      feedback = { text: t("settings.exportFailed"), type: "error" };
+      toast(t("settings.exportFailed"), { variant: "error" });
     }
   }
 
@@ -98,26 +98,25 @@
 
       await applyImport(merged, imported);
     } catch (error) {
-      feedback = { text: mapImportError(error), type: "error" };
+      toast(mapImportError(error), { variant: "error" });
     }
   }
 
   async function applyImport(merged: QuickNotesStore, imported: QuickNotesStore) {
     importing = true;
-    feedback = null;
 
     try {
       await onImport(merged);
-      feedback = {
-        text: t("settings.importSuccess", {
+      toast(
+        t("settings.importSuccess", {
           count: String(QuickNotesDataSyncService.countImportedItems(imported)),
         }),
-        type: "success",
-      };
+        { variant: "success" }
+      );
       overwriteConfirmOpen = false;
       pendingImport = null;
     } catch (error) {
-      feedback = { text: mapImportError(error), type: "error" };
+      toast(mapImportError(error), { variant: "error" });
     } finally {
       importing = false;
     }
@@ -285,16 +284,6 @@
               {t("settings.import")}
             </button>
           </div>
-
-          {#if feedback}
-            <p
-              class="mt-2 text-xs"
-              class:text-destructive={feedback.type === "error"}
-              class:text-green-700={feedback.type === "success"}
-            >
-              {feedback.text}
-            </p>
-          {/if}
         </section>
       </div>
     </div>

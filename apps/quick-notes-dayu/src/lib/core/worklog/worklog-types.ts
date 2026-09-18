@@ -40,6 +40,8 @@ export interface WorklogRunSummary {
 
 export interface WorklogConfig {
   repositories: WorklogRepositoryConfig[];
+  /** Repositories picked for the daily clock-in. `null` means "never chosen yet". */
+  selectedRepositoryIds?: string[] | null;
   zentao: ZentaoConfig;
   schedule: WorklogScheduleConfig;
   lastRun?: WorklogRunSummary | null;

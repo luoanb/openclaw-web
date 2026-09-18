@@ -8,6 +8,7 @@
   import { createLocaleStore, getLocaleStore } from "$lib/core/i18n/store.svelte.js";
   import Icons from "$lib/features/common/Icons.svelte";
   import HeaderMenu from "$lib/features/common/HeaderMenu.svelte";
+  import ToastRegion from "$lib/features/common/ToastRegion.svelte";
   import SettingsModal from "$lib/features/settings/SettingsModal.svelte";
   import NotesTab from "$lib/features/notes/NotesTab.svelte";
   import TasksTab from "$lib/features/tasks/TasksTab.svelte";
@@ -311,3 +312,5 @@
   onClose={() => (settingsOpen = false)}
   onImport={handleImport}
 />
+
+<ToastRegion />

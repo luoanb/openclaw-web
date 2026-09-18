@@ -10,6 +10,7 @@ export class WorklogService {
   static createDefaultConfig(): WorklogConfig {
     return {
       repositories: [],
+      selectedRepositoryIds: null,
       zentao: {
         baseUrl: "",
         account: "",
@@ -19,7 +20,7 @@ export class WorklogService {
         assignedTo: null,
         taskType: "devel",
         estimate: 1,
-        titleTemplate: "[{date}] {repo} 禅道打卡",
+        titleTemplate: "[{date}] {repo} 禅道",
         descriptionTemplate: null,
         finishCommentTemplate: null,
       },
@@ -36,6 +37,7 @@ export class WorklogService {
 
     return {
       repositories: Array.isArray(config?.repositories) ? config.repositories : [],
+      selectedRepositoryIds: config?.selectedRepositoryIds ?? null,
       zentao: {
         ...fallback.zentao,
         ...(config?.zentao ?? {}),
@@ -47,6 +49,22 @@ export class WorklogService {
       },
       lastRun: config?.lastRun ?? null,
     };
+  }
+
+  /**
+   * Resolve the repositories selected for the daily clock-in. When the user has
+   * never made a choice (`null`), every known repository is selected; otherwise
+   * only the remembered ids that still exist are kept.
+   */
+  static resolveSelectedRepositoryIds(config: WorklogConfig): string[] {
+    const knownIds = config.repositories.map((repository) => repository.id);
+
+    if (config.selectedRepositoryIds == null) {
+      return knownIds;
+    }
+
+    const savedIds = new Set(config.selectedRepositoryIds);
+    return knownIds.filter((id) => savedIds.has(id));
   }
 
   static today(): string {
@@ -80,6 +98,16 @@ export class WorklogService {
 
   static flattenCommits(results: RepositoryScanResult[]): GitCommitRecord[] {
     return results.flatMap((result) => result.commits);
+  }
+
+  /** Stable identity for a commit across repositories. */
+  static commitKey(commit: GitCommitRecord): string {
+    return `${commit.repositoryId}:${commit.hash}`;
+  }
+
+  static selectCommits(commits: GitCommitRecord[], selectedKeys: string[]): GitCommitRecord[] {
+    const keys = new Set(selectedKeys);
+    return commits.filter((commit) => keys.has(WorklogService.commitKey(commit)));
   }
 
   static filterCommits(commits: GitCommitRecord[], query: string): GitCommitRecord[] {
